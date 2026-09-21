@@ -1,4 +1,4 @@
-# Hydro-Assistent
+# Hydro-Assistent v1
 
 Nährlösungs-Rechner für 3 DWC-Eimer: Neu ansetzen, TOP-UP, Mischanleitung, Verlauf, Pflanzendoktor, Erntekalender.
 
