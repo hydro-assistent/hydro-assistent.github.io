@@ -1,0 +1,1189 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#13201E">
+<title>Hydro-Assistent</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #13201E; --flaeche: #1C2D2A; --flaeche2: #253B37; --linie: #35524B;
+  --text: #E7EFEB; --leise: #9DB3AB; --akzent: #F0B44C; --akzent-text: #221804;
+  --gut: #8CC9A8; --fehler: #EF8177;
+  color-scheme: dark;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #13201E; --flaeche: #1C2D2A; --text: #E7EFEB; } }
+:root[data-theme="dark"] { --bg: #13201E; --flaeche: #1C2D2A; --text: #E7EFEB; }
+*, *::before, *::after { box-sizing: inherit; }
+html { height: 100%; scroll-padding-top: env(safe-area-inset-top, 0px); }
+body {
+  margin: 0; min-height: 100%; background: var(--bg); color: var(--text);
+  font-family: "Atkinson Hyperlegible", "Segoe UI", Roboto, Arial, sans-serif;
+  font-size: 18px; line-height: 1.45; -webkit-tap-highlight-color: transparent;
+}
+.zahl { font-variant-numeric: tabular-nums; }
+#app { max-width: 560px; margin: 0 auto; padding: 16px 16px 120px; }
+h1 { font-size: 28px; line-height: 1.2; margin: 8px 0 20px; font-weight: 700; }
+h2 { font-size: 20px; margin: 28px 0 12px; font-weight: 700; }
+p { margin: 0 0 12px; }
+.leise { color: var(--leise); }
+button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid var(--akzent); outline-offset: 2px; }
+
+.kopf { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; }
+.kopf h1 { margin: 0; }
+.zurueck { width: 48px; height: 48px; border-radius: 24px; font-size: 26px; background: var(--flaeche); flex: none; }
+
+.eimer { display: block; width: 100%; text-align: left; background: var(--flaeche); border-radius: 18px; padding: 18px; margin-bottom: 14px; border: 2px solid transparent; }
+.eimer:active { border-color: var(--linie); }
+.eimer-oben { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.eimer-name { font-size: 22px; font-weight: 700; }
+.ec-gross { font-size: 40px; font-weight: 700; line-height: 1; color: var(--akzent); }
+.ec-gross small { font-size: 15px; font-weight: 400; color: var(--leise); display: block; text-align: right; margin-top: 4px; }
+.eimer-zeile { color: var(--leise); margin-top: 6px; }
+
+.gruppe { margin: 0 0 18px; }
+.gruppe-titel { color: var(--leise); font-size: 15px; margin-bottom: 6px; }
+.segment { display: flex; background: var(--flaeche); border-radius: 14px; padding: 4px; gap: 4px; }
+.segment button { flex: 1; min-height: 52px; border-radius: 11px; font-size: 16px; padding: 4px 6px; }
+.segment button[aria-pressed="true"] { background: var(--akzent); color: var(--akzent-text); font-weight: 700; }
+
+.ziel { display: flex; align-items: baseline; gap: 12px; background: var(--flaeche); border-radius: 18px; padding: 16px 18px; margin: 6px 0 18px; }
+.ziel .ec-gross { font-size: 52px; }
+
+.knoepfe { position: fixed; left: 0; right: 0; bottom: 0; padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px)); background: linear-gradient(transparent, var(--bg) 30%); }
+.knoepfe-innen { max-width: 560px; margin: 0 auto; display: flex; gap: 10px; }
+.gross { flex: 1; min-height: 64px; border-radius: 16px; font-size: 20px; font-weight: 700; background: var(--flaeche2); }
+.gross.haupt { background: var(--akzent); color: var(--akzent-text); }
+.gross:disabled { opacity: .4; }
+
+.nav { position: fixed; left: 0; right: 0; bottom: 0; background: var(--flaeche); border-top: 1px solid var(--linie); padding-bottom: env(safe-area-inset-bottom, 0px); }
+.nav-innen { max-width: 560px; margin: 0 auto; display: flex; }
+.nav button { flex: 1; min-height: 64px; font-size: 16px; color: var(--leise); }
+.nav button[aria-current="page"] { color: var(--akzent); font-weight: 700; }
+
+label.feld { display: block; margin-bottom: 16px; }
+label.feld span { display: block; color: var(--leise); font-size: 15px; margin-bottom: 6px; }
+input[type="text"], select {
+  width: 100%; min-height: 60px; border-radius: 14px; border: 2px solid var(--linie);
+  background: var(--flaeche); color: var(--text); font: inherit; font-size: 26px; padding: 8px 16px;
+}
+input::placeholder { color: var(--leise); opacity: .6; }
+.feld-zeile { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.feld-zeile3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+.feld-zeile3 input { font-size: 22px; padding: 8px 10px; }
+
+.hinweise { border-left: 4px solid var(--akzent); background: var(--flaeche); border-radius: 0 14px 14px 0; padding: 12px 16px; margin: 0 0 18px; }
+.hinweise p { font-size: 16px; margin: 0 0 6px; }
+.hinweise p:last-child { margin: 0; }
+.fehlertext { color: var(--fehler); font-size: 16px; margin: -8px 0 14px; }
+
+.schritte { list-style: none; margin: 0 0 8px; padding: 0; counter-reset: s; }
+.schritt { display: flex; gap: 14px; align-items: flex-start; width: 100%; text-align: left; background: var(--flaeche); border-radius: 16px; padding: 14px 16px; margin-bottom: 10px; min-height: 64px; }
+.schritt .nr { flex: none; width: 34px; height: 34px; border-radius: 17px; border: 2px solid var(--linie); display: grid; place-items: center; font-weight: 700; font-size: 16px; }
+.schritt .menge { font-size: 26px; font-weight: 700; display: block; line-height: 1.2; }
+.schritt .was { display: block; }
+.schritt[aria-pressed="true"] { background: transparent; border: 2px dashed var(--linie); padding: 12px 14px; }
+.schritt[aria-pressed="true"] .nr { background: var(--gut); border-color: var(--gut); color: var(--bg); }
+.schritt[aria-pressed="true"] .menge, .schritt[aria-pressed="true"] .was { color: var(--leise); text-decoration: line-through; }
+
+.zusammen { display: flex; gap: 18px; flex-wrap: wrap; margin: 0 0 16px; }
+.zusammen div { font-size: 15px; color: var(--leise); }
+.zusammen b { display: block; font-size: 24px; color: var(--text); }
+
+.eintrag { background: var(--flaeche); border-radius: 14px; padding: 12px 16px; margin-bottom: 10px; }
+.eintrag-kopf { display: flex; justify-content: space-between; gap: 8px; color: var(--leise); font-size: 15px; }
+.eintrag-werte { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 4px; }
+.eintrag-werte span b { font-size: 20px; }
+.eintrag .loeschen { color: var(--leise); font-size: 14px; text-decoration: underline; padding: 6px 0 0; }
+.filter { display: flex; gap: 8px; overflow-x: auto; margin-bottom: 14px; }
+.filter button { min-height: 44px; padding: 0 16px; border-radius: 22px; background: var(--flaeche); white-space: nowrap; font-size: 16px; }
+.filter button[aria-pressed="true"] { background: var(--akzent); color: var(--akzent-text); font-weight: 700; }
+
+.schalter { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; text-align: left; background: var(--flaeche); border-radius: 14px; padding: 12px 16px; margin-bottom: 8px; min-height: 60px; }
+.schalter .pille { flex: none; width: 56px; height: 32px; border-radius: 16px; background: var(--flaeche2); position: relative; border: 2px solid var(--linie); }
+.schalter .pille::after { content: ""; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 11px; background: var(--leise); transition: left .15s; }
+.schalter[aria-checked="true"] .pille { background: var(--gut); border-color: var(--gut); }
+.schalter[aria-checked="true"] .pille::after { left: 27px; background: var(--bg); }
+.schalter small { display: block; color: var(--leise); font-size: 14px; }
+
+.zeile-knopf { width: 100%; min-height: 56px; border-radius: 14px; background: var(--flaeche2); font-size: 18px; font-weight: 700; margin-bottom: 10px; }
+.status { font-size: 15px; color: var(--leise); margin-bottom: 12px; }
+.status::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 5px; background: var(--leise); margin-right: 8px; }
+.status.gut::before { background: var(--gut); }
+
+.toast { position: fixed; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--gut); color: var(--bg); font-weight: 700; padding: 12px 20px; border-radius: 24px; opacity: 0; pointer-events: none; transition: opacity .2s; }
+.toast.an { opacity: 1; }
+.orte { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 18px; }
+.orte button, .sym { min-height: 56px; border-radius: 14px; background: var(--flaeche); padding: 10px 14px; text-align: left; font-size: 17px; border: 2px solid transparent; }
+.orte button[aria-pressed="true"], .sym[aria-pressed="true"] { border-color: var(--akzent); background: var(--flaeche2); }
+.sym { display: flex; gap: 12px; align-items: center; width: 100%; margin-bottom: 8px; }
+.sym .box { flex: none; width: 26px; height: 26px; border-radius: 7px; border: 2px solid var(--linie); display: grid; place-items: center; font-weight: 700; font-size: 16px; }
+.sym[aria-pressed="true"] .box { background: var(--akzent); border-color: var(--akzent); color: var(--akzent-text); }
+.befund { background: var(--flaeche); border-radius: 18px; padding: 16px 18px; margin-bottom: 14px; }
+.befund h3 { font-size: 21px; margin: 0 0 4px; }
+.befund .stufe { font-size: 15px; color: var(--akzent); font-weight: 700; margin-bottom: 8px; }
+.befund .stufe.moeglich { color: var(--leise); }
+.befund p { font-size: 16px; }
+.befund ul { margin: 0 0 8px; padding-left: 20px; font-size: 16px; }
+.befund li { margin-bottom: 6px; }
+.befund .passt { border-left: 3px solid var(--gut); padding-left: 10px; margin: 8px 0 10px; font-size: 16px; }
+.zeile-knopf.doktor { background: var(--flaeche); border: 2px solid var(--linie); margin: 0 0 8px; }
+.kalender { background: var(--flaeche); border-radius: 18px; padding: 16px 18px; margin: 0 0 14px; }
+.kalender .ernte { font-size: 30px; font-weight: 700; color: var(--akzent); line-height: 1.15; }
+.kalender .tag { font-size: 17px; margin: 2px 0 10px; }
+.balken { height: 10px; border-radius: 5px; background: var(--flaeche2); overflow: hidden; margin: 6px 0 10px; }
+.balken div { height: 100%; background: var(--gut); border-radius: 5px; }
+.kalender .klein { font-size: 15px; color: var(--leise); }
+.kalender .aendern { color: var(--leise); text-decoration: underline; font-size: 15px; padding: 8px 0 0; }
+.kalender .vorschlag { border-top: 1px solid var(--linie); margin-top: 12px; padding-top: 12px; font-size: 16px; }
+.kalender .vorschlag button { margin-top: 10px; min-height: 48px; padding: 0 18px; border-radius: 12px; background: var(--akzent); color: var(--akzent-text); font-weight: 700; font-size: 16px; }
+input[type="date"] { width: 100%; min-height: 60px; border-radius: 14px; border: 2px solid var(--linie); background: var(--flaeche); color: var(--text); font: inherit; font-size: 22px; padding: 8px 16px; }
+.stift { width: 48px; height: 48px; border-radius: 24px; background: var(--flaeche); font-size: 20px; flex: none; margin-left: auto; }
+.namen-form { display: flex; gap: 8px; margin: 0 0 18px; }
+.namen-form input { flex: 1; font-size: 22px; }
+.namen-form button { flex: none; min-height: 60px; padding: 0 18px; border-radius: 14px; background: var(--akzent); color: var(--akzent-text); font-weight: 700; }
+.leer { background: var(--flaeche); border-radius: 16px; padding: 18px; color: var(--leise); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<main id="app"></main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<input type="file" id="datei" accept=".json,application/json" hidden>
+
+<script>
+// Hydro-Assistent – Stammdaten (Stand 21.09.2026)
+// Alle Salzwerte in % Element (P und K schon aus P2O5/K2O umgerechnet).
+// aktiv: gehört zum Standard-Satz (was du tatsächlich nimmst); inaktive Salze sind vorrätig, werden aber nicht verplant.
+  // Quelle: HydroBuddy-Datenbank des Nutzers; noch mit den Etiketten abzugleichen.
+(function (root) {
+  const DATEN = {
+    salze: [
+      { id: 'soft_elite', aktiv: true,   name: 'Hakaphos Soft Elite',   NO3: 13.2,  NH4: 10.8, P: 2.618, K: 9.961,  Ca: 0,     Mg: 1.206, S: 1.6,  Fe: 0.08, Mn: 0.05, Zn: 0.02,  Cu: 0.02, B: 0.01, Mo: 0.001 },
+      { id: 'soft_spezial', aktiv: false, name: 'Hakaphos Soft Spezial', NO3: 9.7,   NH4: 6.3,  P: 3.491, K: 18.262, Ca: 0,     Mg: 1.81,  S: 4.0,  Fe: 0.15, Mn: 0.05, Zn: 0.015, Cu: 0.02, B: 0.02, Mo: 0.0025 },
+      { id: 'basis3', aktiv: false,       name: 'Hakaphos Basis 3',      NO3: 3.0,   NH4: 0,    P: 6.546, K: 29.884, Ca: 0,     Mg: 2.41,  S: 9.0,  Fe: 0.2,  Mn: 0.05, Zn: 0.015, Cu: 0.02, B: 0.01, Mo: 0.001 },
+      { id: 'basis5', aktiv: true,       name: 'Hakaphos Basis 5',      NO3: 4.0,   NH4: 1.0,  P: 8.728, K: 24.903, Ca: 0,     Mg: 3.0,   S: 6.0,  Fe: 0.2,  Mn: 0.1,  Zn: 0.025, Cu: 0.06, B: 0.03, Mo: 0.003 },
+      { id: 'calcinit', aktiv: true,     name: 'Calcinit (Yara)',       NO3: 14.4,  NH4: 1.1,  P: 0,     K: 0,      Ca: 18.59, Mg: 0,     S: 0 },
+      { id: 'kno3', aktiv: true,         name: 'Kaliumnitrat',          NO3: 13.86, NH4: 0,    P: 0,     K: 38.67,  Ca: 0,     Mg: 0,     S: 0 },
+      { id: 'mkp', aktiv: false,         name: 'Monokaliumphosphat',    NO3: 0,     NH4: 0,    P: 22.76, K: 28.73,  Ca: 0,     Mg: 0,     S: 0 },
+      // Kaliumcarbonat: wird im Eimer von der Säure neutralisiert. Zusammensetzung pro g K2CO3; N kommt nur mit Salpetersäure dazu (kern.js).
+      { id: 'kco', aktiv: true, nurMitSalpeter: true, name: 'Kaliumcarbonat-Lösung', loesungGProL: 300, NO3: 0, NH4: 0, P: 0, K: 56.58, Ca: 0, Mg: 0, S: 0, co3: true },
+      { id: 'bittersalz', aktiv: true,   name: 'Bittersalz',            NO3: 0,     NH4: 0,    P: 0,     K: 0,      Ca: 0,     Mg: 9.65,  S: 13.0 },
+    ],
+    // Mischreihenfolge im Eimer (nach der ersten Säure)
+    reihenfolge: ['kco', 'bittersalz', 'soft_elite', 'soft_spezial', 'basis3', 'basis5', 'kno3', 'mkp', 'calcinit'],
+
+    // Wasserwerk Garßen, 07.07.2025, mg/L; EC selbst gemessen
+    wasser: { ecGemessen: 0.37, pH: 7.6, alkalitaet: 1.7, NO3: 0.11, NH4: 0.02, P: 0.024, K: 1.33, Ca: 42.5, Mg: 2.72, S: 14.1, Na: 10.8, Cl: 12.8, Fe: 0.121, Mn: 0.017 },
+
+    eimer: { form: 'konisch', dUnten: 32, dOben: 36, hoehe: 37.5, maxFuell: 28, zielFuell: 28, anzahl: 3 },
+
+    saeure: { typ: 'phosphor', konz: 85, zielPH: 5.8 },
+
+    // Zusätze (in ml pro Liter dosiert). Werte laut Prüfzeugnis Art.-Nr. S100402 (Mitte der Spannen)
+    wasserglas: { name: 'Kaliwasserglas 28 °Bé', dichte: 1.25, K2O: 8.1, SiO2: 20.65 },
+
+    // Ziel-EC (brutto, inkl. Wasser) Normal: [von, bis]
+    phasen: {
+      anzucht:  { name: 'Anzucht',  ecPhoto: [0.6, 0.8], ecAuto: [0.5, 0.7], profil: { N: 80,  P: 30, K: 80,  Ca: 80,  Mg: 30, S: 30 }, deckel: 0.9 },
+      wachstum: { name: 'Wachstum', ecPhoto: [1.2, 1.5], ecAuto: [1.0, 1.3], profil: { N: 160, P: 50, K: 180, Ca: 140, Mg: 50, S: 50 }, deckel: 1.7 },
+      bluete:   { name: 'Blüte',    ecPhoto: [1.6, 1.9], ecAuto: [1.4, 1.7], profil: { N: 120, P: 60, K: 240, Ca: 140, Mg: 50, S: 60 }, deckel: 2.2, deckelAuto: 1.8 },
+      reife:    { name: 'Reife',    ecPhoto: [1.0, 1.3], ecAuto: [0.8, 1.2], profil: { N: 80,  P: 40, K: 180, Ca: 120, Mg: 40, S: 40 }, deckel: 1.5 },
+    },
+    staerke: { sanft: 0.85, normal: 1.0, stark: 1.15 },
+
+    // Kalibrierung aus der Testmischung vom 21.09.2026
+    kalibrierung: {
+      ecSalzFaktor: 1.08,      // EC-Modell schätzte den Salzanteil 8 % zu niedrig
+      ecProMmolSaeure: 0.076,  // 2 ml H3PO4 85 % auf 24,7 L (1,18 mmol/L) = +0,09 EC
+      saeureFaktor: 0.91,      // gebraucht 2,0 ml statt geschätzt 2,2 ml
+    },
+  };
+  if (typeof module !== 'undefined') module.exports = DATEN; else root.HYDRO_DATEN = DATEN;
+})(this);
+
+</script>
+<script>
+// Hydro-Assistent – Rechenkern (Stufe 2)
+// Kette: Füllhöhe -> Liter -> Säure -> Soll minus Wasser -> Solver -> EC-Schätzung -> Mischanleitung
+(function (root) {
+  const MAKRO = ['N', 'P', 'K', 'Ca', 'Mg', 'S'];
+  const SPUREN = ['Fe', 'Mn', 'Zn', 'Cu', 'B', 'Mo'];
+  const GEWICHT = { N: 3, P: 1, K: 3, Ca: 3, Mg: 1.5, S: 0.5 };
+  const UEBERSCHUSS_MILD = { P: true, S: true, Ca: true, Mg: true }; // Überschuss halb so schlimm wie Mangel
+  const NH4_MAX = 0.15;
+  const MOLMASSE = { K: 39.098, Ca: 40.078, Mg: 24.305, N: 14.007, P: 30.974 };
+
+  // ---------- 1. Füllhöhe -> Liter ----------
+  function liter(eimer, h) {
+    if (h <= 0) return 0;
+    if (eimer.form === 'rechteck') return eimer.laenge * eimer.breite * h / 1000;
+    if (eimer.form === 'rund') return Math.PI * (eimer.durchmesser / 2) ** 2 * h / 1000;
+    if (eimer.form === 'konisch') {
+      const r1 = eimer.dUnten / 2;
+      const r2 = r1 + (eimer.dOben / 2 - r1) * h / eimer.hoehe; // Radius auf Füllhöhe
+      return Math.PI * h / 3 * (r1 * r1 + r1 * r2 + r2 * r2) / 1000;
+    }
+    if (eimer.form === 'tabelle') { // [[cm, L], ...] aufsteigend, linear dazwischen
+      const t = eimer.tabelle;
+      if (h <= t[0][0]) return t[0][1] * h / t[0][0];
+      for (let i = 1; i < t.length; i++) if (h <= t[i][0]) {
+        const [h0, l0] = t[i - 1], [h1, l1] = t[i];
+        return l0 + (l1 - l0) * (h - h0) / (h1 - h0);
+      }
+      return t[t.length - 1][1];
+    }
+    throw new Error('Unbekannte Eimerform: ' + eimer.form);
+  }
+
+  // ---------- 2. Säure ----------
+  const DICHTE_HNO3 = [[0, 0.998], [3, 1.015], [10, 1.054], [20, 1.115], [30, 1.180], [38, 1.235], [53, 1.330], [65, 1.391]];
+  function dichteHNO3(konz) {
+    for (let i = 1; i < DICHTE_HNO3.length; i++) if (konz <= DICHTE_HNO3[i][0]) {
+      const [c0, d0] = DICHTE_HNO3[i - 1], [c1, d1] = DICHTE_HNO3[i];
+      return d0 + (d1 - d0) * (Math.max(konz, c0) - c0) / (c1 - c0);
+    }
+    return DICHTE_HNO3[DICHTE_HNO3.length - 1][1];
+  }
+  // Liefert mmol Säure pro Liter und was sie an P bzw. N mitbringt
+  // H+ pro mol Carbonat bis zum Ziel-pH (CO3 -> HCO3 -> teils CO2)
+  const hProCO3 = pH => 1 + (1 - 1 / (1 + 10 ** (6.35 - pH)));
+  // Wasserglas: was 1 ml bringt
+  function wasserglasProMl(wg) {
+    const g = wg.dichte * 1000 / 1000; // g pro ml
+    const K = g * wg.K2O / 100 * 2 * 39.098 / 94.196 * 1000;       // mg K
+    const Si = g * wg.SiO2 / 100 * 28.086 / 60.084 * 1000;         // mg Si
+    return { K, Si, hBedarf: K / 39.098 };                          // mmol H+ (1 pro K)
+  }
+  function saeure(wasser, s, kal, extraH) {
+    const pH = s.zielPH;
+    const hBedarf = wasser.alkalitaet * (1 - 1 / (1 + 10 ** (6.35 - pH))) * kal.saeureFaktor + (extraH || 0); // mmol H+/L
+    if (s.typ === 'phosphor') {
+      const hProMol = 1 + 1 / (1 + 10 ** (7.2 - pH));
+      const mmol = hBedarf / hProMol;
+      const dichte = s.konz >= 80 ? 1.685 : 1.579; // 85 % bzw. 75 %
+      const mmolProMl = dichte * (s.konz / 100) / 97.994 * 1000;
+      return { mmol, P: mmol * MOLMASSE.P, N: 0, mmolProMl, name: `Phosphorsäure ${s.konz} %` };
+    }
+    if (s.typ === 'salpeter') {
+      const mmol = hBedarf;
+      const mmolProMl = dichteHNO3(s.konz) * (s.konz / 100) / 63.01 * 1000;
+      return { mmol, P: 0, N: mmol * MOLMASSE.N, mmolProMl, name: `Salpetersäure ${s.konz} %` };
+    }
+    return { mmol: 0, P: 0, N: 0, mmolProMl: 1, name: 'keine Säure' };
+  }
+
+  // ---------- 3. EC-Schätzung ----------
+  // Zusätzliche Kationen (meq/L) / 10, mal Kalibrierfaktor, plus Beitrag der Säure
+  function ecSchaetzung(zugabe, ecWasser, saeureMmol, kal) {
+    const meq = zugabe.K / MOLMASSE.K + 2 * zugabe.Ca / MOLMASSE.Ca + 2 * zugabe.Mg / MOLMASSE.Mg + zugabe.NH4 / MOLMASSE.N;
+    const ecSalz = kal.ecSalzFaktor * meq / 10;
+    const ecSaeure = kal.ecProMmolSaeure * saeureMmol;
+    return { gesamt: ecWasser + ecSalz + ecSaeure, salz: ecSalz, saeure: ecSaeure, vorSaeure: ecWasser + ecSalz };
+  }
+
+  // Was die Salzmengen x (g/L) an mg/L bringen
+  function zugabe(salze, x) {
+    const z = { NO3: 0, NH4: 0, P: 0, K: 0, Ca: 0, Mg: 0, S: 0, Fe: 0, Mn: 0, Zn: 0, Cu: 0, B: 0, Mo: 0 };
+    salze.forEach((s, j) => { for (const e in z) z[e] += (s[e] || 0) * 10 * x[j]; });
+    z.N = z.NO3 + z.NH4;
+    return z;
+  }
+
+  // ---------- 4. Solver ----------
+  // Minimiert gewichtete relative Abweichung vom Soll, x >= 0,
+  // Strafterme für Ammonium > 15 % und Eisen unter Minimum. Koordinatenabstieg (Problem ist konvex).
+  function solver(salze, soll, basis, feMin, start) {
+    const n = salze.length;
+    const x = start ? start.slice() : new Array(n).fill(0.1);
+    function ziel(xx) {
+      const z = zugabe(salze, xx);
+      let f = 0;
+      for (const e of MAKRO) {
+        if (soll[e] <= 0) continue;
+        const ist = basis[e] + z[e];
+        let d = (ist - soll[e]) / soll[e];
+        if (d > 0 && UEBERSCHUSS_MILD[e]) d *= 0.5;
+        f += GEWICHT[e] * d * d;
+      }
+      const nGes = z.N + basis.N;
+      const nh4Zuviel = Math.max(0, z.NH4 + basis.NH4 - NH4_MAX * nGes);
+      f += 1000 * (nh4Zuviel / Math.max(soll.N, 1)) ** 2;
+      if (feMin > 0) f += 1000 * (Math.max(0, feMin - z.Fe - basis.Fe) / feMin) ** 2;
+      return f;
+    }
+    const GOLD = (Math.sqrt(5) - 1) / 2;
+    for (let runde = 0; runde < 300; runde++) {
+      let maxSchritt = 0;
+      for (let j = 0; j < n; j++) {
+        let a = 0, b = Math.max(3, x[j] * 2);
+        const f = t => { const alt = x[j]; x[j] = t; const v = ziel(x); x[j] = alt; return v; };
+        let c = b - GOLD * (b - a), d = a + GOLD * (b - a), fc = f(c), fd = f(d);
+        for (let i = 0; i < 60; i++) {
+          if (fc < fd) { b = d; d = c; fd = fc; c = b - GOLD * (b - a); fc = f(c); }
+          else { a = c; c = d; fc = fd; d = a + GOLD * (b - a); fd = f(d); }
+        }
+        let neu = (a + b) / 2;
+        if (f(0) <= f(neu)) neu = 0;
+        maxSchritt = Math.max(maxSchritt, Math.abs(neu - x[j]));
+        x[j] = neu;
+      }
+      if (maxSchritt < 1e-6) break;
+    }
+    return x;
+  }
+
+  // ---------- 5. Rundung auf die Waage (0,01 g) ----------
+  function runden(g) {
+    if (g >= 10) return Math.round(g * 10) / 10;
+    return Math.round(g * 100) / 100;
+  }
+
+  // ---------- 6. Ziel-EC ----------
+  function zielEC(D, phase, typ, staerke) {
+    const p = D.phasen[phase];
+    const band = typ === 'auto' ? p.ecAuto : p.ecPhoto;
+    const mitte = (band[0] + band[1]) / 2;
+    const deckel = typ === 'auto' && p.deckelAuto ? p.deckelAuto : p.deckel;
+    return Math.min(mitte * D.staerke[staerke], deckel);
+  }
+
+  // ---------- 7. Rezept für ein Volumen und eine Ziel-EC ----------
+  // opt: { phase, liter, ecZiel, vorrat: {salzId: false}, feMin }
+  function rezept(D, opt) {
+    const kal = D.kalibrierung, w = D.wasser;
+    // Standard-Satz (aktiv), außer der Nutzer schaltet einzeln an/aus; vorrat[id] === false heißt 'nicht vorrätig'
+    const salpeter = D.saeure.typ === 'salpeter';
+    const salze = D.salze.filter(s => {
+      if (s.nurMitSalpeter && !salpeter) return false;
+      if (opt.vorrat && opt.vorrat[s.id] === false) return false;
+      if (opt.auswahl && opt.auswahl[s.id] !== undefined) return opt.auswahl[s.id];
+      return s.aktiv !== false;
+    }).map(s => {
+      if (!s.co3) return s;
+      // Mit Salpetersäure wird aus K2CO3 praktisch Kaliumnitrat: N pro g aus der zusätzlichen Säure
+      return Object.assign({}, s, { NO3: hProCO3(D.saeure.zielPH) * 14.007 / 138.205 * 100 });
+    });
+    const profil = D.phasen[opt.phase].profil;
+    // Wasserglas: K und Säurebedarf fest vorab, zählt wie Wasser zur Basis
+    const wgDosis = opt.wasserglas > 0 && D.wasserglas ? opt.wasserglas : 0;
+    const wg = wgDosis ? wasserglasProMl(D.wasserglas) : { K: 0, Si: 0, hBedarf: 0 };
+    const sa = saeure(w, D.saeure, kal, wg.hBedarf * wgDosis);
+    const basis = { N: w.NO3 + w.NH4 + sa.N, NH4: w.NH4, P: w.P + sa.P, K: w.K + wg.K * wgDosis, Ca: w.Ca, Mg: w.Mg, S: w.S, Fe: 0 };
+    // Wassereisen zählt nicht: fällt im Eimer größtenteils aus
+    const feMin = opt.feMin !== undefined ? opt.feMin : 0.7 * Math.min(1, Math.max(0.2, opt.ecZiel - w.ecGemessen));
+    const hinweise = [];
+
+    const saBasis = saeure(w, D.saeure, kal); // nur Hydrogencarbonat, für den EC-Beitrag der Säure
+    // Faktor k so suchen, dass die geschätzte EC die Ziel-EC trifft
+    let lo = 0.05, hi = 2.5, x = null, k = 1, ec = null, z = null;
+    for (let i = 0; i < 40; i++) {
+      k = (lo + hi) / 2;
+      const soll = {}; for (const e of MAKRO) soll[e] = profil[e] * k;
+      x = solver(salze, soll, basis, feMin, x);
+      z = zugabe(salze, x);
+      ec = ecSchaetzung(Object.assign({}, z, { K: z.K + wg.K * wgDosis }), w.ecGemessen, saBasis.mmol, kal);
+      if (ec.gesamt > opt.ecZiel) hi = k; else lo = k;
+    }
+    const soll = {}; for (const e of MAKRO) soll[e] = profil[e] * k;
+
+    // Wenn schon ohne Salze über dem Ziel
+    const ecOhneSalz = w.ecGemessen + kal.ecProMmolSaeure * saBasis.mmol + kal.ecSalzFaktor * wg.K * wgDosis / 39.098 / 10;
+    if (ecOhneSalz >= opt.ecZiel) hinweise.push(`Wasser und Säure ergeben schon EC ${ecOhneSalz.toFixed(2)} – Ziel ${opt.ecZiel.toFixed(2)} ist damit nicht erreichbar.`);
+
+    const ist = {};
+    for (const e of MAKRO) ist[e] = basis[e] + z[e];
+    ist.NH4anteil = (z.NH4 + basis.NH4) / ist.N;
+    for (const e of SPUREN) ist[e] = z[e];
+    ist.Si = wg.Si * wgDosis;
+
+    for (const e of MAKRO) {
+      const abw = (ist[e] - soll[e]) / soll[e];
+      const wasserAnteil = e === 'Ca' ? w.Ca : e === 'Mg' ? w.Mg : e === 'S' ? w.S : 0;
+      if (wasserAnteil >= soll[e]) hinweise.push(`${e}: Das Wasser deckt den Bedarf schon (${wasserAnteil.toFixed(0)} mg/L im Wasser, Soll ${soll[e].toFixed(0)}).`);
+      else if (abw > 0.3 && e === 'P' && sa.P > 0) hinweise.push(`P liegt ${(abw * 100).toFixed(0)} % über Soll, weil die Phosphorsäure schon ${sa.P.toFixed(0)} mg/L bringt. Salpetersäure würde das lösen.`);
+      else if (abw > 0.3 && e !== 'S') hinweise.push(`${e} liegt ${(abw * 100).toFixed(0)} % über Soll.`);
+      else if (abw < -0.15) hinweise.push(`${e} liegt ${(-abw * 100).toFixed(0)} % unter Soll – mit den vorrätigen Salzen nicht besser erreichbar.`);
+    }
+    const ersatzK = salze.some(s => s.co3);
+    const fehlend = D.salze.filter(s => opt.vorrat && opt.vorrat[s.id] === false && s.aktiv !== false && !(s.nurMitSalpeter && !salpeter))
+      .filter(s => !(s.id === 'kno3' && ersatzK)).map(s => s.name);
+    if (fehlend.length) {
+      let schlimmstes = null, abwMin = 0;
+      for (const e of ['N', 'P', 'K', 'Ca', 'Mg']) { const a = (ist[e] - soll[e]) / soll[e]; if (a < abwMin) { abwMin = a; schlimmstes = e; } }
+      hinweise.push(`Nicht vorrätig: ${fehlend.join(', ')}.` + (schlimmstes ? ` Dadurch fehlt vor allem ${schlimmstes} (${(abwMin * 100).toFixed(0)} % gegenüber dem Verhältnis).` : ''));
+    }
+    if (ist.NH4anteil > NH4_MAX + 0.01) hinweise.push(`Ammonium-Anteil ${(ist.NH4anteil * 100).toFixed(0)} % (Ziel höchstens 15 %).`);
+    if (ist.Fe < 0.5) hinweise.push(`Eisen nur ${ist.Fe.toFixed(2)} mg/L – eher knapp.`);
+    if (ist.Fe > 3) hinweise.push(`Eisen ${ist.Fe.toFixed(1)} mg/L – über 3 mg/L.`);
+    if (Math.abs(ec.gesamt - opt.ecZiel) > 0.15) hinweise.push(`Geschätzte EC ${ec.gesamt.toFixed(2)} weicht mehr als 0,15 vom Ziel ab.`);
+
+    // Gramm für das Volumen
+    const mengen = [];
+    let extraMmolH = 0; // Säure für das Carbonat, gesamt für das Volumen
+    const reihe = D.reihenfolge;
+    salze.map((s, j) => ({ s, gL: x[j] }))
+      .filter(m => m.gL * opt.liter >= 0.005)
+      .sort((a, b) => reihe.indexOf(a.s.id) - reihe.indexOf(b.s.id))
+      .forEach(m => {
+        const g = m.gL * opt.liter;
+        const gr = runden(g);
+        const eintrag = { id: m.s.id, name: m.s.name, gProL: m.gL, gramm: gr };
+        if (m.s.loesungGProL) eintrag.ml = Math.round(g / m.s.loesungGProL * 1000 * 10) / 10;
+        if (m.s.co3) extraMmolH += g / 138.205 * 1000 * hProCO3(D.saeure.zielPH);
+        mengen.push(eintrag);
+        if (g < 0.3 && !m.s.loesungGProL) hinweise.push(`${m.s.name}: nur ${gr.toFixed(2)} g – kleine Menge, Waage ist hier ungenau.`);
+      });
+    const hProSaeure = D.saeure.typ === 'phosphor' ? 1 + 1 / (1 + 10 ** (7.2 - D.saeure.zielPH)) : 1;
+    const saeureMl = (sa.mmol * opt.liter + extraMmolH / hProSaeure) / sa.mmolProMl;
+
+    return {
+      liter: opt.liter, ecZiel: opt.ecZiel, faktorK: k,
+      mengen,
+      wasserglasMl: wgDosis ? Math.round(wgDosis * opt.liter * 10) / 10 : 0,
+      saeure: { name: sa.name, ml: Math.round(saeureMl * 10) / 10, zuerstMl: Math.round(saeureMl * 0.75 * 10) / 10 },
+      ec: { vorSaeure: ec.vorSaeure, gesamt: ec.gesamt },
+      soll, ist, hinweise,
+    };
+  }
+
+  // ---------- 8. Vollansatz (Fall C) ----------
+  function vollansatz(D, opt) { // opt: { phase, typ, staerke, fuellhoehe, vorrat }
+    const h = Math.min(opt.fuellhoehe, D.eimer.maxFuell);
+    const r = rezept(D, { phase: opt.phase, liter: liter(D.eimer, h), ecZiel: zielEC(D, opt.phase, opt.typ, opt.staerke), vorrat: opt.vorrat, auswahl: opt.auswahl, wasserglas: opt.wasserglas });
+    if (opt.fuellhoehe > D.eimer.maxFuell) r.hinweise.unshift(`Füllhöhe auf ${D.eimer.maxFuell} cm begrenzt – Luftspalt unter dem Netztopf.`);
+    r.fuellhoehe = h;
+    return r;
+  }
+
+  // ---------- 9. TOP-UP (Fall A und B) ----------
+  // opt: { phase, typ, staerke, hJetzt, ecJetzt, hZiel?, vorrat }
+  function topUp(D, opt) {
+    const hZielRoh = opt.hZiel !== undefined ? opt.hZiel : D.eimer.zielFuell;
+    const hZiel = Math.min(hZielRoh, D.eimer.maxFuell);
+    const vJetzt = liter(D.eimer, opt.hJetzt), vZiel = liter(D.eimer, hZiel);
+    const fehlt = vZiel - vJetzt;
+    const ecZiel = zielEC(D, opt.phase, opt.typ, opt.staerke);
+    const ecW = D.wasser.ecGemessen;
+    const hinweise = [];
+    if (hZielRoh > D.eimer.maxFuell) hinweise.push(`Ziel auf ${D.eimer.maxFuell} cm begrenzt – Luftspalt unter dem Netztopf.`);
+    if (opt.hJetzt > D.eimer.maxFuell) hinweise.push(`Füllhöhe ${opt.hJetzt} cm liegt über der Obergrenze ${D.eimer.maxFuell} cm – Luftspalt zu klein.`);
+    if (fehlt < 0.2) return { fall: '–', text: 'Eimer ist voll genug, nichts nachfüllen.', liter: 0, hinweise, ecZiel };
+
+    const ecNurWasser = (opt.ecJetzt * vJetzt + ecW * fehlt) / vZiel;
+    if (ecNurWasser >= ecZiel - 0.05) {
+      const wgDosis = opt.wasserglas > 0 && D.wasserglas ? opt.wasserglas : 0;
+      const sa = saeure(D.wasser, D.saeure, D.kalibrierung, wgDosis ? wasserglasProMl(D.wasserglas).hBedarf * wgDosis : 0);
+      return {
+        fall: 'A', wasserglasMl: wgDosis ? Math.round(wgDosis * fehlt * 10) / 10 : 0, text: `Nur Wasser nachfüllen: ${fehlt.toFixed(1)} L. EC danach etwa ${ecNurWasser.toFixed(2)}.`,
+        liter: fehlt, ecDanach: ecNurWasser, ecZiel,
+        saeureMl: Math.round(sa.mmol * fehlt / sa.mmolProMl * 10) / 10, hinweise,
+      };
+    }
+    let ecNachfuell = (ecZiel * vZiel - opt.ecJetzt * vJetzt) / fehlt;
+    const obergrenze = Math.max(ecZiel * 1.5, ecZiel + 0.5);
+    if (ecNachfuell > obergrenze) {
+      hinweise.push(`Nötige Nachfüll-EC ${ecNachfuell.toFixed(2)} wäre zu stark – auf ${obergrenze.toFixed(2)} begrenzt, Ziel-EC wird nicht ganz erreicht. Besser bald Wechsel.`);
+      ecNachfuell = obergrenze;
+    }
+    const r = rezept(D, { phase: opt.phase, liter: fehlt, ecZiel: ecNachfuell, vorrat: opt.vorrat, auswahl: opt.auswahl, wasserglas: opt.wasserglas });
+    const ecDanach = (opt.ecJetzt * vJetzt + ecNachfuell * fehlt) / vZiel;
+    return {
+      fall: 'B', text: `${fehlt.toFixed(1)} L Nährlösung mit EC ${ecNachfuell.toFixed(2)} nachfüllen. EC danach etwa ${ecDanach.toFixed(2)}.`,
+      liter: fehlt, ecNachfuell, ecDanach, ecZiel, rezept: r, hinweise: hinweise.concat(r.hinweise),
+    };
+  }
+
+  const KERN = { liter, saeure, wasserglasProMl, ecSchaetzung, zugabe, rezept, vollansatz, topUp, zielEC, runden };
+  if (typeof module !== 'undefined') module.exports = KERN; else root.HydroKern = KERN;
+})(this);
+
+</script>
+<script>
+// Hydro-Assistent – Pflanzendoktor (Symptom-Auswahl, ohne Internet)
+// Punkte-System: Ort + Symptome + Eimerdaten (pH, EC, Säure, Salze) ergeben eine Rangliste möglicher Ursachen.
+(function (root) {
+  const ORTE = [
+    ['unten', 'Untere, ältere Blätter'],
+    ['oben', 'Obere, neue Blätter'],
+    ['ueberall', 'Ganze Pflanze'],
+    ['wurzeln', 'Wurzeln'],
+  ];
+  const SYMPTOME = [
+    ['gelb_ganz', 'Blatt wird gleichmäßig hellgrün bis gelb'],
+    ['gelb_adern', 'Gelb zwischen den Adern, Adern bleiben grün'],
+    ['spitzen', 'Nur die Spitzen werden gelb oder braun'],
+    ['braun_rand', 'Ränder werden braun, wie verbrannt'],
+    ['flecken', 'Braune oder rostige Flecken auf der Fläche'],
+    ['dunkel_kralle', 'Sehr dunkelgrün, Spitzen krallen nach unten'],
+    ['dunkel_matt', 'Dunkel, matt, leicht bläulich'],
+    ['lila', 'Lila oder rote Stiele und Blattunterseiten'],
+    ['nach_oben', 'Blattränder rollen sich nach oben'],
+    ['verformt', 'Neue Blätter klein, verdreht oder verkrüppelt'],
+    ['haengen', 'Blätter hängen schlaff, obwohl Wasser da ist'],
+    ['wurzeln_braun', 'Wurzeln braun, schleimig oder riechen muffig'],
+  ];
+
+  // w: Punkte für Orte, s: Punkte für Symptome
+  const URSACHEN = [
+    { id: 'n_mangel', titel: 'Stickstoffmangel', w: { unten: 2 }, s: { gelb_ganz: 3 },
+      erkennen: 'Die untersten Blätter werden von unten nach oben gleichmäßig gelb und fallen ab. Die Pflanze wirkt insgesamt blasser.',
+      tun: ['EC messen. Liegt sie deutlich unter dem Ziel, beim nächsten TOP-UP Nährlösung nachfüllen statt nur Wasser.', 'Stärke in der Eimer-Ansicht eine Stufe höher stellen, wenn es nach dem nächsten TOP-UP weitergeht.'],
+      reife: 'In den letzten Blütewochen ist das normal: Die Pflanze zieht Stickstoff aus den alten Blättern. Dann nichts tun.' },
+    { id: 'n_zuviel', titel: 'Zu viel Stickstoff', w: { ueberall: 1, oben: 1 }, s: { dunkel_kralle: 3 },
+      erkennen: 'Die Blätter sind auffallend dunkelgrün und glänzend, die Spitzen biegen sich wie Krallen nach unten.',
+      tun: ['Stärke eine Stufe herunter (z. B. Normal → Sanft).', 'Beim nächsten TOP-UP nur Wasser nachfüllen, falls die EC über dem Ziel liegt.'] },
+    { id: 'brand', titel: 'Nährstoffbrand (EC zu hoch)', w: { oben: 1, ueberall: 1 }, s: { spitzen: 3, braun_rand: 1, dunkel_kralle: 1 },
+      erkennen: 'Die äußersten Spitzen werden gelb, dann braun und trocken. Es beginnt meist an den oberen, jüngeren Blättern.',
+      tun: ['EC messen. Liegt sie mehr als 0,3 über dem Ziel: TOP-UP nur mit Wasser, bis sie wieder passt.', 'Stärke eine Stufe herunter.'] },
+    { id: 'p_mangel', titel: 'Phosphormangel', w: { unten: 2 }, s: { dunkel_matt: 2, lila: 2, flecken: 1 },
+      erkennen: 'Ältere Blätter werden dunkel und matt, bekommen bronzefarbene Flecken, Stiele färben sich lila.',
+      tun: ['pH prüfen: Über 6,5 wird Phosphor schlecht aufgenommen.', 'Lila Stiele allein sind oft Sorte oder Kälte, kein Mangel. Nachttemperatur prüfen.'] },
+    { id: 'k_mangel', titel: 'Kaliummangel', w: { unten: 2, ueberall: 1 }, s: { braun_rand: 3, flecken: 1, gelb_ganz: 1 },
+      erkennen: 'Die Blattränder älterer Blätter werden gelb, dann braun und trocken, während die Mitte grün bleibt.',
+      tun: ['In den Einstellungen prüfen, ob eine Kaliumquelle eingeplant ist (Kaliumnitrat oder Kaliumcarbonat mit Salpetersäure).', 'In der Blüte braucht die Pflanze deutlich mehr Kalium. Phase in der Eimer-Ansicht prüfen.'] },
+    { id: 'mg_mangel', titel: 'Magnesiummangel', w: { unten: 2 }, s: { gelb_adern: 3, flecken: 1 },
+      erkennen: 'Zwischen den Adern der mittleren und unteren Blätter wird es gelb, die Adern bleiben grün. Später braune Flecken.',
+      tun: ['pH prüfen: Unter 5,5 wird Magnesium schlecht aufgenommen.', 'Bittersalz ist im Rezept. Wenn pH und EC stimmen, Stärke eine Stufe höher.'] },
+    { id: 'ca_mangel', titel: 'Calciummangel', w: { oben: 2, ueberall: 1 }, s: { flecken: 2, verformt: 1, braun_rand: 1 },
+      erkennen: 'Braune, rostige Flecken auf jüngeren Blättern, neue Triebe können verkrüppelt wachsen.',
+      tun: ['pH prüfen: Unter 5,5 wird Calcium schlecht aufgenommen.', 'Dein Leitungswasser bringt schon viel Calcium mit, ein echter Mangel ist selten. Meist ist es der pH oder zu hohe Luftfeuchte.'] },
+    { id: 'fe_mangel', titel: 'Eisenmangel', w: { oben: 3 }, s: { gelb_adern: 3, gelb_ganz: 1 },
+      erkennen: 'Die jüngsten Blätter werden zwischen den Adern hellgelb bis fast weiß, die Adern bleiben grün.',
+      tun: ['pH prüfen: Schon ab 6,3 wird Eisen deutlich schlechter aufgenommen. Das ist die häufigste Ursache.', 'Eisen kommt nur aus dem Hakaphos. Ein Eisenchelat wäre eine spätere Verbesserung.'] },
+    { id: 'spuren', titel: 'Spurenelemente (Mangan, Zink)', w: { oben: 2 }, s: { verformt: 2, gelb_adern: 1, flecken: 1 },
+      erkennen: 'Neue Blätter bleiben klein, sind verdreht oder schmal, dazu feine Aufhellungen zwischen den Adern.',
+      tun: ['pH prüfen: Über 6,5 werden Spurenelemente gesperrt.', 'Spurenelemente kommen nur aus dem Hakaphos. Nicht zu wenig Basis 5 und Soft Elite einsetzen.'] },
+    { id: 'ph', titel: 'pH-Sperre', w: {}, s: { gelb_adern: 1, flecken: 1, verformt: 1 },
+      erkennen: 'Mehrere Mangelsymptome gleichzeitig, obwohl genug Dünger im Eimer ist. Die Nährstoffe sind da, die Wurzeln kommen nur nicht dran.',
+      tun: ['pH messen und auf 5,8 bringen. Das zuerst, bevor du am Dünger etwas änderst.', 'pH-Meter prüfen: Wann wurde es zuletzt kalibriert?'] },
+    { id: 'wurzel', titel: 'Wurzelfäule', w: { wurzeln: 3 }, s: { wurzeln_braun: 4, haengen: 2 },
+      erkennen: 'Die Wurzeln sind braun statt weiß, schleimig und riechen muffig. Die Pflanze hängt, obwohl sie im Wasser steht.',
+      tun: ['Luftpumpe und Sprudelstein prüfen: Blubbert es kräftig im ganzen Eimer?', 'Wassertemperatur messen: Über 22 °C fehlt Sauerstoff und Fäule breitet sich aus.', 'Eimer lichtdicht halten. Bei starkem Befall: Lösung komplett wechseln.'] },
+    { id: 'sauerstoff', titel: 'Sauerstoffmangel an den Wurzeln', w: { ueberall: 1, wurzeln: 1 }, s: { haengen: 3 },
+      erkennen: 'Die ganze Pflanze hängt schlaff, obwohl genug Wasser da ist. Die Wurzeln sehen noch gut aus.',
+      tun: ['Luftpumpe prüfen. Im DWC ist das die häufigste Ursache für hängende Blätter.', 'Füllhöhe prüfen: Steht das Wasser bis in den Netztopf, ersticken die oberen Wurzeln. Höchstens 28 cm.'] },
+    { id: 'hitze', titel: 'Hitze oder zu viel Licht', w: { oben: 2 }, s: { nach_oben: 3, gelb_ganz: 1, spitzen: 1 },
+      erkennen: 'Die Blätter direkt unter der Lampe rollen sich nach oben oder bleichen aus. Weiter unten ist alles normal.',
+      tun: ['Abstand zur Lampe vergrößern oder dimmen.', 'Temperatur an der Pflanzenspitze messen, nicht nur im Raum.'] },
+  ];
+
+  // kontext: { ph, ec, ecZiel, tageSeitMessung, phase, saeure: 'phosphor'|'salpeter', kaliumQuelle: bool }
+  function diagnose(wo, symptome, kontext) {
+    const k = kontext || {};
+    const phNied = k.ph != null && k.ph < 5.5, phHoch = k.ph != null && k.ph > 6.5, phLeicht = k.ph != null && k.ph > 6.2;
+    const ecHoch = k.ec != null && k.ecZiel && k.ec > k.ecZiel + 0.3, ecNied = k.ec != null && k.ecZiel && k.ec < k.ecZiel - 0.3;
+    const liste = URSACHEN.map(u => {
+      let p = 0, gruende = [];
+      const symTreffer = symptome.reduce((s, id) => s + (u.s[id] || 0), 0);
+      p += symTreffer + (symTreffer > 0 || u.id === 'ph' ? (u.w[wo] || 0) : 0);
+      // Eimerdaten einbeziehen
+      if (u.id === 'ph') {
+        if (phNied || phHoch) { p += 4 + (symptome.length ? 1 : 0); gruende.push(`Zuletzt gemessen: pH ${k.ph.toFixed(1).replace('.', ',')}, außerhalb von 5,5 bis 6,5.`); }
+        else p = 0;
+      }
+      if (['mg_mangel', 'ca_mangel'].includes(u.id) && phNied && symTreffer) { p += 2; gruende.push('Der letzte pH war unter 5,5.'); }
+      if (['p_mangel', 'spuren'].includes(u.id) && phHoch && symTreffer) { p += 2; gruende.push('Der letzte pH war über 6,5.'); }
+      if (u.id === 'fe_mangel' && phLeicht && symTreffer) { p += 2; gruende.push('Der letzte pH war über 6,2, da wird Eisen knapp.'); }
+      if (['brand', 'n_zuviel'].includes(u.id) && symTreffer) {
+        if (ecHoch) { p += 3; gruende.push(`Die letzte EC (${k.ec.toFixed(2).replace('.', ',')}) lag deutlich über dem Ziel (${k.ecZiel.toFixed(2).replace('.', ',')}).`); }
+        else if (ecNied) p -= 2;
+      }
+      if (['n_mangel', 'k_mangel', 'mg_mangel'].includes(u.id) && symTreffer) {
+        if (ecNied) { p += 2; gruende.push(`Die letzte EC (${k.ec.toFixed(2).replace('.', ',')}) lag deutlich unter dem Ziel.`); }
+        else if (ecHoch) p -= 1;
+      }
+      if (u.id === 'p_mangel' && k.saeure === 'phosphor' && symTreffer) { p -= 2; gruende.push('Mit Phosphorsäure ist eher zu viel als zu wenig Phosphor im Eimer.'); }
+      if (u.id === 'k_mangel' && k.kaliumQuelle === false && symTreffer) { p += 1; gruende.push('Gerade ist keine eigene Kaliumquelle eingeplant (weder Kaliumnitrat noch Kaliumcarbonat).'); }
+      if (u.id === 'ca_mangel' && symTreffer && !phNied) p -= 1; // viel Ca im Leitungswasser
+      const hinweis = u.id === 'n_mangel' && k.phase === 'reife' ? u.reife : null;
+      return { id: u.id, titel: u.titel, punkte: p, erkennen: u.erkennen, tun: u.tun, gruende, hinweis };
+    }).filter(x => x.punkte >= 3).sort((a, b) => b.punkte - a.punkte);
+    const top = liste.slice(0, 3);
+    if (top.length) {
+      const max = top[0].punkte;
+      top.forEach(x => x.stufe = x.punkte >= max - 1 ? 'wahrscheinlich' : 'möglich');
+    }
+    const warnungen = [];
+    if (k.ph == null) warnungen.push('Für diesen Eimer ist noch kein pH und keine EC eingetragen. Miss beides zuerst, das macht die Einschätzung deutlich sicherer.');
+    else if (k.tageSeitMessung > 3) warnungen.push(`Die letzte Messung ist ${Math.round(k.tageSeitMessung)} Tage alt. Miss pH und EC am besten neu.`);
+    return { ursachen: top, warnungen };
+  }
+
+  const DOKTOR = { ORTE, SYMPTOME, URSACHEN, diagnose };
+  if (typeof module !== 'undefined') module.exports = DOKTOR; else root.HydroDoktor = DOKTOR;
+})(this);
+
+</script>
+<script>
+(function () {
+  'use strict';
+  const K = window.HydroKern, BASIS = window.HYDRO_DATEN;
+  const LS = 'hydro-zustand-v1', LOG_MAX = 1000;
+  const PHASEN = [['anzucht', 'Anzucht'], ['wachstum', 'Wachstum'], ['bluete', 'Blüte'], ['reife', 'Reife']];
+  const TYPEN = [['photo', 'Photo'], ['auto', 'Auto']];
+  const STAERKEN = [['sanft', 'Sanft'], ['normal', 'Normal'], ['stark', 'Stark']];
+  const name = (liste, id) => (liste.find(x => x[0] === id) || [, id])[1];
+
+  // ---------- Zustand ----------
+  function standard() {
+    return {
+      version: 1, geaendert: 0,
+      eimer: [1, 2, 3].map(i => ({ name: 'Eimer ' + i, phase: 'wachstum', typ: 'photo', staerke: 'normal' })),
+      log: [],
+      einst: {
+        vorrat: { kno3: false }, auswahl: {},
+        saeure: { typ: 'phosphor', konz: 85, zielPH: 5.8 },
+        wasserglas: { an: false, mlProL: 0.1 },
+        wasser: { ecGemessen: BASIS.wasser.ecGemessen, pH: BASIS.wasser.pH, alkalitaet: BASIS.wasser.alkalitaet },
+      },
+    };
+  }
+  function pruefe(d) {
+    const s = standard();
+    if (!d || typeof d !== 'object') return s;
+    const e = d.einst || {};
+    return {
+      version: 1, geaendert: d.geaendert || 0,
+      eimer: Array.isArray(d.eimer) && d.eimer.length === 3 ? d.eimer.map((x, i) => Object.assign({}, s.eimer[i], x)) : s.eimer,
+      log: Array.isArray(d.log) ? d.log : [],
+      einst: {
+        vorrat: Object.assign({}, e.vorrat || s.einst.vorrat), auswahl: Object.assign({}, e.auswahl || {}),
+        saeure: Object.assign({}, s.einst.saeure, e.saeure), wasserglas: Object.assign({}, s.einst.wasserglas, e.wasserglas), wasser: Object.assign({}, s.einst.wasser, e.wasser),
+      },
+    };
+  }
+  function lsLesen() { try { const t = localStorage.getItem(LS); return t ? pruefe(JSON.parse(t)) : standard(); } catch (e) { return standard(); } }
+  function lsSchreiben() { try { localStorage.setItem(LS, JSON.stringify(Z)); } catch (e) {} }
+
+  let Z = lsLesen();
+  let dbRef = null, sync = 'lokal', dbTimer = null, downloads = null;
+
+  function speichern() {
+    Z.geaendert = Date.now();
+    if (Z.log.length > LOG_MAX) Z.log = Z.log.slice(-LOG_MAX);
+    lsSchreiben();
+    if (dbRef) { clearTimeout(dbTimer); dbTimer = setTimeout(dbSchreiben, 600); }
+  }
+  async function dbSchreiben() {
+    if (!dbRef) return;
+    try { await dbRef.set(JSON.parse(JSON.stringify(Z))); if (sync !== 'konto') { sync = 'konto'; if (UI.view === 'einst') render(); } }
+    catch (e) { sync = 'fehler'; if (UI.view === 'einst') render(); }
+  }
+  (async function verbinden() {
+    try {
+      if (!window.claude || !window.claude.use) return;
+      claude.use('downloads').then(d => { downloads = d; if (UI.view === 'einst') render(); });
+      const [user, db] = await Promise.all([claude.use('user'), claude.use('db')]);
+      if (!user || !db) return;
+      const uid = await user.id();
+      if (!uid) return;
+      dbRef = db.doc('data/users/' + uid + '/zustand');
+      const snap = await dbRef.get();
+      if (snap.exists) {
+        const d = pruefe(JSON.parse(JSON.stringify(snap.data())));
+        if (d.geaendert > Z.geaendert) { Z = d; lsSchreiben(); render(); }
+        else if (Z.geaendert > d.geaendert) await dbSchreiben();
+      } else if (Z.geaendert > 0) await dbSchreiben();
+      sync = 'konto';
+      if (UI.view === 'einst') render();
+    } catch (e) { sync = 'fehler'; }
+  })();
+
+  // ---------- Hilfen ----------
+  const fmt = (n, d) => Number(n).toLocaleString('de-DE', { minimumFractionDigits: d, maximumFractionDigits: d });
+  const fmtG = g => fmt(g, g >= 10 ? 1 : 2);
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const zahl = sel => { const el = document.querySelector(sel); if (!el) return NaN; const t = el.value.trim().replace(',', '.'); return t === '' ? NaN : Number(t); };
+  const datum = iso => new Date(iso).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  function daten() {
+    const D = JSON.parse(JSON.stringify(BASIS));
+    Object.assign(D.wasser, Z.einst.wasser);
+    D.saeure = Object.assign({}, Z.einst.saeure);
+    return D;
+  }
+  const de = s => String(s).replace(/(\d)\.(\d)/g, '$1,$2');
+  const ctx = () => ({ vorrat: Z.einst.vorrat, auswahl: Z.einst.auswahl, wasserglas: Z.einst.wasserglas.an ? Z.einst.wasserglas.mlProL : 0 });
+  const WG = 'Kaliwasserglas';
+  function toast(t) { const el = document.getElementById('toast'); el.textContent = t; el.classList.add('an'); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('an'), 2200); }
+  const letzter = i => { for (let j = Z.log.length - 1; j >= 0; j--) if (Z.log[j].eimer === i && Z.log[j].ec != null) return Z.log[j]; return null; };
+  const zielEC = e => K.zielEC(daten(), e.phase, e.typ, e.staerke);
+
+  // ---------- Mischanleitungen ----------
+  function schritteEimer(r, h) {
+    const s = [];
+    const zielPH = fmt(Z.einst.saeure.zielPH, 1);
+    s.push({ menge: 'ca. ' + fmt(Math.round(r.liter * 0.8), 0) + ' L', was: 'Wasser in den Eimer füllen.' });
+    if (r.wasserglasMl > 0) s.push({ menge: fmt(r.wasserglasMl, 1) + ' ml', was: WG + ' zugeben und gut umrühren. Immer zuerst, vor Säure und Salzen.' });
+    const kco = r.mengen.find(m => m.id === 'kco');
+    if (kco) s.push({ menge: fmt(kco.ml, 1) + ' ml', was: kco.name + ' zugeben und umrühren.' });
+    if (r.saeure.ml > 0) s.push({ menge: fmt(r.saeure.zuerstMl, 1) + ' ml', was: r.saeure.name + ' zugeben und umrühren' + (kco ? ', es sprudelt kurz' : '') + '. Säure immer ins Wasser, mit Schutzbrille.' });
+    r.mengen.filter(m => m.id !== 'calcinit' && m.id !== 'kco').forEach(m => s.push({ menge: fmtG(m.gramm) + ' g', was: m.name + ' einrühren, bis es gelöst ist.' }));
+    const ca = r.mengen.find(m => m.id === 'calcinit');
+    if (ca) s.push({ menge: fmtG(ca.gramm) + ' g', was: ca.name + ' in ca. 1 L Wasser vorlösen, dann zugeben.' });
+    s.push({ menge: fmt(h, 1) + ' cm', was: 'Mit Wasser bis zu dieser Höhe auffüllen und gut umrühren.' });
+    s.push({ menge: 'EC ' + fmt(r.ec.vorSaeure, 2), was: 'EC messen. Dieser Wert wird ungefähr erwartet.' });
+    if (r.saeure.ml > 0) s.push({ menge: 'pH ' + zielPH, was: 'Mit dem Rest der Säure (ca. ' + fmt(Math.max(0, r.saeure.ml - r.saeure.zuerstMl), 1) + ' ml) in kleinen Schritten einstellen.' });
+    return s;
+  }
+  function schritteKanne(r, hZiel, ecDanach) {
+    const s = [];
+    s.push({ menge: fmt(r.liter, 1) + ' L', was: 'Wasser in eine Kanne abmessen.' });
+    if (r.wasserglasMl > 0) s.push({ menge: fmt(r.wasserglasMl, 1) + ' ml', was: WG + ' in die Kanne geben und gut umrühren. Immer zuerst.' });
+    const kco = r.mengen.find(m => m.id === 'kco');
+    if (kco) s.push({ menge: fmt(kco.ml, 1) + ' ml', was: kco.name + ' in die Kanne geben.' });
+    if (r.saeure.ml > 0) s.push({ menge: fmt(r.saeure.ml, 1) + ' ml', was: r.saeure.name + ' in die Kanne geben und umrühren. Säure immer ins Wasser.' });
+    r.mengen.filter(m => m.id !== 'calcinit' && m.id !== 'kco').forEach(m => s.push({ menge: fmtG(m.gramm) + ' g', was: m.name + ' in der Kanne auflösen.' }));
+    const ca = r.mengen.find(m => m.id === 'calcinit');
+    if (ca) s.push({ menge: fmtG(ca.gramm) + ' g', was: ca.name + ' in einem Glas Wasser aus der Kanne vorlösen, dann zurückgießen.' });
+    s.push({ menge: fmt(hZiel, 0) + ' cm', was: 'Die Kanne in den Eimer gießen, bis diese Höhe erreicht ist.' });
+    s.push({ menge: 'EC ' + fmt(ecDanach, 2), was: 'Im Eimer EC messen, dieser Wert wird ungefähr erwartet. Dann pH prüfen und falls nötig auf ' + fmt(Z.einst.saeure.zielPH, 1) + ' bringen.' });
+    return s;
+  }
+
+  // ---------- Ansichten ----------
+  let UI = { dok: { wo: null, sym: new Set(), ergebnis: null }, view: 'start', eimer: 0, anl: null, haken: new Set(), filter: -1, fehler: '', info: null, eingabe: {} };
+
+  function nav() {
+    const t = [['start', 'Eimer'], ['verlauf', 'Verlauf'], ['einst', 'Einstellungen']];
+    const aktiv = UI.view === 'verlauf' ? 'verlauf' : UI.view === 'einst' ? 'einst' : 'start';
+    return `<nav class="nav" aria-label="Bereiche"><div class="nav-innen">${t.map(([v, l]) => `<button data-act="tab" data-v="${v}" ${aktiv === v ? 'aria-current="page"' : ''}>${l}</button>`).join('')}</div></nav>`;
+  }
+  const kopf = (titel) => `<div class="kopf"><button class="zurueck" data-act="zurueck" aria-label="Zurück">‹</button><h1>${esc(titel)}</h1></div>`;
+  const segment = (feld, liste, wert) => `<div class="segment" role="group">${liste.map(([id, l]) => `<button data-act="setz" data-feld="${feld}" data-wert="${id}" aria-pressed="${wert === id}">${l}</button>`).join('')}</div>`;
+  const hinweisBox = h => h && h.length ? `<div class="hinweise">${h.map(x => `<p>${esc(de(x))}</p>`).join('')}</div>` : '';
+  const fehlerText = () => UI.fehler ? `<p class="fehlertext" role="alert">${esc(UI.fehler)}</p>` : '';
+  const letzteZeile = l => l ? `Zuletzt ${datum(l.datum)}: ${l.h != null ? fmt(l.h, 1) + ' cm, ' : ''}${l.ec != null ? 'EC ' + fmt(l.ec, 2) : ''}${l.ph != null ? ', pH ' + fmt(l.ph, 1) : ''}` : 'Noch keine Einträge';
+
+  function vStart() {
+    return `<h1>Deine Eimer</h1>` + Z.eimer.map((e, i) => `
+      <button class="eimer" data-act="oeffne" data-i="${i}">
+        <div class="eimer-oben">
+          <div><div class="eimer-name">${esc(e.name)}</div>
+          <div class="eimer-zeile">${name(PHASEN, e.phase)}, ${name(TYPEN, e.typ)}, ${name(STAERKEN, e.staerke)}</div></div>
+          <div class="ec-gross zahl">${fmt(zielEC(e), 2)}<small>Ziel-EC</small></div>
+        </div>
+        <div class="eimer-zeile zahl">${letzteZeile(letzter(i))}</div>
+        ${(k => k ? `<div class="eimer-zeile zahl" style="color:var(--text)">${k.tag >= 1 ? (k.auto ? 'Tag ' : 'Blütetag ') + k.tag + ', ' : ''}Ernte ${k.spanne ? 'ab ' + tagDatumKurz(k.ernteVon) : tagDatumKurz(k.ernteVon)} (${restText(k)})</div>` : '')(kalender(e))}
+      </button>`).join('') + nav();
+  }
+
+  function vEimer() {
+    const e = Z.eimer[UI.eimer];
+    const eintraege = Z.log.filter(x => x.eimer === UI.eimer).slice(-3).reverse();
+    const titel = UI.namenEdit
+      ? `<div class="kopf"><button class="zurueck" data-act="zurueck" aria-label="Zurück">‹</button><h1>Name ändern</h1></div>
+         <div class="namen-form"><input type="text" id="eimerName" maxlength="24" value="${esc(e.name)}" aria-label="Name des Eimers"><button data-act="namenSpeichern">OK</button></div>
+         ${fehlerText()}`
+      : `<div class="kopf"><button class="zurueck" data-act="zurueck" aria-label="Zurück">‹</button><h1>${esc(e.name)}</h1><button class="stift" data-act="namenEdit" aria-label="Namen ändern">✎</button></div>`;
+    return titel + `
+      <div class="gruppe"><div class="gruppe-titel">Phase</div>${segment('phase', PHASEN, e.phase)}</div>
+      <div class="gruppe"><div class="gruppe-titel">Sorte</div>${segment('typ', TYPEN, e.typ)}</div>
+      <div class="gruppe"><div class="gruppe-titel">Stärke</div>${segment('staerke', STAERKEN, e.staerke)}</div>
+      <div class="ziel"><div class="ec-gross zahl">${fmt(zielEC(e), 2)}</div><div class="leise">Ziel-EC für diesen Eimer, inklusive Leitungswasser</div></div>
+      ${vKalender(e)}
+      <button class="zeile-knopf doktor" data-act="doktor">Pflanzendoktor: Blätter sehen komisch aus?</button>
+      <h2>Letzte Einträge</h2>
+      ${eintraege.length ? eintraege.map(eintragHtml).join('') : '<div class="leer">Noch nichts eingetragen. Nach dem ersten Ansetzen oder TOP-UP stehen die Werte hier.</div>'}
+      ${UI.kalEdit ? '' : `<div class="knoepfe"><div class="knoepfe-innen">
+        <button class="gross" data-act="gehe" data-v="neu">Neu ansetzen</button>
+        <button class="gross haupt" data-act="gehe" data-v="topup">TOP-UP</button>
+      </div></div>`}`;
+  }
+
+  function vNeu() {
+    const e = Z.eimer[UI.eimer], D = daten();
+    return kopf('Neu ansetzen') + `
+      <p class="leise">${esc(e.name)}: ${name(PHASEN, e.phase)}, ${name(TYPEN, e.typ)}, ${name(STAERKEN, e.staerke)}, Ziel-EC ${fmt(zielEC(e), 2)}</p>
+      <label class="feld"><span>Füllhöhe in cm (höchstens ${D.eimer.maxFuell})</span>
+        <input type="text" inputmode="decimal" id="h" value="${UI.eingabe.h != null ? esc(UI.eingabe.h) : fmt(D.eimer.zielFuell, 0)}"></label>
+      ${fehlerText()}
+      <div class="knoepfe"><div class="knoepfe-innen"><button class="gross haupt" data-act="rechneNeu">Mischanleitung zeigen</button></div></div>`;
+  }
+
+  function vTopup() {
+    const e = Z.eimer[UI.eimer], D = daten();
+    const info = UI.info ? `<div class="hinweise"><p>${esc(de(UI.info))}</p></div>` : '';
+    return kopf('TOP-UP') + `
+      <p class="leise">${esc(e.name)}: Ziel ${fmt(D.eimer.zielFuell, 0)} cm, Ziel-EC ${fmt(zielEC(e), 2)}</p>
+      <div class="feld-zeile">
+        <label class="feld"><span>Füllhöhe jetzt (cm)</span><input type="text" inputmode="decimal" id="hj" placeholder="z. B. 25" value="${esc(UI.eingabe.hj || '')}"></label>
+        <label class="feld"><span>EC jetzt</span><input type="text" inputmode="decimal" id="ecj" placeholder="z. B. 1,40" value="${esc(UI.eingabe.ecj || '')}"></label>
+      </div>
+      ${fehlerText()}${info}
+      <p class="leise">Die App entscheidet anhand der EC, ob nur Wasser oder Nährlösung nachkommt.</p>
+      <div class="knoepfe"><div class="knoepfe-innen"><button class="gross haupt" data-act="rechneTopup">Berechnen</button></div></div>`;
+  }
+
+  function vAnleitung() {
+    const a = UI.anl, fertig = UI.haken.size === a.schritte.length;
+    return kopf(a.titel) + `
+      <p>${esc(de(a.text))}</p>
+      <div class="zusammen zahl">
+        <div><b>${fmt(a.liter, 1)} L</b>${a.art === 'Neuansatz' ? 'im Eimer' : 'nachfüllen'}</div>
+        <div><b>${fmt(a.ecErwartet, 2)}</b>EC danach erwartet</div>
+      </div>
+      ${hinweisBox(a.hinweise)}
+      <h2>Schritte</h2>
+      <p class="leise">Tippe einen Schritt an, wenn er erledigt ist.</p>
+      <ol class="schritte">${a.schritte.map((s, i) => `<li><button class="schritt" data-act="haken" data-i="${i}" aria-pressed="${UI.haken.has(i)}">
+        <span class="nr">${UI.haken.has(i) ? '✓' : i + 1}</span><span><span class="menge zahl">${esc(s.menge)}</span><span class="was">${esc(s.was)}</span></span></button></li>`).join('')}</ol>
+      <h2>Gemessene Werte</h2>
+      <p class="leise">${fertig ? 'Alles erledigt. Trag ein, was du am Ende gemessen hast.' : 'Wenn du fertig bist, trag hier ein, was du gemessen hast.'}</p>
+      <div class="feld-zeile3">
+        <label class="feld"><span>EC</span><input type="text" inputmode="decimal" id="ec" value="${esc(UI.eingabe.ec || '')}"></label>
+        <label class="feld"><span>pH</span><input type="text" inputmode="decimal" id="ph" value="${esc(UI.eingabe.ph || '')}"></label>
+        <label class="feld"><span>Säure ml</span><input type="text" inputmode="decimal" id="sml" value="${esc(UI.eingabe.sml || '')}"></label>
+      </div>
+      <label class="feld"><span>Notiz (optional)</span><input type="text" id="notiz" style="font-size:18px" value="${esc(UI.eingabe.notiz || '')}"></label>
+      ${fehlerText()}
+      <div class="knoepfe"><div class="knoepfe-innen"><button class="gross haupt" data-act="eintragen">Eintrag speichern</button></div></div>`;
+  }
+
+  // ---------- Blütekalender ----------
+  const TAG = 864e5;
+  const heuteUTC = () => { const d = new Date(); return Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()); };
+  const ausISO = s => { const [y, m, d] = s.split('-').map(Number); return Date.UTC(y, m - 1, d); };
+  const tagDatum = t => new Date(t).toLocaleDateString('de-DE', { day: 'numeric', month: 'numeric', year: 'numeric', timeZone: 'UTC' });
+  const tagDatumKurz = t => new Date(t).toLocaleDateString('de-DE', { day: 'numeric', month: 'numeric', timeZone: 'UTC' });
+  function parseDauer(t) {
+    const m = String(t || '').trim().match(/^(\d{2,3})(?:\s*(?:-|–|bis)\s*(\d{2,3}))?$/);
+    if (!m) return null;
+    const von = +m[1], bis = m[2] ? +m[2] : von;
+    if (von < 20 || bis > 200 || bis < von) return null;
+    return { von, bis };
+  }
+  function kalender(e) {
+    const b = e.bluete; if (!b || !b.start) return null;
+    const start = ausISO(b.start), heute = heuteUTC();
+    const tag = Math.floor((heute - start) / TAG) + 1; // Starttag = Tag 1
+    const ernteVon = start + b.von * TAG, ernteBis = start + b.bis * TAG;
+    const rest = Math.round((ernteVon - heute) / TAG), restBis = Math.round((ernteBis - heute) / TAG);
+    const mitte = (b.von + b.bis) / 2;
+    return { tag, woche: Math.ceil(tag / 7), ernteVon, ernteBis, rest, restBis, anteil: Math.max(0, Math.min(1, (tag - 1) / mitte)), auto: e.typ === 'auto', spanne: b.von !== b.bis };
+  }
+  function ernteText(k) { return k.spanne ? `${tagDatumKurz(k.ernteVon)} bis ${tagDatum(k.ernteBis)}` : tagDatum(k.ernteVon); }
+  function restText(k) {
+    if (k.tag < 1) return `Startet in ${1 - k.tag} ${1 - k.tag === 1 ? 'Tag' : 'Tagen'}`;
+    if (k.restBis < 0) return 'Erntefenster ist vorbei';
+    if (k.rest <= 0) return 'Erntefenster ist offen';
+    return `noch ${k.rest} ${k.rest === 1 ? 'Tag' : 'Tage'}`;
+  }
+  // Vorschlag zur Phase anhand des Kalenders
+  function phasenVorschlag(e, k) {
+    if (!k || k.tag < 1 || k.restBis < 0) return null;
+    const zurReife = k.rest <= 14;
+    if (zurReife && e.phase !== 'reife') return { phase: 'reife', text: `In ${Math.max(k.rest, 0)} Tagen beginnt das Erntefenster. Die letzten rund zwei Wochen laufen in der Phase Reife.` };
+    if (!k.auto && !zurReife && e.phase !== 'bluete' && e.phase !== 'reife') return { phase: 'bluete', text: `Die Blüte läuft seit ${k.tag} ${k.tag === 1 ? 'Tag' : 'Tagen'}, die Phase steht aber noch auf ${name(PHASEN, e.phase)}.` };
+    return null;
+  }
+  function vKalender(e) {
+    const k = kalender(e);
+    if (UI.kalEdit) {
+      const b = e.bluete || {};
+      const auto = e.typ === 'auto';
+      return `<div class="kalender">
+        <label class="feld"><span>${auto ? 'Keimdatum' : 'Blütestart (Umstellung auf 12/12)'}</span>
+          <input type="date" id="kalStart" value="${esc(b.start || new Date().toISOString().slice(0, 10))}"></label>
+        <label class="feld"><span>${auto ? 'Gesamtdauer laut Sorte, in Tagen' : 'Blütedauer laut Sorte, in Tagen'}</span>
+          <input type="text" inputmode="numeric" id="kalDauer" placeholder="${auto ? 'z. B. 70-80' : 'z. B. 56-63'}" value="${b.von ? (b.von === b.bis ? b.von : b.von + '-' + b.bis) : ''}"></label>
+        <p class="klein">Eine Zahl oder eine Spanne wie „56-63“, so wie sie beim Saatgut steht.</p>
+        ${fehlerText()}
+        <div class="knoepfe-innen" style="gap:10px">
+          ${e.bluete ? '<button class="gross" data-act="kalLoeschen">Entfernen</button>' : '<button class="gross" data-act="kalAbbruch">Abbrechen</button>'}
+          <button class="gross haupt" data-act="kalSpeichern">Speichern</button></div></div>`;
+    }
+    if (!k) return `<button class="zeile-knopf doktor" data-act="kalNeu">${e.typ === 'auto' ? 'Keimdatum eintragen, Ernte berechnen' : 'Blütestart eintragen, Ernte berechnen'}</button>`;
+    const v = phasenVorschlag(e, k);
+    return `<div class="kalender zahl">
+      <div class="klein">Voraussichtliche Ernte</div>
+      <div class="ernte">${ernteText(k)}</div>
+      <div class="tag">${k.tag >= 1 ? `${k.auto ? 'Tag' : 'Blütetag'} ${k.tag}, Woche ${k.woche}, ` : ''}${restText(k)}</div>
+      <div class="balken" aria-hidden="true"><div style="width:${Math.round(k.anteil * 100)}%"></div></div>
+      ${k.tag >= 1 && k.rest <= 7 && k.restBis >= 0 ? '<p class="klein" style="margin:0">Jetzt die Trichome mit der Lupe prüfen: milchig heißt reif, viele bernsteinfarbene heißen eher müde und schwer.</p>' : ''}
+      ${v ? `<div class="vorschlag">${esc(v.text)}<br><button data-act="setz" data-feld="phase" data-wert="${v.phase}">Auf ${name(PHASEN, v.phase)} stellen</button></div>` : ''}
+      <button class="aendern" data-act="kalNeu">Daten ändern</button></div>`;
+  }
+
+  const Dk = window.HydroDoktor;
+  function kontext() {
+    const e = Z.eimer[UI.eimer];
+    let m = null; for (let j = Z.log.length - 1; j >= 0; j--) { const x = Z.log[j]; if (x.eimer === UI.eimer && x.ph != null) { m = x; break; } }
+    const v = Z.einst.vorrat, salpeter = Z.einst.saeure.typ === 'salpeter';
+    return { ph: m ? m.ph : null, ec: m ? m.ec : null, ecZiel: zielEC(e), tageSeitMessung: m ? (Date.now() - new Date(m.datum)) / 864e5 : null,
+      phase: e.phase, saeure: Z.einst.saeure.typ, kaliumQuelle: v.kno3 !== false || (salpeter && v.kco !== false), datum: m ? m.datum : null };
+  }
+  function vDoktor() {
+    const e = Z.eimer[UI.eimer], d = UI.dok, k = kontext();
+    const symListe = d.wo === 'wurzeln' ? Dk.SYMPTOME.filter(s => ['wurzeln_braun', 'haengen'].includes(s[0])) : Dk.SYMPTOME.filter(s => s[0] !== 'wurzeln_braun');
+    let erg = '';
+    if (d.ergebnis) {
+      const r = d.ergebnis;
+      erg = `<h2 id="ergebnis">Einschätzung</h2>` + hinweisBox(r.warnungen) +
+        (r.ursachen.length ? r.ursachen.map(u => `<div class="befund">
+          <h3>${esc(u.titel)}</h3><div class="stufe ${u.stufe === 'möglich' ? 'moeglich' : ''}">${u.stufe === 'möglich' ? 'Möglich' : 'Wahrscheinlich'}</div>
+          <p>${esc(u.erkennen)}</p>
+          ${u.gruende.length ? `<div class="passt">${u.gruende.map(esc).join('<br>')}</div>` : ''}
+          ${u.hinweis ? `<p><b>${esc(u.hinweis)}</b></p>` : ''}
+          <ul>${u.tun.map(t => `<li>${esc(t)}</li>`).join('')}</ul></div>`).join('')
+          : '<div class="leer">Dazu passt keine der hinterlegten Ursachen gut. Miss pH und EC, und schau dir die Wurzeln an. Wenn es schlimmer wird, mach ein Foto und frag nach.</div>') +
+        `<p class="leise" style="font-size:15px">Das ist eine Einschätzung, keine sichere Diagnose. Ändere immer nur eine Sache und beobachte 2 bis 3 Tage.</p>
+        <button class="zeile-knopf" data-act="dokNotieren">Im Verlauf notieren</button>`;
+    }
+    return kopf('Pflanzendoktor') + `
+      <p class="leise zahl">${esc(e.name)}: ${name(PHASEN, e.phase)}${k.ph != null ? `, zuletzt pH ${fmt(k.ph, 1)} und EC ${fmt(k.ec, 2)} (Ziel ${fmt(k.ecZiel, 2)})` : ', noch keine Messung eingetragen'}</p>
+      <h2>Wo siehst du es?</h2>
+      <div class="orte">${Dk.ORTE.map(([id, l]) => `<button data-act="dokWo" data-id="${id}" aria-pressed="${d.wo === id}">${l}</button>`).join('')}</div>
+      ${d.wo ? `<h2>Wie sieht es aus?</h2><p class="leise" style="font-size:16px">Alles antippen, was passt.</p>
+        ${symListe.map(([id, l]) => `<button class="sym" data-act="dokSym" data-id="${id}" aria-pressed="${d.sym.has(id)}"><span class="box">${d.sym.has(id) ? '✓' : ''}</span><span>${l}</span></button>`).join('')}` : ''}
+      ${erg}
+      <div class="knoepfe"><div class="knoepfe-innen"><button class="gross haupt" data-act="dokDiagnose" ${d.wo && d.sym.size ? '' : 'disabled'}>Einschätzung zeigen</button></div></div>`;
+  }
+
+  function eintragHtml(x) {
+    const w = [];
+    if (x.h != null) w.push(`<span><b>${fmt(x.h, 1)}</b> cm</span>`);
+    if (x.liter != null) w.push(`<span><b>${fmt(x.liter, 1)}</b> L</span>`);
+    if (x.ec != null) w.push(`<span>EC <b>${fmt(x.ec, 2)}</b></span>`);
+    if (x.ph != null) w.push(`<span>pH <b>${fmt(x.ph, 1)}</b></span>`);
+    if (x.saeureMl != null) w.push(`<span>Säure <b>${fmt(x.saeureMl, 1)}</b> ml</span>`);
+    return `<div class="eintrag"><div class="eintrag-kopf"><span>${datum(x.datum)}, ${esc(Z.eimer[x.eimer] ? Z.eimer[x.eimer].name : '')}</span><span>${esc(x.art)}</span></div>
+      <div class="eintrag-werte zahl">${w.join('')}</div>${x.notiz ? `<p class="leise" style="margin:6px 0 0;font-size:16px">${esc(x.notiz)}</p>` : ''}
+      ${UI.view === 'verlauf' ? `<button class="loeschen" data-act="loesche" data-id="${esc(x.id)}">Eintrag löschen</button>` : ''}</div>`;
+  }
+
+  function vVerlauf() {
+    const liste = Z.log.filter(x => UI.filter < 0 || x.eimer === UI.filter).slice().reverse();
+    const f = [[-1, 'Alle']].concat(Z.eimer.map((e, i) => [i, e.name]));
+    return `<h1>Verlauf</h1>
+      <div class="filter">${f.map(([i, l]) => `<button data-act="filter" data-i="${i}" aria-pressed="${UI.filter === i}">${esc(l)}</button>`).join('')}</div>
+      ${liste.length ? liste.map(eintragHtml).join('') : '<div class="leer">Noch keine Einträge. Sie entstehen, wenn du nach dem Mischen die gemessenen Werte speicherst.</div>'}` + nav();
+  }
+
+  function vEinst() {
+    const E = Z.einst, D = daten();
+    const salzZeile = s => {
+      const std = s.aktiv !== false;
+      const an = std ? E.vorrat[s.id] !== false : E.auswahl[s.id] === true;
+      const wartet = s.nurMitSalpeter && E.saeure.typ !== 'salpeter';
+      return `<button class="schalter" role="switch" aria-checked="${an}" data-act="${std ? 'vorrat' : 'auswahl'}" data-id="${s.id}">
+        <span>${esc(s.name)}<small>${wartet ? (an ? 'vorrätig, wird erst mit Salpetersäure eingeplant' : 'nicht vorrätig') : std ? (an ? 'vorrätig, wird eingeplant' : 'nicht vorrätig') : (an ? 'wird zusätzlich eingeplant' : 'nicht eingeplant')}</small></span><span class="pille"></span></button>`;
+    };
+    const salpeter = E.saeure.typ === 'salpeter';
+    const status = sync === 'konto' ? ['gut', 'Daten werden in deinem Claude-Konto gespeichert und bleiben auch erhalten, wenn der Browser aufgeräumt wird.']
+      : sync === 'fehler' ? ['', 'Speichern im Konto hat gerade nicht geklappt. Die Daten liegen auf diesem Gerät, speichere zur Sicherheit eine Sicherung.']
+      : ['', 'Daten liegen nur auf diesem Gerät. Speichere ab und zu eine Sicherung.'];
+    return `<h1>Einstellungen</h1>
+      <h2>Salze</h2>
+      <p class="leise" style="font-size:16px">Standard-Satz. Schalte aus, was gerade fehlt, die App rechnet dann mit dem Rest.</p>
+      ${D.salze.filter(s => s.aktiv !== false).map(salzZeile).join('')}
+      <p class="leise" style="font-size:16px;margin-top:16px">Weitere Salze, normalerweise nicht eingeplant:</p>
+      ${D.salze.filter(s => s.aktiv === false).map(salzZeile).join('')}
+
+      <h2>Säure für den pH</h2>
+      <div class="gruppe">${segment('saeureTyp', [['phosphor', 'Phosphorsäure'], ['salpeter', 'Salpetersäure']], E.saeure.typ).replace(/data-act="setz"/g, 'data-act="saeureTyp"')}</div>
+      ${salpeter
+        ? `<label class="feld"><span>Konzentration in %</span><input type="text" inputmode="decimal" data-feld="konz" value="${fmt(E.saeure.konz, 0)}"></label>
+           <p class="leise" style="font-size:16px">Für Privatpersonen ist Salpetersäure nur bis 3 % erhältlich. Die App rechnet mit jeder Konzentration, bei 3 % sind es rund 60 ml pro vollem Eimer.</p>`
+        : `<div class="gruppe"><div class="gruppe-titel">Konzentration</div>${segment('konz', [['75', '75 %'], ['85', '85 %']], String(E.saeure.konz)).replace(/data-act="setz"/g, 'data-act="konz"')}</div>`}
+      <label class="feld"><span>Ziel-pH</span><input type="text" inputmode="decimal" data-feld="zielPH" value="${fmt(E.saeure.zielPH, 1)}"></label>
+
+      <h2>Zusatz</h2>
+      <button class="schalter" role="switch" aria-checked="${E.wasserglas.an}" data-act="wasserglas">
+        <span>Kaliwasserglas 28 °Bé<small>${E.wasserglas.an ? 'wird zugegeben, immer als erster Schritt' : 'nicht zugeben'}</small></span><span class="pille"></span></button>
+      ${E.wasserglas.an ? `<label class="feld" style="margin-top:12px"><span>Menge in ml pro Liter</span><input type="text" inputmode="decimal" data-feld="wgDosis" value="${fmt(E.wasserglas.mlProL, 2)}"></label>
+        <p class="leise" style="font-size:16px">0,1 ml/L sind ca. 2,5 ml pro vollem Eimer und etwa 12 mg/L Silizium. Die Extrasäure rechnet die App mit.</p>` : ''}
+
+      <h2>Leitungswasser</h2>
+      <div class="feld-zeile3">
+        <label class="feld"><span>EC</span><input type="text" inputmode="decimal" data-feld="ecGemessen" value="${fmt(E.wasser.ecGemessen, 2)}"></label>
+        <label class="feld"><span>pH</span><input type="text" inputmode="decimal" data-feld="pH" value="${fmt(E.wasser.pH, 1)}"></label>
+        <label class="feld"><span>Alkalität</span><input type="text" inputmode="decimal" data-feld="alkalitaet" value="${fmt(E.wasser.alkalitaet, 1)}"></label>
+      </div>
+      <p class="leise" style="font-size:16px">Alkalität in mmol/L laut Wasseranalyse. Sie bestimmt, wie viel Säure nötig ist. Die übrigen Werte stammen aus der Analyse des Wasserwerks Garßen.</p>
+
+      <h2>Eimer</h2>
+      <p class="leise" style="font-size:16px">Konisch, ${fmt(D.eimer.dOben, 0)} cm oben, ${fmt(D.eimer.dUnten, 0)} cm unten, ${fmt(D.eimer.hoehe, 1)} cm hoch. Höchstens ${fmt(D.eimer.maxFuell, 0)} cm füllen, das sind ${fmt(K.liter(D.eimer, D.eimer.maxFuell), 1)} L.</p>
+
+      <h2>Sicherung</h2>
+      <p class="status ${status[0]}">${status[1]}</p>
+      <button class="zeile-knopf" data-act="export">${downloads || !window.claude ? 'Sicherung speichern' : 'Sicherung kopieren'}</button>
+      <button class="zeile-knopf" data-act="import">Sicherung laden</button>
+      <p class="leise" style="font-size:16px">Der Verlauf behält die letzten ${LOG_MAX} Einträge.</p>` + nav();
+  }
+
+  function render() {
+    const v = { start: vStart, eimer: vEimer, neu: vNeu, topup: vTopup, anleitung: vAnleitung, verlauf: vVerlauf, einst: vEinst, doktor: vDoktor }[UI.view] || vStart;
+    document.getElementById('app').innerHTML = v();
+  }
+  function gehe(v) { UI.view = v; UI.fehler = ''; UI.kalEdit = false; UI.namenEdit = false; UI.info = null; render(); window.scrollTo(0, 0); }
+
+  // ---------- Aktionen ----------
+  const A = {
+    tab: d => gehe(d.v),
+    oeffne: d => { UI.eimer = +d.i; UI.eingabe = {}; gehe('eimer'); },
+    zurueck: () => {
+      if (UI.namenEdit) { UI.namenEdit = false; UI.fehler = ''; return render(); }
+      if (UI.view === 'anleitung' && UI.haken.size > 0 && !confirm('Anleitung verlassen? Die Haken gehen verloren.')) return;
+      gehe(UI.view === 'eimer' ? 'start' : 'eimer');
+    },
+    gehe: d => { UI.eingabe = {}; gehe(d.v); },
+    setz: d => { Z.eimer[UI.eimer][d.feld] = d.wert; speichern(); render(); },
+    rechneNeu: () => {
+      const h = zahl('#h'), D = daten();
+      UI.eingabe.h = document.getElementById('h').value;
+      if (!(h > 0 && h <= D.eimer.hoehe)) { UI.fehler = 'Bitte eine Füllhöhe zwischen 1 und ' + fmt(D.eimer.hoehe, 1) + ' cm eingeben.'; return render(); }
+      const e = Z.eimer[UI.eimer];
+      const r = K.vollansatz(D, Object.assign({ phase: e.phase, typ: e.typ, staerke: e.staerke, fuellhoehe: h }, ctx()));
+      UI.anl = { art: 'Neuansatz', titel: 'Neu ansetzen', text: `${e.name} auf ${fmt(r.fuellhoehe, 1)} cm, Ziel-EC ${fmt(r.ecZiel, 2)}.`,
+        h: r.fuellhoehe, liter: r.liter, ecZiel: r.ecZiel, ecErwartet: r.ec.gesamt, hinweise: r.hinweise, schritte: schritteEimer(r, r.fuellhoehe) };
+      UI.haken = new Set(); UI.eingabe = {}; gehe('anleitung');
+    },
+    rechneTopup: () => {
+      const hj = zahl('#hj'), ecj = zahl('#ecj'), D = daten();
+      UI.eingabe.hj = document.getElementById('hj').value; UI.eingabe.ecj = document.getElementById('ecj').value;
+      UI.info = null;
+      if (!(hj > 0 && hj <= D.eimer.hoehe)) { UI.fehler = 'Bitte die aktuelle Füllhöhe in cm eingeben.'; return render(); }
+      if (!(ecj > 0 && ecj < 5)) { UI.fehler = 'Bitte die gemessene EC eingeben, zum Beispiel 1,40.'; return render(); }
+      UI.fehler = '';
+      const e = Z.eimer[UI.eimer];
+      const t = K.topUp(D, Object.assign({ phase: e.phase, typ: e.typ, staerke: e.staerke, hJetzt: hj, ecJetzt: ecj }, ctx()));
+      const hZiel = Math.min(D.eimer.zielFuell, D.eimer.maxFuell);
+      if (t.fall === '–') { UI.info = t.text + (t.hinweise.length ? ' ' + t.hinweise.join(' ') : ''); return render(); }
+      if (t.fall === 'A') {
+        const s = [], wgA = t.wasserglasMl > 0;
+        if (wgA) {
+          s.push({ menge: fmt(t.liter, 1) + ' L', was: 'Nachfüllwasser in einer Kanne abmessen.' });
+          s.push({ menge: fmt(t.wasserglasMl, 1) + ' ml', was: WG + ' in die Kanne geben und gut umrühren. Immer vor der Säure.' });
+          if (t.saeureMl > 0) s.push({ menge: 'ca. ' + fmt(t.saeureMl, 1) + ' ml', was: Z.einst.saeure.typ === 'salpeter' ? 'Salpetersäure ' + fmt(Z.einst.saeure.konz, 0) + ' % in die Kanne geben und umrühren.' : 'Phosphorsäure in die Kanne geben und umrühren.' });
+          s.push({ menge: fmt(hZiel, 0) + ' cm', was: 'Die Kanne in den Eimer gießen, bis diese Höhe erreicht ist.' });
+        } else {
+          s.push({ menge: fmt(t.liter, 1) + ' L', was: `Wasser nachfüllen, bis ${fmt(hZiel, 0)} cm erreicht sind.` });
+          if (t.saeureMl > 0) s.push({ menge: 'ca. ' + fmt(t.saeureMl, 1) + ' ml', was: 'Säure zugeben und umrühren.' });
+        }
+        s.push({ menge: 'pH ' + fmt(Z.einst.saeure.zielPH, 1), was: 'pH messen und falls nötig nachkorrigieren.' });
+        UI.anl = { art: 'TOP-UP Wasser', titel: 'Nur Wasser', text: t.text, h: hZiel, liter: t.liter, ecZiel: t.ecZiel, ecErwartet: t.ecDanach, hinweise: t.hinweise, schritte: s };
+      } else {
+        UI.anl = { art: 'TOP-UP Nährlösung', titel: 'Nährlösung nachfüllen', text: t.text, h: hZiel, liter: t.liter, ecZiel: t.ecZiel, ecErwartet: t.ecDanach, hinweise: t.hinweise, schritte: schritteKanne(t.rezept, hZiel, t.ecDanach) };
+      }
+      UI.anl.vorher = { h: hj, ec: ecj };
+      UI.haken = new Set(); UI.eingabe = {}; gehe('anleitung');
+    },
+    haken: (d, el) => {
+      const i = +d.i; UI.haken.has(i) ? UI.haken.delete(i) : UI.haken.add(i);
+      el.setAttribute('aria-pressed', UI.haken.has(i)); el.querySelector('.nr').textContent = UI.haken.has(i) ? '✓' : i + 1;
+    },
+    eintragen: () => {
+      const ec = zahl('#ec'), ph = zahl('#ph'), sml = zahl('#sml');
+      ['ec', 'ph', 'sml', 'notiz'].forEach(id => UI.eingabe[id] = document.getElementById(id).value);
+      if (isNaN(ec) || isNaN(ph)) { UI.fehler = 'Bitte mindestens EC und pH eintragen.'; return render(); }
+      if (!(ec > 0 && ec < 5) || !(ph > 2 && ph < 12)) { UI.fehler = 'EC oder pH sieht nicht plausibel aus. Bitte prüfen.'; return render(); }
+      const a = UI.anl;
+      Z.log.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), eimer: UI.eimer, datum: new Date().toISOString(), art: a.art,
+        h: a.h, liter: Math.round(a.liter * 10) / 10, ecZiel: Math.round(a.ecZiel * 100) / 100, ecErwartet: Math.round(a.ecErwartet * 100) / 100,
+        ec, ph, saeureMl: isNaN(sml) ? null : sml, notiz: document.getElementById('notiz').value.trim() || null, vorher: a.vorher || null });
+      speichern(); UI.eingabe = {}; gehe('eimer'); toast('Eintrag gespeichert');
+    },
+    filter: d => { UI.filter = +d.i; render(); },
+    loesche: d => { if (!confirm('Diesen Eintrag löschen?')) return; Z.log = Z.log.filter(x => x.id !== d.id); speichern(); render(); },
+    vorrat: d => { const v = Z.einst.vorrat; if (v[d.id] === false) delete v[d.id]; else v[d.id] = false; speichern(); render(); },
+    auswahl: d => { const v = Z.einst.auswahl; if (v[d.id]) delete v[d.id]; else v[d.id] = true; speichern(); render(); },
+    saeureTyp: d => { const s = Z.einst.saeure; if (s.typ === d.wert) return; s.typ = d.wert; s.konz = d.wert === 'salpeter' ? 3 : 85; speichern(); render(); },
+    namenEdit: () => { UI.namenEdit = true; UI.fehler = ''; render(); const el = document.getElementById('eimerName'); if (el) { el.focus(); el.select(); } },
+    namenSpeichern: () => {
+      const n = document.getElementById('eimerName').value.trim().replace(/\s+/g, ' ');
+      if (!n) { UI.fehler = 'Bitte einen Namen eingeben.'; return render(); }
+      Z.eimer[UI.eimer].name = n.slice(0, 24); UI.namenEdit = false; UI.fehler = ''; speichern(); render(); toast('Name gespeichert');
+    },
+    kalNeu: () => { UI.kalEdit = true; UI.fehler = ''; render(); },
+    kalAbbruch: () => { UI.kalEdit = false; UI.fehler = ''; render(); },
+    kalLoeschen: () => { if (!confirm('Blütedaten für diesen Eimer entfernen?')) return; delete Z.eimer[UI.eimer].bluete; UI.kalEdit = false; speichern(); render(); },
+    kalSpeichern: () => {
+      const s = document.getElementById('kalStart').value, d = parseDauer(document.getElementById('kalDauer').value);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) { UI.fehler = 'Bitte ein Datum auswählen.'; return render(); }
+      if (!d) { UI.fehler = 'Bitte die Dauer in Tagen eingeben, zum Beispiel 60 oder 56-63.'; return render(); }
+      Z.eimer[UI.eimer].bluete = { start: s, von: d.von, bis: d.bis };
+      UI.kalEdit = false; UI.fehler = ''; speichern(); render(); toast('Gespeichert');
+    },
+    doktor: () => { UI.dok = { wo: null, sym: new Set(), ergebnis: null }; gehe('doktor'); },
+    dokWo: d => { if (UI.dok.wo !== d.id) { UI.dok.wo = d.id; UI.dok.sym = new Set(); UI.dok.ergebnis = null; } render(); },
+    dokSym: d => { const s = UI.dok.sym; s.has(d.id) ? s.delete(d.id) : s.add(d.id); UI.dok.ergebnis = null; render(); },
+    dokDiagnose: () => {
+      UI.dok.ergebnis = Dk.diagnose(UI.dok.wo, [...UI.dok.sym], kontext()); render();
+      const el = document.getElementById('ergebnis'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    },
+    dokNotieren: () => {
+      const d = UI.dok, r = d.ergebnis; if (!r) return;
+      const sym = Dk.SYMPTOME.filter(s => d.sym.has(s[0])).map(s => s[1]).join('; ');
+      const ort = name(Dk.ORTE, d.wo);
+      Z.log.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), eimer: UI.eimer, datum: new Date().toISOString(), art: 'Pflanzendoktor',
+        h: null, liter: null, ec: null, ph: null, saeureMl: null,
+        notiz: `${ort}: ${sym}. Einschätzung: ${r.ursachen.length ? r.ursachen.map(u => u.titel).join(', ') : 'keine klare Ursache'}.` });
+      speichern(); gehe('eimer'); toast('Im Verlauf notiert');
+    },
+    wasserglas: () => { Z.einst.wasserglas.an = !Z.einst.wasserglas.an; speichern(); render(); },
+    konz: d => { Z.einst.saeure.konz = +d.wert; speichern(); render(); },
+    export: async () => {
+      const text = JSON.stringify(Z, null, 1), fn = 'hydro-sicherung-' + new Date().toISOString().slice(0, 10) + '.json';
+      if (downloads) {
+        try { await downloads.save({ filename: fn, data: text }); toast('Sicherung gespeichert'); }
+        catch (e) { if (e && e.code !== 'declined') toast('Speichern ging nicht'); }
+        return;
+      }
+      if (!window.claude) { // eigene Seite (z. B. GitHub): normaler Download
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' })); a.download = fn;
+        document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+        toast('Sicherung gespeichert'); return;
+      }
+      try { await navigator.clipboard.writeText(text); toast('Sicherung kopiert'); } catch (e) { toast('Kopieren ging nicht'); }
+    },
+    import: () => document.getElementById('datei').click(),
+  };
+
+  document.getElementById('app').addEventListener('click', ev => {
+    const b = ev.target.closest('[data-act]'); if (!b) return;
+    const f = A[b.dataset.act]; if (f) f(b.dataset, b);
+  });
+  document.getElementById('app').addEventListener('change', ev => {
+    const el = ev.target, f = el.dataset && el.dataset.feld; if (!f) return;
+    const n = Number(el.value.trim().replace(',', '.'));
+    const grenzen = { wgDosis: [0.02, 0.5], konz: [1, 70], zielPH: [4.5, 7], ecGemessen: [0, 2], pH: [5, 9.5], alkalitaet: [0, 10] };
+    if (isNaN(n) || n < grenzen[f][0] || n > grenzen[f][1]) { toast('Wert außerhalb des sinnvollen Bereichs'); render(); return; }
+    if (f === 'wgDosis') Z.einst.wasserglas.mlProL = n; else if (f === 'konz' || f === 'zielPH') Z.einst.saeure[f] = n; else Z.einst.wasser[f] = n;
+    speichern(); render(); toast('Übernommen');
+  });
+  document.getElementById('app').addEventListener('keydown', ev => {
+    if (ev.key === 'Enter' && ev.target.id === 'eimerName') { ev.preventDefault(); A.namenSpeichern(); }
+  });
+  document.getElementById('datei').addEventListener('change', ev => {
+    const file = ev.target.files && ev.target.files[0]; if (!file) return;
+    const r = new FileReader();
+    r.onload = () => {
+      try {
+        const d = JSON.parse(r.result);
+        if (!d || !Array.isArray(d.eimer) || !d.einst) throw new Error();
+        if (!confirm('Sicherung laden? Die aktuellen Daten werden dadurch ersetzt.')) return;
+        Z = pruefe(d); speichern(); render(); toast('Sicherung geladen');
+      } catch (e) { toast('Das ist keine gültige Sicherung'); }
+      ev.target.value = '';
+    };
+    r.readAsText(file);
+  });
+
+  render();
+  if ('serviceWorker' in navigator && !window.claude && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+})();
+</script>
+</body>
+</html>
