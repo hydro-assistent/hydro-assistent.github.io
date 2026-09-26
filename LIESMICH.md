@@ -24,4 +24,10 @@ Fassung 3.8.1: Bei schwachem Empfang wartet die App höchstens 3 Sekunden aufs N
 Fassung 3.9.0: Logo. Neues App-Symbol (Pflanze im Topf, auch als runde Android-Variante), großes Logo mit Begrüßung auf dem ersten Einrichtungsschritt, kleines Logo oben in der Hilfe.
 Fassung 3.9.1: Rezept-Rechnung bei niedriger Ziel-EC korrigiert. Bei der Wahl der Volldünger zählen jetzt Ammonium-Grenze und Eisen-Minimum mit (vorher z. B. im Wachstum bei EC 0,98 nur Soft Elite: 19 % Ammonium, zu wenig Eisen und Magnesium). Stammdaten ohne persönliche Angaben, Speichern nur noch auf dem Gerät.
 
-Tests: `node tests/rezept.test.js` prüft alle Phasen und Stärken. `python3 tests/vergleich_optimum.py` stellt die App gegen eine unabhängige Optimierung (braucht numpy und scipy).
+Fassung 3.10.0: Eigene Werte sind Pflicht. Die Einrichtung (jetzt fünf Schritte) verlangt die eigene Wasseranalyse (EC, pH, Karbonathärte, Calcium, Magnesium, Sulfat; Kalium und Nitrat freiwillig), startet ohne vorausgewählte Salze und lässt die Gehalte jedes Salzes in Etikett-Einheiten (P₂O₅, K₂O, CaO, MgO, SO₃) prüfen. Gehalte lassen sich auch später unter Einstellungen → Salze & Zusatz ändern. Sicherheits- und Haftungshinweise zu Säuren mit Pflicht-Bestätigung, in der Anleitung und in jeder Mischanleitung mit Säure. Nitrat und Sulfat werden wie im Wasserbericht eingetragen (vorher wurde Nitrat versehentlich als Stickstoff gerechnet). Bestehende Stände behalten ihre Werte und gehen die Einrichtung einmal durch.
+
+Tests: `node tests/rezept.test.js` prüft alle Phasen und Stärken, `node tests/schwefel.test.js` den Schwefelsäure-Zweig. `python3 tests/vergleich_optimum.py` stellt die App gegen eine unabhängige Optimierung (braucht numpy und scipy).
+
+## Sicherheit und Haftung
+
+Säuren sind ätzend: Schutzbrille und Handschuhe, Säure immer ins Wasser, nie mit anderen Säuren oder Chlorreinigern mischen. Die App ist eine Rechenhilfe ohne Gewähr. Soweit gesetzlich zulässig, wird keine Haftung für Schäden an Gesundheit, Pflanzen oder Sachen übernommen, die aus der Anwendung der Ergebnisse entstehen. Maßgeblich sind die Etiketten und Sicherheitsdatenblätter der verwendeten Produkte.

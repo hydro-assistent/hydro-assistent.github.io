@@ -1,6 +1,6 @@
 // Hydro-Assistent: macht die App offline nutzbar.
 // Bei jeder neuen Fassung die Nummer erhöhen, dann holt sich das Handy die neue Version.
-const VERSION = 'hydro-3.9.1';
+const VERSION = 'hydro-3.10.0';
 const DATEIEN = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png'];
 const WARTEN_MS = 3000; // so lange aufs Netz warten, dann aus dem Speicher (bei schwachem Empfang)
 self.addEventListener('install', e => { e.waitUntil(caches.open(VERSION).then(c => c.addAll(DATEIEN))); self.skipWaiting(); });
