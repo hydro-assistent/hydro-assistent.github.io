@@ -28,7 +28,7 @@ Fassung 3.10.0: Eigene Werte sind Pflicht. Die Einrichtung (jetzt fünf Schritte
 
 Fassung 3.11.0: Die eingebauten Salze sind geprüft und werden nicht mehr abgefragt, die Einrichtung hat wieder vier Schritte. Neu: „Eigenes Salz hinzufügen“ (in der Einrichtung und unter Einstellungen → Salze & Zusatz) mit Name und Etikettwerten; speichern geht nur mit der Bestätigung, dass die Werte vom Etikett stammen. Eigene Salze mit Calcium werden wie Calcinit getrennt vorgelöst und zuletzt zugegeben.
 
-Fassung 3.12.0: Mehrere Säuren. Jede vorrätige Säure lässt sich einzeln einschalten (mit eigener Konzentration). Die App wählt je Phase: Anzucht und Wachstum Salpetersäure (bringt Stickstoff), Blüte und Reife Phosphorsäure (bringt Phosphor). Fehlt die passende, nimmt sie die nächste vorrätige, Schwefelsäure zuletzt. Bisherige Stände behalten ihre eine Säure.
+Fassung 3.12.0: Mehrere Säuren. Jede vorrätige Säure lässt sich einzeln einschalten (mit eigener Konzentration). Die App wählt je Phase: Anzucht und Wachstum Salpetersäure (bringt Stickstoff), Blüte und Reife Phosphorsäure (bringt Phosphor). Fehlt die passende, nimmt sie die nächste vorrätige, Schwefelsäure zuletzt. Bisherige Stände behalten ihre eine Säure. Wasseranalyse vollständiger: Ammonium (NH₄), Phosphat (PO₄), Natrium und Chlorid lassen sich eintragen (Einrichtung und Einstellungen); Ammonium und Phosphat zählen im Rezept mit, bei viel Natrium (über 50 mg/L) oder Chlorid (über 100 mg/L) warnt die App.
 
 Tests: `node tests/rezept.test.js` prüft alle Phasen und Stärken, `node tests/schwefel.test.js` den Schwefelsäure-Zweig, `node tests/saeure.test.js` die Wahl der Säure je Phase. `python3 tests/vergleich_optimum.py` stellt die App gegen eine unabhängige Optimierung (braucht numpy und scipy).
 

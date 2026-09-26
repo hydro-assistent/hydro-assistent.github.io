@@ -640,6 +640,8 @@ details.hilfe .inhalt b { color: var(--akzent); }
       for (const e of ['N', 'P', 'K', 'Ca', 'Mg']) { if (!liefert(e)) continue; const a = (ist[e] - soll[e]) / soll[e]; if (a < abwMin) { abwMin = a; schlimmstes = e; } }
       hinweise.push(`Nicht vorrätig: ${fehlend.join(', ')}.` + (schlimmstes ? ` Dadurch fehlt vor allem ${schlimmstes} (${(abwMin * 100).toFixed(0)} % gegenüber dem Verhältnis).` : ''));
     }
+    if (w.Na > 50) hinweise.push(`Natrium im Wasser ${w.Na.toFixed(0)} mg/L (über 50). Die Pflanze nimmt es kaum auf, es reichert sich im Tank an. Öfter neu ansetzen oder Osmose- bzw. Regenwasser beimischen.`);
+    if (w.Cl > 100) hinweise.push(`Chlorid im Wasser ${w.Cl.toFixed(0)} mg/L (über 100). Es reichert sich im Tank an und kann die Wurzeln schädigen. Öfter neu ansetzen oder Osmose- bzw. Regenwasser beimischen.`);
     if (D.saeure.typ === 'schwefel') hinweise.push('Mit Schwefelsäure ist die EC-Schätzung noch nicht an echten Mischungen geprüft. Miss nach und trag die Werte ein.');
     if (ist.NH4anteil > NH4_MAX + 0.01) hinweise.push(`Ammonium-Anteil ${(ist.NH4anteil * 100).toFixed(0)} % (Ziel höchstens 15 %).`);
     if (ist.Fe < 0.5) hinweise.push(`Eisen nur ${ist.Fe.toFixed(2)} mg/L – eher knapp.`);
@@ -997,7 +999,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
     // Umstellung auf Fassung 3.10: Bisher galten Beispielwasser und Beispielgehalte stillschweigend.
     // Alte Stände behalten ihre Werte, müssen sie aber einmal in der Einrichtung bestätigen.
     const alt = !e.profil;
-    const WASSER_FELDER = ['ecGemessen', 'pH', 'alkalitaet', 'NO3', 'NH4', 'P', 'K', 'Ca', 'Mg', 'S'];
+    const WASSER_FELDER = ['ecGemessen', 'pH', 'alkalitaet', 'NO3', 'NH4', 'P', 'K', 'Ca', 'Mg', 'S', 'Na', 'Cl'];
     // Umstellung auf Fassung 3.12: mehrere Säuren. Die bisherige eine Säure bleibt eingeschaltet.
     const saeure = Object.assign({}, s.einst.saeure, e.saeure);
     if (e.saeure && !e.saeure.vorrat) {
@@ -1046,7 +1048,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
     eigen: { name: 'Eigene Quelle', werte: {} },
   };
   // Wasserberichte nennen Sulfat und Nitrat, die App rechnet mit Schwefel und Stickstoff
-  const SULFAT_S = 32.06 / 96.06, NITRAT_N = 14.007 / 62.004;
+  const SULFAT_S = 32.06 / 96.06, NITRAT_N = 14.007 / 62.004, AMMONIUM_N = 14.007 / 18.038, PHOSPHAT_P = 30.974 / 94.971;
   // Etiketten nennen Oxide, die App rechnet mit Elementen (Faktor: Element pro Oxid)
   const OXID = { P: 2 * 30.974 / 141.945, K: 2 * 39.098 / 94.196, Ca: 40.078 / 56.077, Mg: 24.305 / 40.304, S: 32.06 / 80.06 };
   const ETIKETT = [['NO3', 'N als Nitrat'], ['NH4', 'N als Ammonium'], ['P', 'P₂O₅'], ['K', 'K₂O'], ['Ca', 'CaO'], ['Mg', 'MgO'], ['S', 'SO₃'], ['Fe', 'Eisen (Fe)']];
@@ -2129,12 +2131,12 @@ details.hilfe .inhalt b { color: var(--akzent); }
   }
 
   // Eingetippte Wasserwerte merken, damit sie ein Neuzeichnen (Fehlermeldung, Einheit) überstehen
-  const merkSetup = () => ['sEC', 'sPH', 'sKH', 'sCa', 'sMg', 'sSO4', 'sK', 'sNO3'].forEach(id => { const el = document.getElementById(id); if (el) (UI.setupW = UI.setupW || {})[id] = el.value; });
+  const merkSetup = () => ['sEC', 'sPH', 'sKH', 'sCa', 'sMg', 'sSO4', 'sK', 'sNO3', 'sNH4', 'sPO4', 'sNa', 'sCl'].forEach(id => { const el = document.getElementById(id); if (el) (UI.setupW = UI.setupW || {})[id] = el.value; });
   const SETUP_SCHRITTE = 4;
   function vSetup() {
     const E = Z.einst, D = daten(), s = UI.step || 1;
     const kopf = `<p class="setup-kopf">Einrichtung, Schritt ${s} von ${SETUP_SCHRITTE}</p>`;
-    const W_ID = { ecGemessen: 'sEC', pH: 'sPH', alkalitaet: 'sKH', Ca: 'sCa', Mg: 'sMg', S: 'sSO4', K: 'sK', NO3: 'sNO3' };
+    const W_ID = { ecGemessen: 'sEC', pH: 'sPH', alkalitaet: 'sKH', Ca: 'sCa', Mg: 'sMg', S: 'sSO4', K: 'sK', NO3: 'sNO3', NH4: 'sNH4', P: 'sPO4', Na: 'sNa', Cl: 'sCl' };
     const w = (k, f, d) => UI.setupW && UI.setupW[W_ID[k]] !== undefined ? esc(UI.setupW[W_ID[k]]) : E.wasser[k] === undefined ? '' : fmt(E.wasser[k] / (f || 1), d);
     let inhalt = '';
     if (s === 1) inhalt = `<img class="logo-gross" src="${LOGO}" alt="Hydro-Assistent" width="520" height="348">
@@ -2160,9 +2162,15 @@ details.hilfe .inhalt b { color: var(--akzent); }
         <label class="feld"><span>Magnesium mg/L</span><input type="text" inputmode="decimal" id="sMg" value="${w('Mg', 1, 1)}"></label>
         <label class="feld"><span>Sulfat (SO₄) mg/L</span><input type="text" inputmode="decimal" id="sSO4" value="${w('S', SULFAT_S, 1)}"></label>
       </div>
+      <h2>Weitere Werte (freiwillig)</h2>
+      <p class="leise" style="font-size:16px;margin-top:-6px">Stehen sie in deiner Analyse, trag sie ein. Leere Felder zählen als 0.</p>
       <div class="feld-zeile">
-        <label class="feld"><span>Kalium mg/L (freiwillig)</span><input type="text" inputmode="decimal" id="sK" value="${w('K', 1, 1)}"></label>
-        <label class="feld"><span>Nitrat (NO₃) mg/L (freiwillig)</span><input type="text" inputmode="decimal" id="sNO3" value="${w('NO3', NITRAT_N, 1)}"></label>
+        <label class="feld"><span>Kalium mg/L</span><input type="text" inputmode="decimal" id="sK" value="${w('K', 1, 1)}"></label>
+        <label class="feld"><span>Nitrat (NO₃) mg/L</span><input type="text" inputmode="decimal" id="sNO3" value="${w('NO3', NITRAT_N, 1)}"></label>
+        <label class="feld"><span>Ammonium (NH₄) mg/L</span><input type="text" inputmode="decimal" id="sNH4" value="${w('NH4', AMMONIUM_N, 2)}"></label>
+        <label class="feld"><span>Phosphat (PO₄) mg/L</span><input type="text" inputmode="decimal" id="sPO4" value="${w('P', PHOSPHAT_P, 2)}"></label>
+        <label class="feld"><span>Natrium mg/L</span><input type="text" inputmode="decimal" id="sNa" value="${w('Na', 1, 1)}"></label>
+        <label class="feld"><span>Chlorid mg/L</span><input type="text" inputmode="decimal" id="sCl" value="${w('Cl', 1, 1)}"></label>
       </div>
       <p class="leise" style="font-size:16px">EC und pH misst du selbst. Die übrigen Werte stehen in der Trinkwasseranalyse deines Wasserversorgers, meist auf dessen Website. Die Karbonathärte heißt dort oft „Säurekapazität bis pH 4,3“ (mmol/L) oder „Karbonathärte“ (°dH). Nutzt du Osmose- oder Regenwasser, trag dessen Werte ein, sie liegen meist nahe 0.</p>`;
     if (s === 3) inhalt = `<h1>Deine Säuren</h1>
@@ -2250,12 +2258,16 @@ details.hilfe .inhalt b { color: var(--akzent); }
         <label class="feld"><span>Sulfat (SO₄) mg/L</span><input type="text" inputmode="decimal" data-feld="sulfat" value="${fmt((E.wasser.S || 0) / SULFAT_S, 1)}"></label>
       </div>
       <p class="leise" style="font-size:16px">Calcium, Magnesium und Sulfat stehen in der Analyse deines Wasserversorgers. Sie zählen voll mit: Viel Calcium im Wasser heißt weniger Calcinit im Rezept.</p>
-      <details class="hilfe" style="margin-bottom:14px"><summary>Mehr Werte aus der Wasseranalyse</summary><div class="inhalt">
-        <div class="feld-zeile">
-          <label class="feld"><span>Kalium mg/L</span><input type="text" inputmode="decimal" data-feld="K" value="${fmt(E.wasser.K || 0, 1)}"></label>
-          <label class="feld"><span>Nitrat (NO₃) mg/L</span><input type="text" inputmode="decimal" data-feld="nitrat" value="${fmt((E.wasser.NO3 || 0) / NITRAT_N, 1)}"></label>
-        </div>
-        <p class="leise" style="font-size:15px;margin:0">Nitrat so eintragen, wie es im Wasserbericht steht (als NO₃). Die App rechnet selbst mit dem Stickstoff darin.</p></div></details>
+      <h2>Weitere Werte aus der Wasseranalyse</h2>
+      <div class="feld-zeile">
+        <label class="feld"><span>Kalium mg/L</span><input type="text" inputmode="decimal" data-feld="K" value="${fmt(E.wasser.K || 0, 1)}"></label>
+        <label class="feld"><span>Nitrat (NO₃) mg/L</span><input type="text" inputmode="decimal" data-feld="nitrat" value="${fmt((E.wasser.NO3 || 0) / NITRAT_N, 1)}"></label>
+        <label class="feld"><span>Ammonium (NH₄) mg/L</span><input type="text" inputmode="decimal" data-feld="ammonium" value="${fmt((E.wasser.NH4 || 0) / AMMONIUM_N, 2)}"></label>
+        <label class="feld"><span>Phosphat (PO₄) mg/L</span><input type="text" inputmode="decimal" data-feld="phosphat" value="${fmt((E.wasser.P || 0) / PHOSPHAT_P, 2)}"></label>
+        <label class="feld"><span>Natrium mg/L</span><input type="text" inputmode="decimal" data-feld="Na" value="${fmt(E.wasser.Na || 0, 1)}"></label>
+        <label class="feld"><span>Chlorid mg/L</span><input type="text" inputmode="decimal" data-feld="Cl" value="${fmt(E.wasser.Cl || 0, 1)}"></label>
+      </div>
+      <p class="leise" style="font-size:16px">Alle Werte so eintragen, wie sie im Wasserbericht stehen (Nitrat als NO₃, Ammonium als NH₄, Phosphat als PO₄), die App rechnet selbst um. Kalium, Nitrat, Ammonium und Phosphat zählen im Rezept mit. Natrium und Chlorid braucht die Pflanze nicht, sie reichern sich im Tank an. Sind sie hoch, warnt die App.</p>
       ${E.quellen.length ? '<h2>Weitere Wasserquellen</h2>' : ''}
       ${E.quellen.map(q => `<button class="regler-zeile" data-act="quelleOffen" data-id="${esc(q.id)}" aria-expanded="${UI.quelleOffen === q.id}">
         <span><b>${esc(q.name)}</b><br><span class="leise zahl" style="font-size:15px">EC ${fmt(q.werte.ecGemessen || 0, 2)} · pH ${fmt(q.werte.pH != null ? q.werte.pH : 7, 1)} · Calcium ${fmt(q.werte.Ca || 0, 0)} mg/L</span></span><span class="pfeil">${UI.quelleOffen === q.id ? '▴' : '▾'}</span></button>
@@ -2721,7 +2733,8 @@ details.hilfe .inhalt b { color: var(--akzent); }
       if (s === 2) {
         merkSetup();
         const ec = zahl('#sEC'), ph = zahl('#sPH'), kh = zahl('#sKH'), ca = zahl('#sCa'), mg = zahl('#sMg'), so4 = zahl('#sSO4');
-        const k = document.getElementById('sK').value.trim() === '' ? 0 : zahl('#sK'), no3 = document.getElementById('sNO3').value.trim() === '' ? 0 : zahl('#sNO3');
+        const frei = id => document.getElementById(id).value.trim() === '' ? 0 : zahl('#' + id);
+        const k = frei('sK'), no3 = frei('sNO3'), nh4 = frei('sNH4'), po4 = frei('sPO4'), na = frei('sNa'), cl = frei('sCl');
         if (!(ec >= 0 && ec < 2)) { UI.fehler = 'Bitte die EC deines Wassers eintragen (zwischen 0 und 2).'; return render(); }
         if (!(ph > 4 && ph < 10)) { UI.fehler = 'Bitte den pH deines Wassers eintragen.'; return render(); }
         const mmol = (UI.kh === 'dh' ? kh / 2.8 : kh);
@@ -2731,7 +2744,10 @@ details.hilfe .inhalt b { color: var(--akzent); }
         if (!(so4 >= 0 && so4 <= 900)) { UI.fehler = 'Bitte Sulfat aus der Wasseranalyse eintragen (mg/L).'; return render(); }
         if (!(k >= 0 && k <= 100)) { UI.fehler = 'Kalium bitte zwischen 0 und 100 mg/L eintragen oder leer lassen.'; return render(); }
         if (!(no3 >= 0 && no3 <= 250)) { UI.fehler = 'Nitrat bitte zwischen 0 und 250 mg/L eintragen oder leer lassen.'; return render(); }
-        Object.assign(Z.einst.wasser, { ecGemessen: ec, pH: ph, alkalitaet: Math.round(mmol * 100) / 100, Ca: ca, Mg: mg, S: so4 * SULFAT_S, K: k, NO3: no3 * NITRAT_N });
+        if (!(nh4 >= 0 && nh4 <= 5)) { UI.fehler = 'Ammonium bitte zwischen 0 und 5 mg/L eintragen oder leer lassen.'; return render(); }
+        if (!(po4 >= 0 && po4 <= 20)) { UI.fehler = 'Phosphat bitte zwischen 0 und 20 mg/L eintragen oder leer lassen.'; return render(); }
+        if (!(na >= 0 && na <= 500) || !(cl >= 0 && cl <= 500)) { UI.fehler = 'Natrium und Chlorid bitte zwischen 0 und 500 mg/L eintragen oder leer lassen.'; return render(); }
+        Object.assign(Z.einst.wasser, { ecGemessen: ec, pH: ph, alkalitaet: Math.round(mmol * 100) / 100, Ca: ca, Mg: mg, S: so4 * SULFAT_S, K: k, NO3: no3 * NITRAT_N, NH4: nh4 * AMMONIUM_N, P: po4 * PHOSPHAT_P, Na: na, Cl: cl });
         UI.setupW = null;
       }
       if (s === 3 && !K.saeurenDa(Z.einst.saeure).length) { UI.fehler = 'Bitte mindestens eine Säure einschalten.'; return render(); }
@@ -2836,7 +2852,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
       const r = schnapp(); if (key === 'sulfat') q.werte.S = n * SULFAT_S; else q.werte[key] = n; speichern(); setTimeout(render, 0); toast('Übernommen', r); return;
     }
     const n = Number(el.value.trim().replace(',', '.'));
-    const grenzen = { K: [0, 100], nitrat: [0, 250], Ca: [0, 300], Mg: [0, 150], sulfat: [0, 900], netztopf: [0, 60], luftspalt: [0, 40], dOben: [5, 200], dUnten: [5, 200], durchmesser: [5, 200], laenge: [5, 300], breite: [5, 300], hoehe: [5, 250], maxFuell: [2, 250], wgDosis: [0.02, 0.5], konz: [1, 98], zielPH: [4.5, 7], ecGemessen: [0, 2], pH: [5, 9.5], alkalitaet: [0, 10] };
+    const grenzen = { K: [0, 100], nitrat: [0, 250], ammonium: [0, 5], phosphat: [0, 20], Na: [0, 500], Cl: [0, 500], Ca: [0, 300], Mg: [0, 150], sulfat: [0, 900], netztopf: [0, 60], luftspalt: [0, 40], dOben: [5, 200], dUnten: [5, 200], durchmesser: [5, 200], laenge: [5, 300], breite: [5, 300], hoehe: [5, 250], maxFuell: [2, 250], wgDosis: [0.02, 0.5], konz: [1, 98], zielPH: [4.5, 7], ecGemessen: [0, 2], pH: [5, 9.5], alkalitaet: [0, 10] };
     merkeEingaben();
     if (isNaN(n) || !grenzen[f] || n < grenzen[f][0] || n > grenzen[f][1]) { toast('Wert außerhalb des sinnvollen Bereichs, bitte prüfen'); setTimeout(render, 0); return; }
     const r = schnapp();
@@ -2849,7 +2865,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
       speichern(); setTimeout(render, 0); toast('Übernommen', r); return;
     }
     if (f === 'wgDosis') Z.einst.wasserglas.mlProL = n; else if (f === 'zielPH') Z.einst.saeure.zielPH = n;
-    else if (f === 'sulfat') Z.einst.wasser.S = n * SULFAT_S; else if (f === 'nitrat') Z.einst.wasser.NO3 = n * NITRAT_N; else Z.einst.wasser[f] = n;
+    else if (f === 'sulfat') Z.einst.wasser.S = n * SULFAT_S; else if (f === 'nitrat') Z.einst.wasser.NO3 = n * NITRAT_N; else if (f === 'ammonium') Z.einst.wasser.NH4 = n * AMMONIUM_N; else if (f === 'phosphat') Z.einst.wasser.P = n * PHOSPHAT_P; else Z.einst.wasser[f] = n;
     speichern(); setTimeout(render, 0); toast('Übernommen', r);
   });
   document.getElementById('toast').addEventListener('click', ev => {

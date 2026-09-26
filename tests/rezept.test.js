@@ -51,5 +51,19 @@ for (const phase of Object.keys(D.phasen)) for (const typ of ['photo', 'auto']) 
   pruefe(rc.mengen.find(m => m.id === 'calcinit').calcium === true, 'Calcinit ist als Calcium-Salz gekennzeichnet');
 }
 
+// Wasser mit viel Natrium und Chlorid: Warnung; Ammonium und Phosphat im Wasser zählen mit
+{
+  const D3 = JSON.parse(JSON.stringify(D));
+  const ruhig = K.rezept(D3, { phase: 'wachstum', liter, ecZiel: 1.35 });
+  pruefe(!ruhig.hinweise.some(h => /Natrium|Chlorid/.test(h)), 'Beispielwasser: keine Natrium-/Chlorid-Warnung');
+  Object.assign(D3.wasser, { Na: 80, Cl: 150, NH4: 0.4, P: 1.5 });
+  const r = K.rezept(D3, { phase: 'wachstum', liter, ecZiel: 1.35 });
+  pruefe(r.hinweise.some(h => /Natrium im Wasser 80/.test(h)), 'Warnung Natrium');
+  pruefe(r.hinweise.some(h => /Chlorid im Wasser 150/.test(h)), 'Warnung Chlorid');
+  const pSalze = r.mengen.reduce((a, m) => a + (D3.salze.find(x => x.id === m.id).P || 0) * 10 * m.gProL, 0);
+  const sa = K.saeure(D3.wasser, D3.saeure, D3.kalibrierung);
+  pruefe(Math.abs(r.ist.P - (1.5 + sa.P + pSalze)) < 1e-6, 'Phosphor aus dem Wasser zählt mit');
+}
+
 console.log(`${faelle} Fälle geprüft, ${fehler} Fehler.`);
 process.exit(fehler ? 1 : 0);
