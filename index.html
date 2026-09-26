@@ -74,6 +74,7 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
 
 label.feld { display: block; margin-bottom: 16px; }
 label.feld span { display: block; color: var(--leise); font-size: 15px; margin-bottom: 6px; }
+.feld-zeile > label.feld, .feld-zeile3 > label.feld { display: flex; flex-direction: column; justify-content: flex-end; }
 input[type="text"], select {
   width: 100%; min-height: 60px; border-radius: 14px; border: 2px solid var(--linie);
   background: var(--flaeche); color: var(--text); font: inherit; font-size: 26px; padding: 8px 16px;
@@ -266,6 +267,8 @@ details.hilfe .inhalt p { margin: 0 0 10px; }
 details.hilfe .inhalt ul { margin: 0 0 10px; padding-left: 20px; }
 details.hilfe .inhalt li { margin-bottom: 6px; }
 details.hilfe .inhalt b { color: var(--akzent); }
+.sicherheit ul { padding-left: 20px; margin: 0 0 10px; }
+.sicherheit li { margin-bottom: 6px; }
 .leer { background: var(--flaeche); border-radius: 16px; padding: 18px; color: var(--leise); }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
@@ -277,10 +280,10 @@ details.hilfe .inhalt b { color: var(--akzent); }
 <input type="file" id="fotoDatei" accept="image/*" capture="environment" multiple hidden>
 
 <script>
-// Hydro-Assistent – Stammdaten (Stand 21.09.2026; ab Fassung 1.5 Basis 3 statt Basis 5 im Standard-Satz)
+// Hydro-Assistent – Stammdaten (Beispielwerte; in der App unter Einstellungen anpassbar)
 // Alle Salzwerte in % Element (P und K schon aus P2O5/K2O umgerechnet).
 // aktiv: gehört zum Standard-Satz (was du tatsächlich nimmst); inaktive Salze sind vorrätig, werden aber nicht verplant.
-  // Quelle: HydroBuddy-Datenbank des Nutzers; noch mit den Etiketten abzugleichen.
+  // Gehalte sind typische Handelswerte; mit dem Etikett der eigenen Ware abgleichen.
 (function (root) {
   const DATEN = {
     salze: [
@@ -303,7 +306,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
     // Mischreihenfolge im Behälter (nach der ersten Säure)
     reihenfolge: ['kco', 'bittersalz', 'k2so4', 'nh4so4', 'soft_elite', 'soft_spezial', 'basis3', 'basis5', 'kno3', 'mgno3', 'mkp', 'map', 'calcinit'],
 
-    // Wasserwerk Garßen, 07.07.2025, mg/L; EC selbst gemessen
+    // Beispielwasser, mg/L (mittelhart): nur für die Tests und für Stände vor Fassung 3.10. Neue Installationen tragen eigene Werte ein.
     wasser: { ecGemessen: 0.37, pH: 7.6, alkalitaet: 1.7, NO3: 0.11, NH4: 0.02, P: 0.024, K: 1.33, Ca: 42.5, Mg: 2.72, S: 14.1, Na: 10.8, Cl: 12.8, Fe: 0.121, Mn: 0.017 },
 
     eimer: { form: 'konisch', dUnten: 32, dOben: 36, hoehe: 37.5, maxFuell: 28, zielFuell: 28, anzahl: 3 },
@@ -327,11 +330,11 @@ details.hilfe .inhalt b { color: var(--akzent); }
     // 160 statt 240 mg N/L ergab 95 % des CBD-Ertrags bei rund 14 % weniger Blütenmasse; getestet mit einer CBD-Sorte in Erde-Substrat)
     spar: { faktor: 2 / 3, phasen: ['bluete'] }, // nur Blüte: die Reife ist schon reduziert, noch weniger wäre zu knapp
 
-    // Kalibrierung aus der Testmischung vom 21.09.2026
+    // Kalibrierung des EC-Modells aus einer Testmischung
     kalibrierung: {
       ecSalzFaktor: 1.08,      // EC-Modell schätzte den Salzanteil 8 % zu niedrig
-      ecProMmolSaeure: 0.076,  // 2 ml H3PO4 85 % auf 24,7 L (1,18 mmol/L) = +0,09 EC
-      saeureFaktor: 0.91,      // gebraucht 2,0 ml statt geschätzt 2,2 ml
+      ecProMmolSaeure: 0.076,  // 1,18 mmol/L H3PO4 = +0,09 EC
+      saeureFaktor: 0.91,      // tatsächlicher Säurebedarf lag 9 % unter der Rechnung
       ecProMmolSchwefel: 0.22, // Schätzung (Sulfat leitet stärker als Phosphat, 2 H+ je Molekül); noch nicht an echten Mischungen geprüft
     },
   };
@@ -556,7 +559,12 @@ details.hilfe .inhalt b { color: var(--akzent); }
         const p = (basis[e] + z[e]) / sIst, q = profil[e] / sSoll;
         form += GEWICHT[e] * (p - q) * (p - q) / q;
       }
-      return { x, k, ec, z, soll, guete: f, form };
+      // Für die Auswahl der Volldünger: Verstöße gegen Ammonium-Grenze und Eisen-Minimum zählen mit,
+      // sonst gewinnt eine Mischung mit schöner Form, die aber zu viel Ammonium oder zu wenig Eisen hat
+      const nh4Zuviel = Math.max(0, (z.NH4 + basis.NH4) / (z.N + basis.N) - NH4_MAX) / NH4_MAX;
+      const feZuwenig = feMin > 0 ? Math.max(0, feMin - z.Fe - basis.Fe) / feMin : 0;
+      const wahl = form + nh4Zuviel * nh4Zuviel + feZuwenig * feZuwenig;
+      return { x, k, ec, z, soll, guete: f, form, wahl };
     }
 
     // Aus mehreren Volldüngern derselben Gruppe den für diese Phase passenden wählen
@@ -568,14 +576,14 @@ details.hilfe .inhalt b { color: var(--akzent); }
       let bester = null;
       gruppen[g].forEach(s => {
         const r = loese(andere.concat([s]), true);
-        if (!bester || r.form < bester.form - 1e-9) bester = { guete: r.guete, form: r.form, s };
+        if (!bester || r.wahl < bester.wahl - 1e-9) bester = { guete: r.guete, wahl: r.wahl, s };
       });
       // Ein zweiter Volldünger kommt nur dazu, wenn er das Ergebnis deutlich verbessert
-      let zweiter = null, besteGuete = bester.form;
+      let zweiter = null, besteGuete = bester.wahl;
       gruppen[g].forEach(s => {
         if (s === bester.s) return;
         const r = loese(andere.concat([bester.s, s]), true);
-        if (r.form < besteGuete * 0.9) { besteGuete = r.form; zweiter = s; }
+        if (r.wahl < besteGuete * 0.9) { besteGuete = r.wahl; zweiter = s; }
       });
       const genommen = zweiter ? [bester.s, zweiter] : [bester.s];
       const raus = gruppen[g].filter(s => !genommen.includes(s));
@@ -946,16 +954,18 @@ details.hilfe .inhalt b { color: var(--akzent); }
   // ---------- Zustand ----------
   function standard() {
     return {
-      version: 2, geaendert: 0,
+      version: 3, geaendert: 0,
       eimer: [1, 2, 3].map(i => ({ name: 'Tank ' + i, phase: 'wachstum', typ: 'photo', staerke: 'normal' })),
       log: [],
       einst: {
-        vorrat: {}, auswahl: {},
+        // Neu: nichts vorausgewählt, jede Person trägt eigenes Wasser und eigene Salze ein
+        vorrat: Object.fromEntries(BASIS.salze.filter(x => x.aktiv !== false).map(x => [x.id, false])), auswahl: {},
+        salzWerte: {}, salzGeprueft: {}, haftung: false, profil: false,
         behaelter: { form: 'konisch', dUnten: 32, dOben: 36, durchmesser: 30, laenge: 40, breite: 30, hoehe: 37.5, maxFuell: 28, modus: 'direkt', netztopf: 7, luftspalt: 2.5 },
         setup: false,
         saeure: { typ: 'phosphor', konz: 85, zielPH: 5.8 },
         wasserglas: { an: false, mlProL: 0.1 },
-        wasser: { ecGemessen: BASIS.wasser.ecGemessen, pH: BASIS.wasser.pH, alkalitaet: BASIS.wasser.alkalitaet },
+        wasser: {},
         quellen: [], wasserWahl: { a: 'leitung' },
       },
     };
@@ -969,15 +979,21 @@ details.hilfe .inhalt b { color: var(--akzent); }
       if (e.vorrat && e.vorrat.kno3 === false) delete e.vorrat.kno3;
       if (e.auswahl) { delete e.auswahl.basis3; delete e.auswahl.basis5; }
     }
+    // Umstellung auf Fassung 3.10: Bisher galten Beispielwasser und Beispielgehalte stillschweigend.
+    // Alte Stände behalten ihre Werte, müssen sie aber einmal in der Einrichtung bestätigen.
+    const alt = !e.profil;
+    const WASSER_FELDER = ['ecGemessen', 'pH', 'alkalitaet', 'NO3', 'NH4', 'P', 'K', 'Ca', 'Mg', 'S'];
+    const wasserAlt = alt ? Object.assign(Object.fromEntries(WASSER_FELDER.map(k => [k, BASIS.wasser[k]])), e.wasser) : e.wasser;
     return {
-      version: 2, geaendert: d.geaendert || 0,
+      version: 3, geaendert: d.geaendert || 0, pruefen: alt && !!d.einst,
       eimer: Array.isArray(d.eimer) && d.eimer.length >= 1 && d.eimer.length <= 6
         ? d.eimer.map((x, i) => { const e = Object.assign({ name: 'Tank ' + (i + 1), phase: 'wachstum', typ: 'photo', staerke: 'normal' }, x); e.name = String(e.name).replace(/^(Behälter|Eimer) (\d+)$/, 'Tank $2'); return e; }) : s.eimer,
       log: Array.isArray(d.log) ? d.log : [],
       einst: {
-        vorrat: Object.assign({}, e.vorrat || s.einst.vorrat), auswahl: Object.assign({}, e.auswahl || {}),
-        behaelter: Object.assign({}, s.einst.behaelter, e.behaelter), setup: e.setup === undefined ? (!!d.einst || (Array.isArray(d.log) && d.log.length > 0)) : e.setup === true,
-        saeure: Object.assign({}, s.einst.saeure, e.saeure), wasserglas: Object.assign({}, s.einst.wasserglas, e.wasserglas), wasser: Object.assign({}, s.einst.wasser, e.wasser),
+        vorrat: Object.assign({}, e.vorrat || (d.einst ? {} : s.einst.vorrat)), auswahl: Object.assign({}, e.auswahl || {}),
+        behaelter: Object.assign({}, s.einst.behaelter, e.behaelter), setup: !alt && e.setup === true,
+        salzWerte: Object.assign({}, e.salzWerte), salzGeprueft: Object.assign({}, e.salzGeprueft), haftung: !alt && e.haftung === true, profil: !alt,
+        saeure: Object.assign({}, s.einst.saeure, e.saeure), wasserglas: Object.assign({}, s.einst.wasserglas, e.wasserglas), wasser: Object.assign({}, wasserAlt),
         quellen: Array.isArray(e.quellen) ? e.quellen : [], wasserWahl: e.wasserWahl && e.wasserWahl.a ? e.wasserWahl : { a: 'leitung' },
       },
     };
@@ -986,38 +1002,11 @@ details.hilfe .inhalt b { color: var(--akzent); }
   function lsSchreiben() { try { localStorage.setItem(LS, JSON.stringify(Z)); } catch (e) {} }
 
   let Z = lsLesen();
-  let dbRef = null, sync = 'lokal', dbTimer = null, downloads = null;
-
   function speichern() {
     Z.geaendert = Date.now();
     if (Z.log.length > LOG_MAX) Z.log = Z.log.slice(-LOG_MAX);
     lsSchreiben();
-    if (dbRef) { clearTimeout(dbTimer); dbTimer = setTimeout(dbSchreiben, 600); }
   }
-  async function dbSchreiben() {
-    if (!dbRef) return;
-    try { await dbRef.set(JSON.parse(JSON.stringify(Z))); if (sync !== 'konto') { sync = 'konto'; if (UI.view === 'einst' || UI.view === 'einstGruppe') render(); } }
-    catch (e) { sync = 'fehler'; if (UI.view === 'einst' || UI.view === 'einstGruppe') render(); }
-  }
-  (async function verbinden() {
-    try {
-      if (!window.claude || !window.claude.use) return;
-      claude.use('downloads').then(d => { downloads = d; if (UI.view === 'einst' || UI.view === 'einstGruppe') render(); });
-      const [user, db] = await Promise.all([claude.use('user'), claude.use('db')]);
-      if (!user || !db) return;
-      const uid = await user.id();
-      if (!uid) return;
-      dbRef = db.doc('data/users/' + uid + '/zustand');
-      const snap = await dbRef.get();
-      if (snap.exists) {
-        const d = pruefe(JSON.parse(JSON.stringify(snap.data())));
-        if (d.geaendert > Z.geaendert) { Z = d; lsSchreiben(); render(); }
-        else if (Z.geaendert > d.geaendert) await dbSchreiben();
-      } else if (Z.geaendert > 0) await dbSchreiben();
-      sync = 'konto';
-      if (UI.view === 'einst' || UI.view === 'einstGruppe') render();
-    } catch (e) { sync = 'fehler'; }
-  })();
 
   // ---------- Hilfen ----------
   const fmt = (n, d) => Number(n).toLocaleString('de-DE', { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -1034,12 +1023,18 @@ details.hilfe .inhalt b { color: var(--akzent); }
     regen: { name: 'Regenwasser', werte: { ecGemessen: 0.05, pH: 6, alkalitaet: 0.2, Ca: 3, Mg: 0.5, S: 1 } },
     eigen: { name: 'Eigene Quelle', werte: {} },
   };
+  // Wasserberichte nennen Sulfat und Nitrat, die App rechnet mit Schwefel und Stickstoff
+  const SULFAT_S = 32.06 / 96.06, NITRAT_N = 14.007 / 62.004;
+  // Etiketten nennen Oxide, die App rechnet mit Elementen (Faktor: Element pro Oxid)
+  const OXID = { P: 2 * 30.974 / 141.945, K: 2 * 39.098 / 94.196, Ca: 40.078 / 56.077, Mg: 24.305 / 40.304, S: 32.06 / 80.06 };
+  const ETIKETT = [['NO3', 'N als Nitrat'], ['NH4', 'N als Ammonium'], ['P', 'P₂O₅'], ['K', 'K₂O'], ['Ca', 'CaO'], ['Mg', 'MgO'], ['S', 'SO₃'], ['Fe', 'Eisen (Fe)']];
+  const etikettWert = (s, k) => (s[k] || 0) / (OXID[k] || 1);
   const quellenListe = () => [['leitung', 'Leitungswasser']].concat(Z.einst.quellen.map(q => [q.id, q.name]));
   const quelleName = id => (quellenListe().find(q => q[0] === id) || [, 'Leitungswasser'])[1];
   function quelleWerte(id) {
-    if (id === 'leitung') return Object.assign({}, BASIS.wasser, Z.einst.wasser);
+    if (id === 'leitung') return Object.assign({}, NULLWASSER, Z.einst.wasser);
     const q = Z.einst.quellen.find(x => x.id === id);
-    return q ? Object.assign({}, NULLWASSER, q.werte) : Object.assign({}, BASIS.wasser, Z.einst.wasser);
+    return Object.assign({}, NULLWASSER, q ? q.werte : Z.einst.wasser);
   }
   function wahlSauber(w) {
     const ids = quellenListe().map(q => q[0]), o = { a: w && ids.includes(w.a) ? w.a : 'leitung' };
@@ -1071,6 +1066,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
     D.eimer.anzahl = Z.eimer.length;
     D.wasser = wasserMisch(wasserWahlFuer(e));
     D.saeure = Object.assign({}, Z.einst.saeure);
+    D.salze = D.salze.map(x => Object.assign({}, x, Z.einst.salzWerte[x.id]));
     return D;
   }
   // Texte aus Rechenkern und alten Einträgen in die neuen Namen bringen
@@ -1154,6 +1150,11 @@ details.hilfe .inhalt b { color: var(--akzent); }
   const hauptphase = (e, k) => !!k && !k.auto && e.phase === 'bluete' && k.tag >= 36 && k.tag <= 63;
 
   // ---------- Mischanleitungen ----------
+  // Salze im Rezept, deren Gehalte noch niemand mit dem Etikett verglichen hat
+  function ungeprueftHinweis(mengen) {
+    const n = (mengen || []).filter(m => !Z.einst.salzGeprueft[m.id] && !BASIS.salze.find(x => x.id === m.id).co3).map(m => m.name);
+    return n.length ? [`Gehalte von ${n.join(', ')} noch nicht mit dem Etikett abgeglichen (Einstellungen → Salze & Zusatz → Gehalte).`] : [];
+  }
   function schritteEimer(r, h) {
     const s = [];
     const zielPH = fmt(Z.einst.saeure.zielPH, 1);
@@ -1436,6 +1437,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
       ${dazuKarte(a)}
       ${a.ecVorSaeure != null ? `<p class="leise zahl" style="font-size:16px">An der Messstelle sind Wasser, die erste Säure und alle Salze drin, das ergibt etwa ${fmt(a.ecVorSaeure, 2)}. Die restliche Säure hebt die EC noch um rund ${fmt(a.ecErwartet - a.ecVorSaeure, 2)}, am Ende liegst du beim Ziel von ${fmt(a.ecZiel, 2)}. Das ist kein Fehler.</p>` : ''}
       ${hinweisBox(a.hinweise)}
+      ${a.schritte.some(x => /säure/i.test(x.was)) ? `<div class="hinweise"><p><b>Sicherheit:</b> Schutzbrille und Handschuhe tragen. Säure immer ins Wasser, nie mit anderen Säuren oder Chlorreinigern mischen. Die Säuremenge ist eine Schätzung, darum in Schritten zugeben und den pH messen. Mehr unter Hilfe → Anleitung → Sicherheit und Haftung.</p></div>` : ''}
       <h2>Schritte</h2>
       <p class="leise">Tippe einen Schritt an, wenn er erledigt ist.</p>
       <ol class="schritte">${a.schritte.map((s, i) => `<li><button class="schritt" data-act="haken" data-i="${i}" aria-pressed="${UI.haken.has(i)}">
@@ -1651,6 +1653,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
     const teil = (titel, inhalt) => `<details class="hilfe"><summary>${titel}</summary><div class="inhalt">${inhalt}</div></details>`;
     return kopf('Anleitung') + `
       <p class="leise">Der Alltag in vier Schritten: messen, auf der Karte lesen, was zu tun ist, erledigen, eintragen.</p>
+      ${teil('Sicherheit und Haftung', SICHERHEIT)}
       ${teil('So läuft der Alltag', `
         <p><b>1. Messen.</b> Füllstand mit dem Lineal, EC und pH mit den Messgeräten. Am schnellsten mit der <b>Messrunde</b>.</p>
         <p><b>2. Karte lesen.</b> Auf jeder Tank-Karte steht, was seit dem letzten Mal passiert ist, und ein Satz, was jetzt zu tun ist.</p>
@@ -2044,13 +2047,38 @@ details.hilfe .inhalt b { color: var(--akzent); }
     return o;
   }
 
-  const SETUP_SCHRITTE = 4;
+  // Sicherheit und Haftung: in der Einrichtung (Pflicht) und in der Anleitung
+  const SICHERHEIT = `
+    <ul>
+      <li><b>Säuren sind ätzend.</b> Schutzbrille und säurefeste Handschuhe tragen, auch bei verdünnter Säure.</li>
+      <li><b>Immer die Säure ins Wasser geben</b>, nie Wasser in die Säure. Langsam zugeben und umrühren.</li>
+      <li><b>Nie mischen:</b> Säuren nicht miteinander und nicht mit chlorhaltigen Reinigern (Chlorbleiche, WC-Reiniger). Dabei entstehen giftige Gase.</li>
+      <li><b>Schwefelsäure</b> (auch Batteriesäure) ist besonders stark ätzend. <b>Salpetersäure</b> gibt reizende Dämpfe ab und darf nicht an brennbares Material kommen. <b>Phosphorsäure</b> ist ebenfalls ätzend.</li>
+      <li><b>Aufbewahren</b> nur im beschrifteten Originalbehälter, verschlossen und für Kinder und Tiere unerreichbar.</li>
+      <li><b>Unfall:</b> Spritzer auf Haut oder in die Augen sofort mindestens 15 Minuten mit viel Wasser spülen, bei Augenkontakt ärztliche Hilfe holen. Nach Verschlucken den Giftnotruf anrufen, kein Erbrechen herbeiführen.</li>
+      <li><b>Mengen sind Schätzungen</b> aus deinen Eingaben. Säure in Schritten zugeben und den pH immer selbst messen.</li>
+    </ul>
+    <p>Die App ist eine Rechenhilfe ohne Gewähr. Soweit gesetzlich zulässig, wird keine Haftung für Schäden an Gesundheit, Pflanzen oder Sachen übernommen, die aus der Anwendung der Ergebnisse entstehen. Maßgeblich sind die Etiketten und Sicherheitsdatenblätter deiner Produkte und die Regeln an deinem Ort.</p>`;
+  const gewaehlt = (x, E) => x.aktiv !== false ? E.vorrat[x.id] !== false : E.auswahl[x.id] === true;
+  const salzeZumPruefen = (D, E) => D.salze.filter(x => gewaehlt(x, E) && !x.co3 && !(x.nurMitSalpeter && E.saeure.typ !== 'salpeter'));
+  function salzFelder(x) {
+    return `<div class="feld-zeile">${ETIKETT.map(([k, label]) => `<label class="feld"><span>${label} %</span><input type="text" inputmode="decimal" data-feld="salz:${esc(x.id)}:${k}" value="${fmt(etikettWert(x, k), k === 'Fe' ? 2 : 1)}"></label>`).join('')}</div>`;
+  }
+  const geprueftSchalter = (x, E) => `<button class="schalter" role="switch" aria-checked="${!!E.salzGeprueft[x.id]}" data-act="salzGeprueft" data-id="${esc(x.id)}">
+    <span>Stimmt mit meinem Etikett<small>${E.salzGeprueft[x.id] ? 'geprüft' : 'noch nicht geprüft'}</small></span><span class="pille"></span></button>`;
+
+  // Eingetippte Wasserwerte merken, damit sie ein Neuzeichnen (Fehlermeldung, Einheit) überstehen
+  const merkSetup = () => ['sEC', 'sPH', 'sKH', 'sCa', 'sMg', 'sSO4', 'sK', 'sNO3'].forEach(id => { const el = document.getElementById(id); if (el) (UI.setupW = UI.setupW || {})[id] = el.value; });
+  const SETUP_SCHRITTE = 5;
   function vSetup() {
     const E = Z.einst, D = daten(), s = UI.step || 1;
     const kopf = `<p class="setup-kopf">Einrichtung, Schritt ${s} von ${SETUP_SCHRITTE}</p>`;
+    const W_ID = { ecGemessen: 'sEC', pH: 'sPH', alkalitaet: 'sKH', Ca: 'sCa', Mg: 'sMg', S: 'sSO4', K: 'sK', NO3: 'sNO3' };
+    const w = (k, f, d) => UI.setupW && UI.setupW[W_ID[k]] !== undefined ? esc(UI.setupW[W_ID[k]]) : E.wasser[k] === undefined ? '' : fmt(E.wasser[k] / (f || 1), d);
     let inhalt = '';
     if (s === 1) inhalt = `<img class="logo-gross" src="${LOGO}" alt="Hydro-Assistent" width="520" height="348">
-      <p class="leise" style="font-size:17px;text-align:center;margin:-6px 0 18px">Willkommen! In vier kurzen Schritten ist alles eingerichtet.</p>
+      ${Z.pruefen ? '<div class="hinweise"><p><b>Neu in dieser Fassung:</b> Die App rechnet nur noch mit deinen eigenen Werten. Bitte geh die Einrichtung einmal durch und prüfe Wasser, Säure und die Gehalte deiner Salze. Deine bisherigen Werte sind schon eingetragen.</p></div>' : ''}
+      <p class="leise" style="font-size:17px;text-align:center;margin:-6px 0 18px">Willkommen! In fünf kurzen Schritten ist alles eingerichtet.</p>
       <h1>Deine Tanks</h1>
       <p class="leise">Miss einmal nach, dann rechnet die App aus jeder Füllhöhe die Liter aus. Bei einem Tank, der nach unten schmaler wird, nimm „Konisch“.</p>
       <div class="gruppe"><div class="gruppe-titel">Anzahl</div>${segment('anzahl', [1, 2, 3, 4, 5, 6].map(n => [String(n), String(n)]), String(Z.eimer.length)).replace(/data-act="setz"/g, 'data-act="anzahl"')}</div>
@@ -2058,15 +2086,24 @@ details.hilfe .inhalt b { color: var(--akzent); }
       <p class="leise zahl" style="font-size:16px">${behaelterText(D)}</p>
       <p class="leise" style="font-size:16px">Die höchste Füllhöhe ist die Marke, bis zu der du auffüllst. Wenn du sie nicht kennst: „Aus Netztopf rechnen“ wählen, dann miss, wie tief der Netztopf in den Tank hineinragt, und wie viel Luft darunter bleiben soll (meist 2 bis 4 cm).</p>`;
     if (s === 2) inhalt = `<h1>Dein Wasser</h1>
-      <p class="leise">Damit rechnet die App aus, wie viel Säure nötig ist und was das Wasser schon mitbringt.</p>
+      <p class="leise">Damit rechnet die App aus, wie viel Säure nötig ist und was das Wasser schon mitbringt. Ohne diese Werte kann sie nicht richtig rechnen.</p>
       <div class="feld-zeile">
-        <label class="feld"><span>EC des Leitungswassers</span><input type="text" inputmode="decimal" id="sEC" value="${fmt(E.wasser.ecGemessen, 2)}"></label>
-        <label class="feld"><span>pH des Leitungswassers</span><input type="text" inputmode="decimal" id="sPH" value="${fmt(E.wasser.pH, 1)}"></label>
+        <label class="feld"><span>EC des Wassers</span><input type="text" inputmode="decimal" id="sEC" value="${w('ecGemessen', 1, 2)}"></label>
+        <label class="feld"><span>pH des Wassers</span><input type="text" inputmode="decimal" id="sPH" value="${w('pH', 1, 1)}"></label>
       </div>
       <div class="gruppe"><div class="gruppe-titel">Karbonathärte, Einheit</div>${segment('kh', [['mmol', 'mmol/L'], ['dh', '°dH']], UI.kh || 'mmol').replace(/data-act="setz"/g, 'data-act="khEinheit"')}</div>
       <label class="feld"><span>Karbonathärte (${(UI.kh || 'mmol') === 'dh' ? '°dH' : 'mmol/L'})</span>
-        <input type="text" inputmode="decimal" id="sKH" value="${fmt((UI.kh || 'mmol') === 'dh' ? E.wasser.alkalitaet * 2.8 : E.wasser.alkalitaet, 1)}"></label>
-      <p class="leise" style="font-size:16px">EC und pH misst du selbst. Die Karbonathärte steht im Wasserbericht deines Versorgers, meist als „Säurekapazität“ in mmol/L oder als Karbonathärte in °dH. Wenn du sie nicht findest, lass den Wert stehen und korrigiere ihn nach der ersten Mischung anhand der verbrauchten Säure.</p>`;
+        <input type="text" inputmode="decimal" id="sKH" value="${w('alkalitaet', (UI.kh || 'mmol') === 'dh' ? 1 / 2.8 : 1, 1)}"></label>
+      <div class="feld-zeile3">
+        <label class="feld"><span>Calcium mg/L</span><input type="text" inputmode="decimal" id="sCa" value="${w('Ca', 1, 1)}"></label>
+        <label class="feld"><span>Magnesium mg/L</span><input type="text" inputmode="decimal" id="sMg" value="${w('Mg', 1, 1)}"></label>
+        <label class="feld"><span>Sulfat (SO₄) mg/L</span><input type="text" inputmode="decimal" id="sSO4" value="${w('S', SULFAT_S, 1)}"></label>
+      </div>
+      <div class="feld-zeile">
+        <label class="feld"><span>Kalium mg/L (freiwillig)</span><input type="text" inputmode="decimal" id="sK" value="${w('K', 1, 1)}"></label>
+        <label class="feld"><span>Nitrat (NO₃) mg/L (freiwillig)</span><input type="text" inputmode="decimal" id="sNO3" value="${w('NO3', NITRAT_N, 1)}"></label>
+      </div>
+      <p class="leise" style="font-size:16px">EC und pH misst du selbst. Die übrigen Werte stehen in der Trinkwasseranalyse deines Wasserversorgers, meist auf dessen Website. Die Karbonathärte heißt dort oft „Säurekapazität bis pH 4,3“ (mmol/L) oder „Karbonathärte“ (°dH). Nutzt du Osmose- oder Regenwasser, trag dessen Werte ein, sie liegen meist nahe 0.</p>`;
     if (s === 3) inhalt = `<h1>Deine Säure</h1>
       <p class="leise">Womit senkst du den pH?</p>
       <div class="gruppe">${segment('saeureTyp', [['phosphor', 'Phosphor'], ['salpeter', 'Salpeter'], ['schwefel', 'Schwefel']], E.saeure.typ).replace(/data-act="setz"/g, 'data-act="saeureTyp"')}</div>
@@ -2074,15 +2111,22 @@ details.hilfe .inhalt b { color: var(--akzent); }
         ? `<label class="feld"><span>Konzentration in %</span><input type="text" inputmode="decimal" data-feld="konz" value="${fmt(E.saeure.konz, 0)}"></label>${E.saeure.typ === 'schwefel' ? '<p class="leise" style="font-size:16px">Batteriesäure hat meist 37 bis 38 %. Die Konzentration steht auf dem Etikett.</p>' : ''}`
         : `<div class="gruppe"><div class="gruppe-titel">Konzentration</div>${segment('konz', [['75', '75 %'], ['85', '85 %']], String(E.saeure.konz)).replace(/data-act="setz"/g, 'data-act="konz"')}</div>`}
       <label class="feld"><span>Ziel-pH</span><input type="text" inputmode="decimal" data-feld="zielPH" value="${fmt(E.saeure.zielPH, 1)}"></label>
-      <p class="leise" style="font-size:16px">Für DWC sind 5,8 ein guter Wert. Fertige pH-Minus-Mittel aus dem Handel sind meist Phosphorsäure, die Konzentration steht auf dem Etikett.</p>`;
+      <p class="leise" style="font-size:16px">Für DWC sind 5,8 ein guter Wert. Fertige pH-Minus-Mittel aus dem Handel sind meist Phosphorsäure, die Konzentration steht auf dem Etikett.</p>
+      <h2>Sicherheit und Haftung</h2>
+      <div class="sicherheit leise" style="font-size:16px">${SICHERHEIT}</div>
+      <button class="schalter" role="switch" aria-checked="${E.haftung === true}" data-act="haftung">
+        <span>Gelesen. Ich nutze die App auf eigene Verantwortung.<small>${E.haftung ? 'bestätigt' : 'bitte bestätigen'}</small></span><span class="pille"></span></button>`;
     if (s === 4) {
       const zeile = x => `<button class="schalter" role="switch" aria-checked="${x.an}" data-act="${x.std ? 'vorrat' : 'auswahl'}" data-id="${x.id}">
         <span>${esc(x.name)}<small>${x.an ? 'habe ich' : 'habe ich nicht'}</small></span><span class="pille"></span></button>`;
       inhalt = `<h1>Deine Salze</h1>
         <p class="leise">Schalte ein, was bei dir im Regal steht. Die App plant nur damit.</p>
-        ${D.salze.map(s2 => zeile({ id: s2.id, name: s2.name, std: s2.aktiv !== false, an: s2.aktiv !== false ? E.vorrat[s2.id] !== false : E.auswahl[s2.id] === true })).join('')}
+        ${D.salze.map(s2 => zeile({ id: s2.id, name: s2.name, std: s2.aktiv !== false, an: gewaehlt(s2, E) })).join('')}
         <p class="leise" style="font-size:16px">Alles lässt sich später in den Einstellungen ändern. Dort kannst du auch das Kaliwasserglas als Zusatz einschalten.</p>`;
     }
+    if (s === 5) inhalt = `<h1>Gehalte prüfen</h1>
+      <p class="leise">Vergleiche jeden Wert mit dem Etikett oder Datenblatt deiner Packung. Die Zahlen hier sind nur typische Handelswerte. Etiketten nennen Phosphor als P₂O₅, Kalium als K₂O, Calcium als CaO, Magnesium als MgO und Schwefel als SO₃, genau so trägst du sie ein.</p>
+      ${salzeZumPruefen(D, E).map(x => `<h2>${esc(x.name)}</h2><div class="wert-panel">${salzFelder(x)}${geprueftSchalter(x, E)}</div>`).join('')}`;
     return `<div class="setup">${kopf}${inhalt}${fehlerText()}
       <div class="weiter"><div class="knoepfe-innen">
         ${s > 1 ? '<button class="gross" data-act="setupZurueck">Zurück</button>' : ''}
@@ -2097,7 +2141,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
     if (g === 'wasser') return `${wahlText(E.wasserWahl)}${E.quellen.length ? ' · ' + (E.quellen.length + 1) + ' Quellen' : ''} · ${{ salpeter: 'Salpetersäure', schwefel: 'Schwefelsäure' }[E.saeure.typ] || 'Phosphorsäure'} · Ziel-pH ${fmt(E.saeure.zielPH, 1)}`;
     if (g === 'salze') { const n = D.salze.filter(x => x.aktiv !== false ? E.vorrat[x.id] !== false : E.auswahl[x.id] === true).length; return `${n} Salze eingeplant${E.wasserglas.an ? ' · Kaliwasserglas' : ''}`; }
     if (g === 'rezepte') return akt.map(e => `${e.name}: ${name(PHASEN, e.phase)}`).join(' · ');
-    return sync === 'konto' ? 'Im Konto gespeichert · Anleitung · Einrichtung' : 'Sicherung · Anleitung · Einrichtung';
+    return 'Sicherung · Anleitung · Einrichtung';
   }
   function vEinst() {
     const D = daten();
@@ -2120,13 +2164,13 @@ details.hilfe .inhalt b { color: var(--akzent); }
       const std = s.aktiv !== false;
       const an = std ? E.vorrat[s.id] !== false : E.auswahl[s.id] === true;
       const wartet = s.nurMitSalpeter && E.saeure.typ !== 'salpeter';
+      const pruef = an && !s.co3 ? `<button class="zeile-knopf leise-knopf" style="margin:-2px 0 10px;min-height:44px;font-size:16px" data-act="salzOffen" data-id="${esc(s.id)}" aria-expanded="${UI.salzOffen === s.id}">Gehalte ${E.salzGeprueft[s.id] ? '(geprüft)' : '(noch nicht geprüft)'} ${UI.salzOffen === s.id ? '▴' : '▾'}</button>`
+        + (UI.salzOffen === s.id ? `<div class="wert-panel">${salzFelder(s)}${geprueftSchalter(s, E)}</div>` : '') : '';
       return `<button class="schalter" role="switch" aria-checked="${an}" data-act="${std ? 'vorrat' : 'auswahl'}" data-id="${s.id}">
-        <span>${esc(s.name)}<small>${wartet ? (an ? 'vorrätig, wird erst mit Salpetersäure eingeplant' : 'nicht vorrätig') : std ? (an ? 'vorrätig, wird eingeplant' : 'nicht vorrätig') : (an ? 'wird zusätzlich eingeplant' : 'nicht eingeplant')}</small></span><span class="pille"></span></button>`;
+        <span>${esc(s.name)}<small>${wartet ? (an ? 'vorrätig, wird erst mit Salpetersäure eingeplant' : 'nicht vorrätig') : std ? (an ? 'vorrätig, wird eingeplant' : 'nicht vorrätig') : (an ? 'wird zusätzlich eingeplant' : 'nicht eingeplant')}</small></span><span class="pille"></span></button>` + pruef;
     };
     const salpeter = E.saeure.typ === 'salpeter';
-    const status = sync === 'konto' ? ['gut', 'Daten werden in deinem Claude-Konto gespeichert und bleiben auch erhalten, wenn der Browser aufgeräumt wird.']
-      : sync === 'fehler' ? ['', 'Speichern im Konto hat gerade nicht geklappt. Die Daten liegen auf diesem Gerät, speichere zur Sicherheit eine Sicherung.']
-      : ['', 'Daten liegen nur auf diesem Gerät. Speichere ab und zu eine Sicherung.'];
+    const status = ['', 'Daten liegen nur auf diesem Gerät. Speichere ab und zu eine Sicherung.'];
     let inhalt = '';
     if (g === 'tanks') inhalt = `
       ${behaelterFelder(E.behaelter)}
@@ -2149,17 +2193,17 @@ details.hilfe .inhalt b { color: var(--akzent); }
       </div>
       <p class="leise" style="font-size:16px">Alkalität in mmol/L laut Wasseranalyse. Sie bestimmt, wie viel Säure nötig ist.</p>
       <div class="feld-zeile3">
-        <label class="feld"><span>Calcium mg/L</span><input type="text" inputmode="decimal" data-feld="Ca" value="${fmt(E.wasser.Ca !== undefined ? E.wasser.Ca : D.wasser.Ca, 1)}"></label>
-        <label class="feld"><span>Magnesium mg/L</span><input type="text" inputmode="decimal" data-feld="Mg" value="${fmt(E.wasser.Mg !== undefined ? E.wasser.Mg : D.wasser.Mg, 1)}"></label>
-        <label class="feld"><span>Schwefel mg/L</span><input type="text" inputmode="decimal" data-feld="S" value="${fmt(E.wasser.S !== undefined ? E.wasser.S : D.wasser.S, 1)}"></label>
+        <label class="feld"><span>Calcium mg/L</span><input type="text" inputmode="decimal" data-feld="Ca" value="${fmt(E.wasser.Ca || 0, 1)}"></label>
+        <label class="feld"><span>Magnesium mg/L</span><input type="text" inputmode="decimal" data-feld="Mg" value="${fmt(E.wasser.Mg || 0, 1)}"></label>
+        <label class="feld"><span>Sulfat (SO₄) mg/L</span><input type="text" inputmode="decimal" data-feld="sulfat" value="${fmt((E.wasser.S || 0) / SULFAT_S, 1)}"></label>
       </div>
-      <p class="leise" style="font-size:16px">Calcium, Magnesium und Schwefel stehen in der Analyse deines Wasserwerks. Sie zählen voll mit: Viel Calcium im Wasser heißt weniger Calcinit im Rezept. Ohne eigene Analyse lass die Werte stehen.</p>
+      <p class="leise" style="font-size:16px">Calcium, Magnesium und Sulfat stehen in der Analyse deines Wasserversorgers. Sie zählen voll mit: Viel Calcium im Wasser heißt weniger Calcinit im Rezept.</p>
       <details class="hilfe" style="margin-bottom:14px"><summary>Mehr Werte aus der Wasseranalyse</summary><div class="inhalt">
         <div class="feld-zeile">
-          <label class="feld"><span>Kalium mg/L</span><input type="text" inputmode="decimal" data-feld="K" value="${fmt(E.wasser.K !== undefined ? E.wasser.K : D.wasser.K, 1)}"></label>
-          <label class="feld"><span>Nitrat mg/L</span><input type="text" inputmode="decimal" data-feld="NO3" value="${fmt(E.wasser.NO3 !== undefined ? E.wasser.NO3 : D.wasser.NO3, 1)}"></label>
+          <label class="feld"><span>Kalium mg/L</span><input type="text" inputmode="decimal" data-feld="K" value="${fmt(E.wasser.K || 0, 1)}"></label>
+          <label class="feld"><span>Nitrat (NO₃) mg/L</span><input type="text" inputmode="decimal" data-feld="nitrat" value="${fmt((E.wasser.NO3 || 0) / NITRAT_N, 1)}"></label>
         </div>
-        <p class="leise" style="font-size:15px;margin:0">Nitrat steht im Wasserbericht meist als NO₃. Die App rechnet mit dem Stickstoff darin.</p></div></details>
+        <p class="leise" style="font-size:15px;margin:0">Nitrat so eintragen, wie es im Wasserbericht steht (als NO₃). Die App rechnet selbst mit dem Stickstoff darin.</p></div></details>
       ${E.quellen.length ? '<h2>Weitere Wasserquellen</h2>' : ''}
       ${E.quellen.map(q => `<button class="regler-zeile" data-act="quelleOffen" data-id="${esc(q.id)}" aria-expanded="${UI.quelleOffen === q.id}">
         <span><b>${esc(q.name)}</b><br><span class="leise zahl" style="font-size:15px">EC ${fmt(q.werte.ecGemessen || 0, 2)} · pH ${fmt(q.werte.pH != null ? q.werte.pH : 7, 1)} · Calcium ${fmt(q.werte.Ca || 0, 0)} mg/L</span></span><span class="pfeil">${UI.quelleOffen === q.id ? '▴' : '▾'}</span></button>
@@ -2173,7 +2217,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
         <div class="feld-zeile3">
           <label class="feld"><span>Calcium mg/L</span><input type="text" inputmode="decimal" data-feld="q:${esc(q.id)}:Ca" value="${fmt(q.werte.Ca || 0, 1)}"></label>
           <label class="feld"><span>Magnesium mg/L</span><input type="text" inputmode="decimal" data-feld="q:${esc(q.id)}:Mg" value="${fmt(q.werte.Mg || 0, 1)}"></label>
-          <label class="feld"><span>Schwefel mg/L</span><input type="text" inputmode="decimal" data-feld="q:${esc(q.id)}:S" value="${fmt(q.werte.S || 0, 1)}"></label>
+          <label class="feld"><span>Sulfat (SO₄) mg/L</span><input type="text" inputmode="decimal" data-feld="q:${esc(q.id)}:sulfat" value="${fmt((q.werte.S || 0) / SULFAT_S, 1)}"></label>
         </div>
         ${q.vorlage === 'regen' || q.vorlage === 'osmose' ? '<p class="leise" style="font-size:15px">Die Werte sind Richtwerte. Miss EC und pH am besten selbst.</p>' : ''}
         <button class="zeile-knopf leise-knopf" data-act="quelleWeg" data-id="${esc(q.id)}" style="margin:0">${esc(q.name)} entfernen</button></div>`}`).join('')}
@@ -2197,9 +2241,9 @@ details.hilfe .inhalt b { color: var(--akzent); }
       ${hw ? `<div class="hinweise"><p>${esc(hw.text)}</p></div>
         ${hw.salze.map(([id, warum]) => { const sz = D.salze.find(x => x.id === id); return sz ? salzZeile(sz).replace('</small>', ' · ' + esc(warum) + '</small>') : ''; }).join('')}
         <h2>Alle Salze</h2>` : ''}
-      <p class="leise" style="font-size:16px">Standard-Satz. Schalte aus, was gerade fehlt, die App rechnet dann mit dem Rest.</p>
+      <p class="leise" style="font-size:16px">Schalte ein, was du hast, und aus, was gerade fehlt. Die App rechnet nur mit den eingeschalteten Salzen. Unter „Gehalte“ gleichst du die Werte mit deinem Etikett ab.</p>
       ${D.salze.filter(s => s.aktiv !== false && !empf.includes(s.id)).map(salzZeile).join('')}
-      <p class="leise" style="font-size:16px;margin-top:16px">Weitere Salze, normalerweise nicht eingeplant:</p>
+      <p class="leise" style="font-size:16px;margin-top:16px">Weitere Salze:</p>
       ${D.salze.filter(s => s.aktiv === false && !empf.includes(s.id)).map(salzZeile).join('')}
 
       <h2>Zusatz</h2>
@@ -2216,7 +2260,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
       <button class="zeile-knopf" data-act="setupNeu">Einrichtung noch einmal durchgehen</button>
       <h2>Sicherung</h2>
       <p class="status ${status[0]}">${status[1]}</p>
-      <button class="zeile-knopf" data-act="export">${downloads || !window.claude ? 'Sicherung speichern' : 'Sicherung kopieren'}</button>
+      <button class="zeile-knopf" data-act="export">Sicherung speichern</button>
       <button class="zeile-knopf" data-act="import">Sicherung laden</button>
       <p class="leise" style="font-size:16px"><b style="color:var(--akzent)">Fotos sind in der Sicherung nicht enthalten.</b> Beim Wechsel auf ein neues Handy sind sie sonst weg. Lege wichtige Bilder vorher über „Foto speichern“ in deine Galerie.</p>
       <p class="leise" style="font-size:16px">Das Tagebuch behält die letzten ${LOG_MAX} Einträge. Fotos sind in der Sicherung nicht enthalten, sie liegen getrennt auf dem Gerät. Wichtige Bilder speicherst du am besten einzeln über „Foto speichern“ in deine Galerie.</p>`;
@@ -2277,7 +2321,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
       const r = K.vollansatz(D, Object.assign({ phase: e.phase, typ: e.typ, staerke: e.staerke, fuellhoehe: h }, ctx(e), optE(e)));
       if (ueber) r.hinweise.unshift(`${fmt(h, 1)} cm liegen über deiner normalen Marke von ${fmt(maxFuell(Z.einst.behaelter), 1)} cm. In der Anzucht ist das richtig, damit das Wasser den Netztopf berührt. Später brauchen die Wurzeln den Luftspalt.`);
       UI.anl = { art: 'Neuansatz', titel: 'Neu ansetzen', text: `${e.name} auf ${fmt(r.fuellhoehe, 1)} cm, Ziel-EC ${fmt(r.ecZiel, 2)}.`,
-        h: r.fuellhoehe, liter: r.liter, ecZiel: r.ecZiel, ecErwartet: r.ec.gesamt, ecVorSaeure: r.saeure.ml > 0 ? r.ec.vorSaeure + (r.saeure.zuerstMl / r.saeure.ml) * (r.ec.saeure || 0) : null, hinweise: r.hinweise, schritte: schritteEimer(r, r.fuellhoehe),
+        h: r.fuellhoehe, liter: r.liter, ecZiel: r.ecZiel, ecErwartet: r.ec.gesamt, ecVorSaeure: r.saeure.ml > 0 ? r.ec.vorSaeure + (r.saeure.zuerstMl / r.saeure.ml) * (r.ec.saeure || 0) : null, hinweise: r.hinweise.concat(ungeprueftHinweis(r.mengen)), schritte: schritteEimer(r, r.fuellhoehe),
         werte: { N: r.ist.N, P: r.ist.P, K: r.ist.K, Ca: r.ist.Ca, Mg: r.ist.Mg },
         werteSoll: { N: r.soll.N, P: r.soll.P, K: r.soll.K, Ca: r.soll.Ca, Mg: r.soll.Mg },
         wasserWerte: { N: (D.wasser.NO3 || 0) + (D.wasser.NH4 || 0), P: D.wasser.P || 0, K: D.wasser.K || 0, Ca: D.wasser.Ca || 0, Mg: D.wasser.Mg || 0 } };
@@ -2329,7 +2373,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
         const vZ = K.liter(D.eimer, hZiel), ri = t.rezept.ist, w = D.wasser;
         const ohneWasser = { N: ri.N - (w.NO3 || 0) - (w.NH4 || 0), P: ri.P - (w.P || 0), K: ri.K - (w.K || 0), Ca: ri.Ca - (w.Ca || 0), Mg: ri.Mg - (w.Mg || 0) };
         const dazu = {}; Object.keys(ohneWasser).forEach(x => { dazu[x] = ohneWasser[x] * t.liter / vZ; });
-        UI.anl = { art: 'TOP-UP Nährlösung', titel: 'Nährlösung nachfüllen', text: t.text, h: hZiel, liter: t.liter, ecZiel: t.ecZiel, ecErwartet: t.ecDanach, hinweise: t.hinweise, schritte: schritteKanne(t.rezept, hZiel, t.ecDanach), dazu };
+        UI.anl = { art: 'TOP-UP Nährlösung', titel: 'Nährlösung nachfüllen', text: t.text, h: hZiel, liter: t.liter, ecZiel: t.ecZiel, ecErwartet: t.ecDanach, hinweise: t.hinweise.concat(ungeprueftHinweis(t.rezept.mengen)), schritte: schritteKanne(t.rezept, hZiel, t.ecDanach), dazu };
       }
       UI.anl.vorher = { h: hj, ec: ecj }; UI.anl.wasser = wahlText(wasserWahlFuer(e));
       UI.haken = new Set(); UI.eingabe = {}; gehe('anleitung');
@@ -2621,24 +2665,48 @@ details.hilfe .inhalt b { color: var(--akzent); }
     spuelen: d => { const e = Z.eimer[d.i != null ? +d.i : UI.eimer]; e.spuelen = !e.spuelen; speichern(); render(); toast(e.spuelen ? 'Spülen an' : 'Spülen aus'); },
     spar: d => { const e = Z.eimer[d.i != null ? +d.i : UI.eimer]; e.spar = !e.spar; speichern(); render(); toast(e.spar ? 'Sparmodus an' : 'Sparmodus aus'); },
     klappen: d => { const e = Z.eimer[+d.i]; e.zu = !e.zu; speichern(); render(); },
-    khEinheit: d => { UI.kh = d.wert; render(); },
+    khEinheit: d => {
+      merkSetup();
+      const alt = UI.kh || 'mmol', t = UI.setupW && UI.setupW.sKH, n = Number(String(t || '').replace(',', '.'));
+      if (t && !isNaN(n) && d.wert !== alt) UI.setupW.sKH = fmt(d.wert === 'dh' ? n * 2.8 : n / 2.8, 1);
+      UI.kh = d.wert; render();
+    },
     setupWeiter: () => {
       const s = UI.step || 1;
       // Felder übernehmen, auch wenn die Tastatur noch offen ist (dann fehlt das change-Ereignis)
       document.querySelectorAll('#app input[data-feld]').forEach(el => el.dispatchEvent(new Event('change', { bubbles: true })));
       if (s === 2) {
-        const ec = zahl('#sEC'), ph = zahl('#sPH'), kh = zahl('#sKH');
-        if (!(ec >= 0 && ec < 2)) { UI.fehler = 'Bitte die EC des Leitungswassers eintragen, zum Beispiel 0,37.'; return render(); }
-        if (!(ph > 4 && ph < 10)) { UI.fehler = 'Bitte den pH des Leitungswassers eintragen, zum Beispiel 7,6.'; return render(); }
+        merkSetup();
+        const ec = zahl('#sEC'), ph = zahl('#sPH'), kh = zahl('#sKH'), ca = zahl('#sCa'), mg = zahl('#sMg'), so4 = zahl('#sSO4');
+        const k = document.getElementById('sK').value.trim() === '' ? 0 : zahl('#sK'), no3 = document.getElementById('sNO3').value.trim() === '' ? 0 : zahl('#sNO3');
+        if (!(ec >= 0 && ec < 2)) { UI.fehler = 'Bitte die EC deines Wassers eintragen (zwischen 0 und 2).'; return render(); }
+        if (!(ph > 4 && ph < 10)) { UI.fehler = 'Bitte den pH deines Wassers eintragen.'; return render(); }
         const mmol = (UI.kh === 'dh' ? kh / 2.8 : kh);
         if (!(mmol >= 0 && mmol <= 10)) { UI.fehler = 'Bitte die Karbonathärte eintragen.'; return render(); }
-        Object.assign(Z.einst.wasser, { ecGemessen: ec, pH: ph, alkalitaet: Math.round(mmol * 100) / 100 });
+        if (!(ca >= 0 && ca <= 300)) { UI.fehler = 'Bitte Calcium aus der Wasseranalyse eintragen (mg/L).'; return render(); }
+        if (!(mg >= 0 && mg <= 150)) { UI.fehler = 'Bitte Magnesium aus der Wasseranalyse eintragen (mg/L).'; return render(); }
+        if (!(so4 >= 0 && so4 <= 900)) { UI.fehler = 'Bitte Sulfat aus der Wasseranalyse eintragen (mg/L).'; return render(); }
+        if (!(k >= 0 && k <= 100)) { UI.fehler = 'Kalium bitte zwischen 0 und 100 mg/L eintragen oder leer lassen.'; return render(); }
+        if (!(no3 >= 0 && no3 <= 250)) { UI.fehler = 'Nitrat bitte zwischen 0 und 250 mg/L eintragen oder leer lassen.'; return render(); }
+        Object.assign(Z.einst.wasser, { ecGemessen: ec, pH: ph, alkalitaet: Math.round(mmol * 100) / 100, Ca: ca, Mg: mg, S: so4 * SULFAT_S, K: k, NO3: no3 * NITRAT_N });
+        UI.setupW = null;
+      }
+      if (s === 3 && !Z.einst.haftung) { UI.fehler = 'Bitte die Sicherheitshinweise lesen und bestätigen.'; return render(); }
+      if (s === 4 && !daten().salze.some(x => gewaehlt(x, Z.einst) && !(x.nurMitSalpeter && Z.einst.saeure.typ !== 'salpeter') && (x.NO3 || 0) + (x.NH4 || 0) > 0)) {
+        UI.fehler = 'Bitte mindestens ein Salz mit Stickstoff einschalten, zum Beispiel Calcinit, Kaliumnitrat oder einen Volldünger.'; return render();
+      }
+      if (s === 5) {
+        const offen = salzeZumPruefen(daten(), Z.einst).filter(x => !Z.einst.salzGeprueft[x.id]);
+        if (offen.length) { UI.fehler = `Bitte noch prüfen: ${offen.map(x => x.name).join(', ')}.`; return render(); }
       }
       UI.fehler = '';
       if (s < SETUP_SCHRITTE) { UI.step = s + 1; speichern(); render(); window.scrollTo(0, 0); return; }
-      Z.einst.setup = true; UI.step = 1; UI.tab = 'start'; speichern(); gehe('start'); toast('Fertig eingerichtet. Die Anleitung findest du unter Hilfe');
+      Z.einst.setup = true; Z.einst.profil = true; delete Z.pruefen; UI.step = 1; UI.tab = 'start'; speichern(); gehe('start'); toast('Fertig eingerichtet. Die Anleitung findest du unter Hilfe');
     },
-    setupZurueck: () => { UI.step = Math.max(1, (UI.step || 1) - 1); UI.fehler = ''; render(); window.scrollTo(0, 0); },
+    haftung: () => { Z.einst.haftung = !Z.einst.haftung; UI.fehler = ''; speichern(); render(); },
+    salzGeprueft: d => { const g = Z.einst.salzGeprueft; g[d.id] ? delete g[d.id] : (g[d.id] = true); UI.fehler = ''; speichern(); render(); },
+    salzOffen: d => { UI.salzOffen = UI.salzOffen === d.id ? null : d.id; render(); },
+    setupZurueck: () => { merkSetup(); UI.step = Math.max(1, (UI.step || 1) - 1); UI.fehler = ''; render(); window.scrollTo(0, 0); },
     setupNeu: () => { Z.einst.setup = false; UI.step = 1; speichern(); render(); window.scrollTo(0, 0); },
     behModus: d => { merkeEingaben(); Z.einst.behaelter.modus = d.wert; speichern(); render(); },
     behForm: d => { merkeEingaben(); Z.einst.behaelter.form = d.wert; speichern(); render(); },
@@ -2663,19 +2731,10 @@ details.hilfe .inhalt b { color: var(--akzent); }
     konz: d => { Z.einst.saeure.konz = +d.wert; speichern(); render(); },
     export: async () => {
       const text = JSON.stringify(Z, null, 1), fn = 'hydro-sicherung-' + new Date().toISOString().slice(0, 10) + '.json';
-      if (downloads) {
-        try { await downloads.save({ filename: fn, data: text }); toast('Sicherung gespeichert'); }
-        catch (e) { if (e && e.code !== 'declined') toast('Speichern ging nicht'); }
-        return;
-        return;
-      }
-      if (!window.claude) { // eigene Seite (z. B. GitHub): normaler Download
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' })); a.download = fn;
-        document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-        toast('Sicherung gespeichert'); return;
-      }
-      try { await navigator.clipboard.writeText(text); toast('Sicherung kopiert'); } catch (e) { toast('Kopieren ging nicht'); }
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' })); a.download = fn;
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+      toast('Sicherung gespeichert');
     },
     import: () => document.getElementById('datei').click(),
   };
@@ -2693,14 +2752,21 @@ details.hilfe .inhalt b { color: var(--akzent); }
       const r = schnapp(); q.name = n; speichern(); setTimeout(render, 0); toast('Übernommen', r); return;
     }
     const f = el.dataset && el.dataset.feld; if (!f) return;
+    if (f.startsWith('salz:')) {
+      if (el.value === el.defaultValue) return; // unverändert: gerundete Anzeige nicht zurückschreiben
+      const [, id, key] = f.split(':'), n = Number(el.value.trim().replace(',', '.'));
+      if (!ETIKETT.some(x => x[0] === key) || isNaN(n) || n < 0 || n > 100) { toast('Bitte einen Wert zwischen 0 und 100 % eintragen'); setTimeout(render, 0); return; }
+      const r = schnapp(); (Z.einst.salzWerte[id] = Z.einst.salzWerte[id] || {})[key] = n * (OXID[key] || 1);
+      speichern(); setTimeout(render, 0); toast('Übernommen', r); return;
+    }
     if (f.startsWith('q:')) {
       const [, id, key] = f.split(':'), q = Z.einst.quellen.find(x => x.id === id), n = Number(el.value.trim().replace(',', '.'));
-      const gr = { ecGemessen: [0, 2], pH: [4, 10], alkalitaet: [0, 10], Ca: [0, 300], Mg: [0, 150], S: [0, 300] }[key];
+      const gr = { ecGemessen: [0, 2], pH: [4, 10], alkalitaet: [0, 10], Ca: [0, 300], Mg: [0, 150], sulfat: [0, 900] }[key];
       if (!q || !gr || isNaN(n) || n < gr[0] || n > gr[1]) { toast('Wert außerhalb des sinnvollen Bereichs, bitte prüfen'); setTimeout(render, 0); return; }
-      const r = schnapp(); q.werte[key] = n; speichern(); setTimeout(render, 0); toast('Übernommen', r); return;
+      const r = schnapp(); if (key === 'sulfat') q.werte.S = n * SULFAT_S; else q.werte[key] = n; speichern(); setTimeout(render, 0); toast('Übernommen', r); return;
     }
     const n = Number(el.value.trim().replace(',', '.'));
-    const grenzen = { K: [0, 100], NO3: [0, 150], Ca: [0, 300], Mg: [0, 150], S: [0, 300], netztopf: [0, 60], luftspalt: [0, 40], dOben: [5, 200], dUnten: [5, 200], durchmesser: [5, 200], laenge: [5, 300], breite: [5, 300], hoehe: [5, 250], maxFuell: [2, 250], wgDosis: [0.02, 0.5], konz: [1, 98], zielPH: [4.5, 7], ecGemessen: [0, 2], pH: [5, 9.5], alkalitaet: [0, 10] };
+    const grenzen = { K: [0, 100], nitrat: [0, 250], Ca: [0, 300], Mg: [0, 150], sulfat: [0, 900], netztopf: [0, 60], luftspalt: [0, 40], dOben: [5, 200], dUnten: [5, 200], durchmesser: [5, 200], laenge: [5, 300], breite: [5, 300], hoehe: [5, 250], maxFuell: [2, 250], wgDosis: [0.02, 0.5], konz: [1, 98], zielPH: [4.5, 7], ecGemessen: [0, 2], pH: [5, 9.5], alkalitaet: [0, 10] };
     merkeEingaben();
     if (isNaN(n) || !grenzen[f] || n < grenzen[f][0] || n > grenzen[f][1]) { toast('Wert außerhalb des sinnvollen Bereichs, bitte prüfen'); setTimeout(render, 0); return; }
     const r = schnapp();
@@ -2713,7 +2779,8 @@ details.hilfe .inhalt b { color: var(--akzent); }
       speichern(); setTimeout(render, 0); toast('Übernommen', r); return;
     }
     if (f === 'konz' && Z.einst.saeure.typ === 'salpeter' && n > 65) { toast('Salpetersäure gibt es höchstens mit 65 %, bitte prüfen'); setTimeout(render, 0); return; }
-    if (f === 'wgDosis') Z.einst.wasserglas.mlProL = n; else if (f === 'konz' || f === 'zielPH') Z.einst.saeure[f] = n; else Z.einst.wasser[f] = n;
+    if (f === 'wgDosis') Z.einst.wasserglas.mlProL = n; else if (f === 'konz' || f === 'zielPH') Z.einst.saeure[f] = n;
+    else if (f === 'sulfat') Z.einst.wasser.S = n * SULFAT_S; else if (f === 'nitrat') Z.einst.wasser.NO3 = n * NITRAT_N; else Z.einst.wasser[f] = n;
     speichern(); setTimeout(render, 0); toast('Übernommen', r);
   });
   document.getElementById('toast').addEventListener('click', ev => {
@@ -2762,7 +2829,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
   });
 
   render();
-  if ('serviceWorker' in navigator && !window.claude && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+  if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
   // Manche Hoster blenden unten rechts ein eigenes Abzeichen ein. Dann rücken die Knöpfe nach links.
   function eckePruefen() {
     const badge = document.querySelector('[id*="netlify"], [class*="netlify"], [data-netlify-badge], #wm-badge');
