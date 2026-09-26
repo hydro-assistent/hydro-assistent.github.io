@@ -18,6 +18,8 @@ python3 tests/vergleich_optimum.py   # App gegen unabhängige scipy-Optimierung 
 
 Kein Test-Framework: jede Datei ist ein eigenständiges Skript, gibt „N Fälle/Prüfungen, M Fehler.“ aus und endet bei Fehlern mit Exit-Code 1. Einen einzelnen Fall prüft man, indem man die jeweilige Datei ausführt oder in einem Einzeiler `require('./tests/laden')` nutzt und `K.rezept(D, {...})` direkt aufruft.
 
+GitHub Actions (`.github/workflows/tests.yml`) führt die beiden Node-Tests bei jedem Pull Request und Push auf `main` aus; der Python-Vergleich läuft dort nicht.
+
 Lokal ansehen: irgendein statischer Server im Wurzelverzeichnis (z. B. `python3 -m http.server`). Der Service Worker wird nur unter `https:` registriert, lokal läuft die App also ohne Cache.
 
 ## Aufbau
