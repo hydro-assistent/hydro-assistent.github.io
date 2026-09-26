@@ -428,6 +428,21 @@ details.hilfe .inhalt b { color: var(--akzent); }
     return { mmol: 0, P: 0, N: 0, mmolProMl: 1, name: 'keine Säure' };
   }
 
+  // Welche Säure für welche Phase: im Wachstum Salpetersäure (bringt Stickstoff), in der Blüte
+  // Phosphorsäure (bringt Phosphor). Fehlt die passende, nimmt die App die nächste vorrätige.
+  // s: { zielPH, vorrat: { phosphor, salpeter, schwefel }, konzPhosphor, konzSalpeter, konzSchwefel }
+  const SAEURE_VORRANG = { anzucht: ['salpeter', 'phosphor', 'schwefel'], wachstum: ['salpeter', 'phosphor', 'schwefel'],
+    bluete: ['phosphor', 'salpeter', 'schwefel'], reife: ['phosphor', 'salpeter', 'schwefel'] };
+  const saeurenDa = s => ['phosphor', 'salpeter', 'schwefel'].filter(t => s.vorrat ? !!s.vorrat[t] : t === s.typ);
+  function saeureKonz(s, t) {
+    const k = { phosphor: s.konzPhosphor, salpeter: s.konzSalpeter, schwefel: s.konzSchwefel }[t];
+    return k || (t === s.typ && s.konz) || { phosphor: 85, salpeter: 3, schwefel: 37 }[t];
+  }
+  function saeureWahl(s, phase) {
+    const da = saeurenDa(s), t = (SAEURE_VORRANG[phase] || SAEURE_VORRANG.wachstum).find(x => da.includes(x));
+    return t ? { typ: t, konz: saeureKonz(s, t), zielPH: s.zielPH } : { typ: 'keine', konz: 0, zielPH: s.zielPH };
+  }
+
   // ---------- 3. EC-Schätzung ----------
   // Zusätzliche Kationen (meq/L) / 10, mal Kalibrierfaktor, plus Beitrag der Säure
   function ecSchaetzung(zugabe, ecWasser, saeureMmol, kal) {
@@ -720,7 +735,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
     };
   }
 
-  const KERN = { liter, saeure, wasserglasProMl, ecSchaetzung, zugabe, rezept, vollansatz, topUp, zielEC, runden };
+  const KERN = { saeureWahl, saeurenDa, saeureKonz, liter, saeure, wasserglasProMl, ecSchaetzung, zugabe, rezept, vollansatz, topUp, zielEC, runden };
   if (typeof module !== 'undefined') module.exports = KERN; else root.HydroKern = KERN;
 })(this);
 
@@ -963,7 +978,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
         eigeneSalze: [], haftung: false, profil: false,
         behaelter: { form: 'konisch', dUnten: 32, dOben: 36, durchmesser: 30, laenge: 40, breite: 30, hoehe: 37.5, maxFuell: 28, modus: 'direkt', netztopf: 7, luftspalt: 2.5 },
         setup: false,
-        saeure: { typ: 'phosphor', konz: 85, zielPH: 5.8 },
+        saeure: { typ: 'phosphor', konz: 85, zielPH: 5.8, vorrat: {} },
         wasserglas: { an: false, mlProL: 0.1 },
         wasser: {},
         quellen: [], wasserWahl: { a: 'leitung' },
@@ -983,6 +998,13 @@ details.hilfe .inhalt b { color: var(--akzent); }
     // Alte Stände behalten ihre Werte, müssen sie aber einmal in der Einrichtung bestätigen.
     const alt = !e.profil;
     const WASSER_FELDER = ['ecGemessen', 'pH', 'alkalitaet', 'NO3', 'NH4', 'P', 'K', 'Ca', 'Mg', 'S'];
+    // Umstellung auf Fassung 3.12: mehrere Säuren. Die bisherige eine Säure bleibt eingeschaltet.
+    const saeure = Object.assign({}, s.einst.saeure, e.saeure);
+    if (e.saeure && !e.saeure.vorrat) {
+      saeure.vorrat = { [saeure.typ]: true };
+      const kk = { phosphor: 'konzPhosphor', salpeter: 'konzSalpeter', schwefel: 'konzSchwefel' }[saeure.typ];
+      if (kk && !saeure[kk]) saeure[kk] = saeure.konz;
+    }
     const wasserAlt = alt ? Object.assign(Object.fromEntries(WASSER_FELDER.map(k => [k, BASIS.wasser[k]])), e.wasser) : e.wasser;
     return {
       version: 3, geaendert: d.geaendert || 0, pruefen: alt && !!d.einst,
@@ -993,7 +1015,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
         vorrat: Object.assign({}, e.vorrat || (d.einst ? {} : s.einst.vorrat)), auswahl: Object.assign({}, e.auswahl || {}),
         behaelter: Object.assign({}, s.einst.behaelter, e.behaelter), setup: !alt && e.setup === true,
         eigeneSalze: Array.isArray(e.eigeneSalze) ? e.eigeneSalze.filter(x => x && x.id && x.name && x.werte) : [], haftung: !alt && e.haftung === true, profil: !alt,
-        saeure: Object.assign({}, s.einst.saeure, e.saeure), wasserglas: Object.assign({}, s.einst.wasserglas, e.wasserglas), wasser: Object.assign({}, wasserAlt),
+        saeure, wasserglas: Object.assign({}, s.einst.wasserglas, e.wasserglas), wasser: Object.assign({}, wasserAlt),
         quellen: Array.isArray(e.quellen) ? e.quellen : [], wasserWahl: e.wasserWahl && e.wasserWahl.a ? e.wasserWahl : { a: 'leitung' },
       },
     };
@@ -1065,7 +1087,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
     D.eimer.zielFuell = D.eimer.maxFuell;
     D.eimer.anzahl = Z.eimer.length;
     D.wasser = wasserMisch(wasserWahlFuer(e));
-    D.saeure = Object.assign({}, Z.einst.saeure);
+    D.saeure = K.saeureWahl(Z.einst.saeure, e ? e.phase : 'wachstum');
     Z.einst.eigeneSalze.forEach(x => {
       D.salze.push(Object.assign({ NO3: 0, NH4: 0, P: 0, K: 0, Ca: 0, Mg: 0, S: 0, Fe: 0, Mn: 0, Zn: 0, Cu: 0, B: 0, Mo: 0 }, x.werte, { id: x.id, name: x.name, aktiv: false, eigen: true }));
       if (x.werte.Ca > 0) D.reihenfolge.push(x.id); else D.reihenfolge.splice(D.reihenfolge.indexOf('calcinit'), 0, x.id);
@@ -1598,9 +1620,9 @@ details.hilfe .inhalt b { color: var(--akzent); }
   function kontext() {
     const e = Z.eimer[UI.eimer];
     let m = null; for (let j = Z.log.length - 1; j >= 0; j--) { const x = Z.log[j]; if (x.eimer === UI.eimer && x.ph != null && imAnbau(x, UI.eimer)) { m = x; break; } }
-    const v = Z.einst.vorrat, salpeter = Z.einst.saeure.typ === 'salpeter';
+    const v = Z.einst.vorrat, sw = K.saeureWahl(Z.einst.saeure, e.phase).typ, salpeter = sw === 'salpeter';
     return { ph: m ? m.ph : null, ec: m ? m.ec : null, ecZiel: zielEC(e), tageSeitMessung: m ? (Date.now() - new Date(m.datum)) / 864e5 : null,
-      phase: e.phase, spuelen: optE(e).spuelen, sparSpaet: optE(e).spar && (() => { const kk = kalender(e); return e.phase === 'reife' || (!!kk && !kk.auto && kk.tag >= 36); })(), saeure: Z.einst.saeure.typ, kaliumQuelle: v.kno3 !== false || (salpeter && v.kco !== false), datum: m ? m.datum : null };
+      phase: e.phase, spuelen: optE(e).spuelen, sparSpaet: optE(e).spar && (() => { const kk = kalender(e); return e.phase === 'reife' || (!!kk && !kk.auto && kk.tag >= 36); })(), saeure: sw, kaliumQuelle: v.kno3 !== false || (salpeter && v.kco !== false), datum: m ? m.datum : null };
   }
   function offeneKontrolle(i) {
     for (let j = Z.log.length - 1; j >= 0; j--) {
@@ -2048,13 +2070,34 @@ details.hilfe .inhalt b { color: var(--akzent); }
     <ul>
       <li><b>Säuren sind ätzend.</b> Schutzbrille und säurefeste Handschuhe tragen, auch bei verdünnter Säure.</li>
       <li><b>Immer die Säure ins Wasser geben</b>, nie Wasser in die Säure. Langsam zugeben und umrühren.</li>
-      <li><b>Nie mischen:</b> Säuren nicht miteinander und nicht mit chlorhaltigen Reinigern (Chlorbleiche, WC-Reiniger). Dabei entstehen giftige Gase.</li>
+      <li><b>Nie mischen:</b> Säuren nie unverdünnt miteinander und nie mit chlorhaltigen Reinigern (Chlorbleiche, WC-Reiniger). Dabei entstehen giftige Gase. Jede Säure einzeln ins Wasser geben, eigene Messbecher oder Spritzen je Säure verwenden.</li>
       <li><b>Schwefelsäure</b> (auch Batteriesäure) ist besonders stark ätzend. <b>Salpetersäure</b> gibt reizende Dämpfe ab und darf nicht an brennbares Material kommen. <b>Phosphorsäure</b> ist ebenfalls ätzend.</li>
       <li><b>Aufbewahren</b> nur im beschrifteten Originalbehälter, verschlossen und für Kinder und Tiere unerreichbar.</li>
       <li><b>Unfall:</b> Spritzer auf Haut oder in die Augen sofort mindestens 15 Minuten mit viel Wasser spülen, bei Augenkontakt ärztliche Hilfe holen. Nach Verschlucken den Giftnotruf anrufen, kein Erbrechen herbeiführen.</li>
       <li><b>Mengen sind Schätzungen</b> aus deinen Eingaben. Säure in Schritten zugeben und den pH immer selbst messen.</li>
     </ul>
     <p>Die App ist eine Rechenhilfe ohne Gewähr. Soweit gesetzlich zulässig, wird keine Haftung für Schäden an Gesundheit, Pflanzen oder Sachen übernommen, die aus der Anwendung der Ergebnisse entstehen. Maßgeblich sind die Etiketten und Sicherheitsdatenblätter deiner Produkte und die Regeln an deinem Ort.</p>`;
+  const SAEURE_INFO = {
+    salpeter: ['Salpetersäure', 'bringt Stickstoff mit · wird in Anzucht und Wachstum genommen'],
+    phosphor: ['Phosphorsäure', 'bringt Phosphor mit · wird in Blüte und Reife genommen'],
+    schwefel: ['Schwefelsäure', 'bringt Schwefel mit · Ersatz, wenn die passende Säure fehlt'],
+  };
+  function saeurenHtml(E) {
+    const s = E.saeure, da = K.saeurenDa(s);
+    const teil = t => {
+      const an = da.includes(t), k = K.saeureKonz(s, t);
+      return `<button class="schalter" role="switch" aria-checked="${an}" data-act="saeureAn" data-t="${t}"><span>${SAEURE_INFO[t][0]}<small>${an ? SAEURE_INFO[t][1] : 'habe ich nicht'}</small></span><span class="pille"></span></button>`
+        + (!an ? '' : t === 'phosphor'
+          ? `<div class="gruppe"><div class="gruppe-titel">Konzentration Phosphorsäure</div>${segment('konz', [['75', '75 %'], ['85', '85 %']], String(k)).replace(/data-act="setz"/g, 'data-act="konz"')}</div>`
+          : `<label class="feld"><span>Konzentration ${SAEURE_INFO[t][0]} in %</span><input type="text" inputmode="decimal" data-feld="konz:${t}" value="${fmt(k, 0)}"></label>
+             <p class="leise" style="font-size:16px;margin-top:-8px">${t === 'salpeter' ? 'Für Privatpersonen ist Salpetersäure nur bis 3 % erhältlich. Bei 3 % sind es rund 60 ml pro vollem Tank.' : 'Batteriesäure hat meist 37 bis 38 %, die Konzentration steht auf dem Etikett.'}</p>`);
+    };
+    const name = ph => { const w = K.saeureWahl(s, ph).typ; return SAEURE_INFO[w] ? SAEURE_INFO[w][0] : 'keiner Säure'; };
+    return `<p class="leise">Schalte jede Säure ein, die du hast. Die App nimmt je Phase die passende: im Wachstum Salpetersäure, weil sie Stickstoff bringt, in der Blüte Phosphorsäure, weil sie Phosphor bringt.</p>
+      ${['salpeter', 'phosphor', 'schwefel'].map(teil).join('')}
+      ${da.length ? `<div class="hinweise"><p><b>So rechnet die App:</b> Anzucht und Wachstum mit ${name('wachstum')}, Blüte und Reife mit ${name('bluete')}.</p></div>` : ''}
+      ${da.includes('phosphor') && haerte() && haerte().art === 'hart' ? '<div class="hinweise"><p>Dein Wasser ist hart und braucht viel Säure. Mit Phosphorsäure landet dabei oft mehr Phosphor im Tank als gut ist. Schwefelsäure, zum Beispiel Batteriesäure, ist hier meist die bessere Wahl.</p></div>' : ''}`;
+  }
   const gewaehlt = (x, E) => x.aktiv !== false ? E.vorrat[x.id] !== false : E.auswahl[x.id] === true;
   // Eigene Salze: nur diese fragt die App ab, die eingebauten sind geprüft
   const merkNeuSalz = () => { const n = UI.neuSalz; if (!n) return; const el = document.getElementById('ns_name'); if (!el) return;
@@ -2122,12 +2165,8 @@ details.hilfe .inhalt b { color: var(--akzent); }
         <label class="feld"><span>Nitrat (NO₃) mg/L (freiwillig)</span><input type="text" inputmode="decimal" id="sNO3" value="${w('NO3', NITRAT_N, 1)}"></label>
       </div>
       <p class="leise" style="font-size:16px">EC und pH misst du selbst. Die übrigen Werte stehen in der Trinkwasseranalyse deines Wasserversorgers, meist auf dessen Website. Die Karbonathärte heißt dort oft „Säurekapazität bis pH 4,3“ (mmol/L) oder „Karbonathärte“ (°dH). Nutzt du Osmose- oder Regenwasser, trag dessen Werte ein, sie liegen meist nahe 0.</p>`;
-    if (s === 3) inhalt = `<h1>Deine Säure</h1>
-      <p class="leise">Womit senkst du den pH?</p>
-      <div class="gruppe">${segment('saeureTyp', [['phosphor', 'Phosphor'], ['salpeter', 'Salpeter'], ['schwefel', 'Schwefel']], E.saeure.typ).replace(/data-act="setz"/g, 'data-act="saeureTyp"')}</div>
-      ${E.saeure.typ !== 'phosphor'
-        ? `<label class="feld"><span>Konzentration in %</span><input type="text" inputmode="decimal" data-feld="konz" value="${fmt(E.saeure.konz, 0)}"></label>${E.saeure.typ === 'schwefel' ? '<p class="leise" style="font-size:16px">Batteriesäure hat meist 37 bis 38 %. Die Konzentration steht auf dem Etikett.</p>' : ''}`
-        : `<div class="gruppe"><div class="gruppe-titel">Konzentration</div>${segment('konz', [['75', '75 %'], ['85', '85 %']], String(E.saeure.konz)).replace(/data-act="setz"/g, 'data-act="konz"')}</div>`}
+    if (s === 3) inhalt = `<h1>Deine Säuren</h1>
+      ${saeurenHtml(E)}
       <label class="feld"><span>Ziel-pH</span><input type="text" inputmode="decimal" data-feld="zielPH" value="${fmt(E.saeure.zielPH, 1)}"></label>
       <p class="leise" style="font-size:16px">Für DWC sind 5,8 ein guter Wert. Fertige pH-Minus-Mittel aus dem Handel sind meist Phosphorsäure, die Konzentration steht auf dem Etikett.</p>
       <h2>Sicherheit und Haftung</h2>
@@ -2154,7 +2193,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
   function gruppeUnter(g, D) {
     const E = Z.einst, akt = Z.eimer.filter(e => e.aktiv !== false);
     if (g === 'tanks') return `${akt.length} ${akt.length === 1 ? 'Tank' : 'Tanks'} · bis ${fmt(D.eimer.maxFuell, 1)} cm, ${fmt(K.liter(D.eimer, D.eimer.maxFuell), 1)} L`;
-    if (g === 'wasser') return `${wahlText(E.wasserWahl)}${E.quellen.length ? ' · ' + (E.quellen.length + 1) + ' Quellen' : ''} · ${{ salpeter: 'Salpetersäure', schwefel: 'Schwefelsäure' }[E.saeure.typ] || 'Phosphorsäure'} · Ziel-pH ${fmt(E.saeure.zielPH, 1)}`;
+    if (g === 'wasser') return `${wahlText(E.wasserWahl)}${E.quellen.length ? ' · ' + (E.quellen.length + 1) + ' Quellen' : ''} · ${K.saeurenDa(E.saeure).map(t => SAEURE_INFO[t][0]).join(' + ') || 'keine Säure'} · Ziel-pH ${fmt(E.saeure.zielPH, 1)}`;
     if (g === 'salze') { const n = D.salze.filter(x => x.aktiv !== false ? E.vorrat[x.id] !== false : E.auswahl[x.id] === true).length; return `${n} Salze eingeplant${E.wasserglas.an ? ' · Kaliwasserglas' : ''}`; }
     if (g === 'rezepte') return akt.map(e => `${e.name}: ${name(PHASEN, e.phase)}`).join(' · ');
     return 'Sicherung · Anleitung · Einrichtung';
@@ -2168,8 +2207,8 @@ details.hilfe .inhalt b { color: var(--akzent); }
   // Wie hart ist das Standardwasser, und welche Salze passen dazu?
   function haerte() {
     const w = wasserMisch(Z.einst.wasserWahl), alk = w.alkalitaet || 0, ca = w.Ca || 0;
-    if (alk >= 2.5 || ca >= 80) return { art: 'hart', text: `Dein Wasser ist hart (Karbonathärte ${fmt(alk * 2.8, 0)} °dH, Calcium ${fmt(ca, 0)} mg/L). Es bringt viel Calcium mit und braucht viel Säure${Z.einst.saeure.typ === 'phosphor' ? ' (mit Phosphorsäure oft zu viel Phosphor, besser Schwefelsäure, siehe Wasser & Säure)' : ''}. Diese Salze passen dazu besonders gut:`,
-      salze: [['mgno3', 'Stickstoff ohne Calcium, dazu Magnesium. Ersetzt einen Teil vom Calciumnitrat.'], ['kno3', 'Stickstoff und Kalium ohne Calcium.'], ['k2so4', 'Kalium für die Blüte, ohne zusätzlichen Stickstoff.'], ['nh4so4', 'Ein wenig Ammonium hält den pH an den Wurzeln stabiler. Die App nimmt davon nur wenig.']].concat(Z.einst.saeure.typ === 'phosphor' ? [] : [['mkp', 'Phosphor und Kalium. Wichtig, weil deine Säure keinen Phosphor mitbringt.']]) };
+    if (alk >= 2.5 || ca >= 80) return { art: 'hart', text: `Dein Wasser ist hart (Karbonathärte ${fmt(alk * 2.8, 0)} °dH, Calcium ${fmt(ca, 0)} mg/L). Es bringt viel Calcium mit und braucht viel Säure${K.saeurenDa(Z.einst.saeure).includes('phosphor') ? ' (mit Phosphorsäure oft zu viel Phosphor, besser Schwefelsäure, siehe Wasser & Säure)' : ''}. Diese Salze passen dazu besonders gut:`,
+      salze: [['mgno3', 'Stickstoff ohne Calcium, dazu Magnesium. Ersetzt einen Teil vom Calciumnitrat.'], ['kno3', 'Stickstoff und Kalium ohne Calcium.'], ['k2so4', 'Kalium für die Blüte, ohne zusätzlichen Stickstoff.'], ['nh4so4', 'Ein wenig Ammonium hält den pH an den Wurzeln stabiler. Die App nimmt davon nur wenig.']].concat(K.saeurenDa(Z.einst.saeure).includes('phosphor') ? [] : [['mkp', 'Phosphor und Kalium. Wichtig, weil deine Säure keinen Phosphor mitbringt.']]) };
     if (alk < 1 && ca < 20) return { art: 'weich', text: `Dein Wasser ist weich (Karbonathärte ${fmt(alk * 2.8, 0)} °dH, Calcium ${fmt(ca, 0)} mg/L). Calcium und Magnesium müssen fast ganz aus dem Dünger kommen, und die wenige Säure bringt kaum Phosphor. Diese Salze passen dazu besonders gut:`,
       salze: [['calcinit', 'Die wichtigste Calciumquelle.'], ['bittersalz', 'Magnesium und Schwefel.'], ['mkp', 'Phosphor und Kalium.'], ['map', 'Phosphor und etwas Ammonium, das den pH stabiler hält.']] };
     return null;
@@ -2179,11 +2218,10 @@ details.hilfe .inhalt b { color: var(--akzent); }
     const salzZeile = s => {
       const std = s.aktiv !== false;
       const an = std ? E.vorrat[s.id] !== false : E.auswahl[s.id] === true;
-      const wartet = s.nurMitSalpeter && E.saeure.typ !== 'salpeter';
+      const wartet = s.nurMitSalpeter && !K.saeurenDa(E.saeure).includes('salpeter');
       return `<button class="schalter" role="switch" aria-checked="${an}" data-act="${std ? 'vorrat' : 'auswahl'}" data-id="${s.id}">
-        <span>${esc(s.name)}<small>${wartet ? (an ? 'vorrätig, wird erst mit Salpetersäure eingeplant' : 'nicht vorrätig') : std ? (an ? 'vorrätig, wird eingeplant' : 'nicht vorrätig') : (an ? 'wird zusätzlich eingeplant' : 'nicht eingeplant')}</small></span><span class="pille"></span></button>`;
+        <span>${esc(s.name)}<small>${wartet ? (an ? 'vorrätig, wird nur mit Salpetersäure eingeplant' : 'nicht vorrätig') : std ? (an ? 'vorrätig, wird eingeplant' : 'nicht vorrätig') : (an ? 'wird zusätzlich eingeplant' : 'nicht eingeplant')}</small></span><span class="pille"></span></button>`;
     };
-    const salpeter = E.saeure.typ === 'salpeter';
     const status = ['', 'Daten liegen nur auf diesem Gerät. Speichere ab und zu eine Sicherung.'];
     let inhalt = '';
     if (g === 'tanks') inhalt = `
@@ -2238,17 +2276,8 @@ details.hilfe .inhalt b { color: var(--akzent); }
       <h2>Wasserquelle hinzufügen</h2>
       <div class="feld-zeile3">${Object.entries(VORLAGEN).map(([id, v]) => `<button class="zeile-knopf doktor" data-act="quelleNeu" data-t="${id}" style="font-size:16px">${v.name.replace(' ', '<br>')}</button>`).join('')}</div>
 
-      <h2>Säure für den pH</h2>
-      <div class="gruppe">${segment('saeureTyp', [['phosphor', 'Phosphor'], ['salpeter', 'Salpeter'], ['schwefel', 'Schwefel']], E.saeure.typ).replace(/data-act="setz"/g, 'data-act="saeureTyp"')}</div>
-      <p class="leise" style="font-size:15px;margin-top:-8px">${E.saeure.typ === 'schwefel' ? 'Schwefelsäure bringt Schwefel mit, aber keinen Phosphor. Gut bei hartem Wasser.' : E.saeure.typ === 'salpeter' ? 'Salpetersäure bringt Stickstoff mit, aber keinen Phosphor.' : 'Phosphorsäure bringt Phosphor mit. Bei hartem Wasser kann das zu viel werden.'}</p>
-      ${E.saeure.typ === 'phosphor' && haerte() && haerte().art === 'hart' ? '<div class="hinweise"><p>Dein Wasser ist hart und braucht viel Säure. Mit Phosphorsäure landet dabei oft mehr Phosphor im Tank als gut ist. Schwefelsäure, zum Beispiel Batteriesäure, ist hier meist die bessere Wahl.</p></div>' : ''}
-      ${salpeter
-        ? `<label class="feld"><span>Konzentration in %</span><input type="text" inputmode="decimal" data-feld="konz" value="${fmt(E.saeure.konz, 0)}"></label>
-           <p class="leise" style="font-size:16px">Für Privatpersonen ist Salpetersäure nur bis 3 % erhältlich. Die App rechnet mit jeder Konzentration, bei 3 % sind es rund 60 ml pro vollem Tank.</p>`
-        : E.saeure.typ === 'schwefel'
-        ? `<label class="feld"><span>Konzentration in %</span><input type="text" inputmode="decimal" data-feld="konz" value="${fmt(E.saeure.konz, 0)}"></label>
-           <p class="leise" style="font-size:16px">Batteriesäure aus dem Baumarkt hat meist 37 bis 38 %, die Konzentration steht auf dem Etikett. Genauso ätzend wie andere Säuren: Schutzbrille, Säure immer ins Wasser.</p>`
-        : `<div class="gruppe"><div class="gruppe-titel">Konzentration</div>${segment('konz', [['75', '75 %'], ['85', '85 %']], String(E.saeure.konz)).replace(/data-act="setz"/g, 'data-act="konz"')}</div>`}
+      <h2>Säuren für den pH</h2>
+      ${saeurenHtml(E)}
       <label class="feld"><span>Ziel-pH</span><input type="text" inputmode="decimal" data-feld="zielPH" value="${fmt(E.saeure.zielPH, 1)}"></label>`;
     const hw = g === 'salze' ? haerte() : null, empf = hw ? hw.salze.map(x => x[0]) : [];
     if (g === 'salze') inhalt = `
@@ -2413,13 +2442,12 @@ details.hilfe .inhalt b { color: var(--akzent); }
     loesche: d => { const r = schnapp(); Z.log = Z.log.filter(x => x.id !== d.id); speichern(); render(); toast('Eintrag gelöscht', r); },
     vorrat: d => { const v = Z.einst.vorrat; if (v[d.id] === false) delete v[d.id]; else v[d.id] = false; speichern(); render(); },
     auswahl: d => { const v = Z.einst.auswahl; if (v[d.id]) delete v[d.id]; else v[d.id] = true; speichern(); render(); },
-    saeureTyp: d => {
-      const s = Z.einst.saeure; if (s.typ === d.wert) return;
-      // gewählte Konzentration je Säure merken, damit sie beim Hin- und Herschalten erhalten bleibt
-      if (s.typ === 'salpeter') s.konzSalpeter = s.konz; else if (s.typ === 'schwefel') s.konzSchwefel = s.konz; else s.konzPhosphor = s.konz;
-      s.typ = d.wert;
-      s.konz = d.wert === 'salpeter' ? (s.konzSalpeter || 3) : d.wert === 'schwefel' ? (s.konzSchwefel || 37) : (s.konzPhosphor || 85);
-      speichern(); render();
+    saeureAn: d => {
+      const s = Z.einst.saeure, kk = { phosphor: 'konzPhosphor', salpeter: 'konzSalpeter', schwefel: 'konzSchwefel' }[d.t];
+      if (!s[kk]) s[kk] = K.saeureKonz(s, d.t);
+      s.vorrat = Object.assign({}, s.vorrat, { [d.t]: !(s.vorrat || {})[d.t] });
+      const da = K.saeurenDa(s); if (da.length) { s.typ = da[0]; s.konz = K.saeureKonz(s, s.typ); }
+      UI.fehler = ''; speichern(); render();
     },
     namenEdit: () => { UI.namenEdit = true; UI.fehler = ''; render(); const el = document.getElementById('eimerName'); if (el) { el.focus(); el.select(); } },
     namenSpeichern: () => {
@@ -2706,9 +2734,10 @@ details.hilfe .inhalt b { color: var(--akzent); }
         Object.assign(Z.einst.wasser, { ecGemessen: ec, pH: ph, alkalitaet: Math.round(mmol * 100) / 100, Ca: ca, Mg: mg, S: so4 * SULFAT_S, K: k, NO3: no3 * NITRAT_N });
         UI.setupW = null;
       }
+      if (s === 3 && !K.saeurenDa(Z.einst.saeure).length) { UI.fehler = 'Bitte mindestens eine Säure einschalten.'; return render(); }
       if (s === 3 && !Z.einst.haftung) { UI.fehler = 'Bitte die Sicherheitshinweise lesen und bestätigen.'; return render(); }
       if (s === 4 && UI.neuSalz) { UI.fehler = 'Bitte das eigene Salz erst speichern oder abbrechen.'; return render(); }
-      if (s === 4 && !daten().salze.some(x => gewaehlt(x, Z.einst) && !(x.nurMitSalpeter && Z.einst.saeure.typ !== 'salpeter') && (x.NO3 || 0) + (x.NH4 || 0) > 0)) {
+      if (s === 4 && !daten().salze.some(x => gewaehlt(x, Z.einst) && !(x.nurMitSalpeter && !K.saeurenDa(Z.einst.saeure).includes('salpeter')) && (x.NO3 || 0) + (x.NH4 || 0) > 0)) {
         UI.fehler = 'Bitte mindestens ein Salz mit Stickstoff einschalten, zum Beispiel Calcinit, Kaliumnitrat oder einen Volldünger.'; return render();
       }
       UI.fehler = '';
@@ -2771,7 +2800,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
       e.aktiv = e.aktiv === false; speichern(); render();
     },
     wasserglas: () => { Z.einst.wasserglas.an = !Z.einst.wasserglas.an; speichern(); render(); },
-    konz: d => { Z.einst.saeure.konz = +d.wert; speichern(); render(); },
+    konz: d => { Z.einst.saeure.konzPhosphor = +d.wert; speichern(); render(); },
     export: async () => {
       const text = JSON.stringify(Z, null, 1), fn = 'hydro-sicherung-' + new Date().toISOString().slice(0, 10) + '.json';
       const a = document.createElement('a');
@@ -2795,6 +2824,11 @@ details.hilfe .inhalt b { color: var(--akzent); }
       const r = schnapp(); q.name = n; speichern(); setTimeout(render, 0); toast('Übernommen', r); return;
     }
     const f = el.dataset && el.dataset.feld; if (!f) return;
+    if (f.startsWith('konz:')) {
+      const t = f.slice(5), n = Number(el.value.trim().replace(',', '.')), max = t === 'salpeter' ? 65 : 98;
+      if (!['salpeter', 'schwefel'].includes(t) || isNaN(n) || n < 1 || n > max) { toast(t === 'salpeter' && n > 65 ? 'Salpetersäure gibt es höchstens mit 65 %, bitte prüfen' : 'Wert außerhalb des sinnvollen Bereichs, bitte prüfen'); setTimeout(render, 0); return; }
+      const r = schnapp(); Z.einst.saeure[t === 'salpeter' ? 'konzSalpeter' : 'konzSchwefel'] = n; speichern(); setTimeout(render, 0); toast('Übernommen', r); return;
+    }
     if (f.startsWith('q:')) {
       const [, id, key] = f.split(':'), q = Z.einst.quellen.find(x => x.id === id), n = Number(el.value.trim().replace(',', '.'));
       const gr = { ecGemessen: [0, 2], pH: [4, 10], alkalitaet: [0, 10], Ca: [0, 300], Mg: [0, 150], sulfat: [0, 900] }[key];
@@ -2814,8 +2848,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
       b[f] = n;
       speichern(); setTimeout(render, 0); toast('Übernommen', r); return;
     }
-    if (f === 'konz' && Z.einst.saeure.typ === 'salpeter' && n > 65) { toast('Salpetersäure gibt es höchstens mit 65 %, bitte prüfen'); setTimeout(render, 0); return; }
-    if (f === 'wgDosis') Z.einst.wasserglas.mlProL = n; else if (f === 'konz' || f === 'zielPH') Z.einst.saeure[f] = n;
+    if (f === 'wgDosis') Z.einst.wasserglas.mlProL = n; else if (f === 'zielPH') Z.einst.saeure.zielPH = n;
     else if (f === 'sulfat') Z.einst.wasser.S = n * SULFAT_S; else if (f === 'nitrat') Z.einst.wasser.NO3 = n * NITRAT_N; else Z.einst.wasser[f] = n;
     speichern(); setTimeout(render, 0); toast('Übernommen', r);
   });
