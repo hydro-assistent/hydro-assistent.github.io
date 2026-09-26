@@ -277,10 +277,10 @@ details.hilfe .inhalt b { color: var(--akzent); }
 <input type="file" id="fotoDatei" accept="image/*" capture="environment" multiple hidden>
 
 <script>
-// Hydro-Assistent – Stammdaten (Stand 21.09.2026; ab Fassung 1.5 Basis 3 statt Basis 5 im Standard-Satz)
+// Hydro-Assistent – Stammdaten (Beispielwerte; in der App unter Einstellungen anpassbar)
 // Alle Salzwerte in % Element (P und K schon aus P2O5/K2O umgerechnet).
 // aktiv: gehört zum Standard-Satz (was du tatsächlich nimmst); inaktive Salze sind vorrätig, werden aber nicht verplant.
-  // Quelle: HydroBuddy-Datenbank des Nutzers; noch mit den Etiketten abzugleichen.
+  // Gehalte sind typische Handelswerte; mit dem Etikett der eigenen Ware abgleichen.
 (function (root) {
   const DATEN = {
     salze: [
@@ -303,7 +303,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
     // Mischreihenfolge im Behälter (nach der ersten Säure)
     reihenfolge: ['kco', 'bittersalz', 'k2so4', 'nh4so4', 'soft_elite', 'soft_spezial', 'basis3', 'basis5', 'kno3', 'mgno3', 'mkp', 'map', 'calcinit'],
 
-    // Wasserwerk Garßen, 07.07.2025, mg/L; EC selbst gemessen
+    // Beispiel-Leitungswasser, mg/L (mittelhart); eigene Wasseranalyse in der App eintragen
     wasser: { ecGemessen: 0.37, pH: 7.6, alkalitaet: 1.7, NO3: 0.11, NH4: 0.02, P: 0.024, K: 1.33, Ca: 42.5, Mg: 2.72, S: 14.1, Na: 10.8, Cl: 12.8, Fe: 0.121, Mn: 0.017 },
 
     eimer: { form: 'konisch', dUnten: 32, dOben: 36, hoehe: 37.5, maxFuell: 28, zielFuell: 28, anzahl: 3 },
@@ -327,11 +327,11 @@ details.hilfe .inhalt b { color: var(--akzent); }
     // 160 statt 240 mg N/L ergab 95 % des CBD-Ertrags bei rund 14 % weniger Blütenmasse; getestet mit einer CBD-Sorte in Erde-Substrat)
     spar: { faktor: 2 / 3, phasen: ['bluete'] }, // nur Blüte: die Reife ist schon reduziert, noch weniger wäre zu knapp
 
-    // Kalibrierung aus der Testmischung vom 21.09.2026
+    // Kalibrierung des EC-Modells aus einer Testmischung
     kalibrierung: {
       ecSalzFaktor: 1.08,      // EC-Modell schätzte den Salzanteil 8 % zu niedrig
-      ecProMmolSaeure: 0.076,  // 2 ml H3PO4 85 % auf 24,7 L (1,18 mmol/L) = +0,09 EC
-      saeureFaktor: 0.91,      // gebraucht 2,0 ml statt geschätzt 2,2 ml
+      ecProMmolSaeure: 0.076,  // 1,18 mmol/L H3PO4 = +0,09 EC
+      saeureFaktor: 0.91,      // tatsächlicher Säurebedarf lag 9 % unter der Rechnung
       ecProMmolSchwefel: 0.22, // Schätzung (Sulfat leitet stärker als Phosphat, 2 H+ je Molekül); noch nicht an echten Mischungen geprüft
     },
   };
@@ -556,7 +556,12 @@ details.hilfe .inhalt b { color: var(--akzent); }
         const p = (basis[e] + z[e]) / sIst, q = profil[e] / sSoll;
         form += GEWICHT[e] * (p - q) * (p - q) / q;
       }
-      return { x, k, ec, z, soll, guete: f, form };
+      // Für die Auswahl der Volldünger: Verstöße gegen Ammonium-Grenze und Eisen-Minimum zählen mit,
+      // sonst gewinnt eine Mischung mit schöner Form, die aber zu viel Ammonium oder zu wenig Eisen hat
+      const nh4Zuviel = Math.max(0, (z.NH4 + basis.NH4) / (z.N + basis.N) - NH4_MAX) / NH4_MAX;
+      const feZuwenig = feMin > 0 ? Math.max(0, feMin - z.Fe - basis.Fe) / feMin : 0;
+      const wahl = form + nh4Zuviel * nh4Zuviel + feZuwenig * feZuwenig;
+      return { x, k, ec, z, soll, guete: f, form, wahl };
     }
 
     // Aus mehreren Volldüngern derselben Gruppe den für diese Phase passenden wählen
@@ -568,14 +573,14 @@ details.hilfe .inhalt b { color: var(--akzent); }
       let bester = null;
       gruppen[g].forEach(s => {
         const r = loese(andere.concat([s]), true);
-        if (!bester || r.form < bester.form - 1e-9) bester = { guete: r.guete, form: r.form, s };
+        if (!bester || r.wahl < bester.wahl - 1e-9) bester = { guete: r.guete, wahl: r.wahl, s };
       });
       // Ein zweiter Volldünger kommt nur dazu, wenn er das Ergebnis deutlich verbessert
-      let zweiter = null, besteGuete = bester.form;
+      let zweiter = null, besteGuete = bester.wahl;
       gruppen[g].forEach(s => {
         if (s === bester.s) return;
         const r = loese(andere.concat([bester.s, s]), true);
-        if (r.form < besteGuete * 0.9) { besteGuete = r.form; zweiter = s; }
+        if (r.wahl < besteGuete * 0.9) { besteGuete = r.wahl; zweiter = s; }
       });
       const genommen = zweiter ? [bester.s, zweiter] : [bester.s];
       const raus = gruppen[g].filter(s => !genommen.includes(s));
@@ -986,38 +991,11 @@ details.hilfe .inhalt b { color: var(--akzent); }
   function lsSchreiben() { try { localStorage.setItem(LS, JSON.stringify(Z)); } catch (e) {} }
 
   let Z = lsLesen();
-  let dbRef = null, sync = 'lokal', dbTimer = null, downloads = null;
-
   function speichern() {
     Z.geaendert = Date.now();
     if (Z.log.length > LOG_MAX) Z.log = Z.log.slice(-LOG_MAX);
     lsSchreiben();
-    if (dbRef) { clearTimeout(dbTimer); dbTimer = setTimeout(dbSchreiben, 600); }
   }
-  async function dbSchreiben() {
-    if (!dbRef) return;
-    try { await dbRef.set(JSON.parse(JSON.stringify(Z))); if (sync !== 'konto') { sync = 'konto'; if (UI.view === 'einst' || UI.view === 'einstGruppe') render(); } }
-    catch (e) { sync = 'fehler'; if (UI.view === 'einst' || UI.view === 'einstGruppe') render(); }
-  }
-  (async function verbinden() {
-    try {
-      if (!window.claude || !window.claude.use) return;
-      claude.use('downloads').then(d => { downloads = d; if (UI.view === 'einst' || UI.view === 'einstGruppe') render(); });
-      const [user, db] = await Promise.all([claude.use('user'), claude.use('db')]);
-      if (!user || !db) return;
-      const uid = await user.id();
-      if (!uid) return;
-      dbRef = db.doc('data/users/' + uid + '/zustand');
-      const snap = await dbRef.get();
-      if (snap.exists) {
-        const d = pruefe(JSON.parse(JSON.stringify(snap.data())));
-        if (d.geaendert > Z.geaendert) { Z = d; lsSchreiben(); render(); }
-        else if (Z.geaendert > d.geaendert) await dbSchreiben();
-      } else if (Z.geaendert > 0) await dbSchreiben();
-      sync = 'konto';
-      if (UI.view === 'einst' || UI.view === 'einstGruppe') render();
-    } catch (e) { sync = 'fehler'; }
-  })();
 
   // ---------- Hilfen ----------
   const fmt = (n, d) => Number(n).toLocaleString('de-DE', { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -2097,7 +2075,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
     if (g === 'wasser') return `${wahlText(E.wasserWahl)}${E.quellen.length ? ' · ' + (E.quellen.length + 1) + ' Quellen' : ''} · ${{ salpeter: 'Salpetersäure', schwefel: 'Schwefelsäure' }[E.saeure.typ] || 'Phosphorsäure'} · Ziel-pH ${fmt(E.saeure.zielPH, 1)}`;
     if (g === 'salze') { const n = D.salze.filter(x => x.aktiv !== false ? E.vorrat[x.id] !== false : E.auswahl[x.id] === true).length; return `${n} Salze eingeplant${E.wasserglas.an ? ' · Kaliwasserglas' : ''}`; }
     if (g === 'rezepte') return akt.map(e => `${e.name}: ${name(PHASEN, e.phase)}`).join(' · ');
-    return sync === 'konto' ? 'Im Konto gespeichert · Anleitung · Einrichtung' : 'Sicherung · Anleitung · Einrichtung';
+    return 'Sicherung · Anleitung · Einrichtung';
   }
   function vEinst() {
     const D = daten();
@@ -2124,9 +2102,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
         <span>${esc(s.name)}<small>${wartet ? (an ? 'vorrätig, wird erst mit Salpetersäure eingeplant' : 'nicht vorrätig') : std ? (an ? 'vorrätig, wird eingeplant' : 'nicht vorrätig') : (an ? 'wird zusätzlich eingeplant' : 'nicht eingeplant')}</small></span><span class="pille"></span></button>`;
     };
     const salpeter = E.saeure.typ === 'salpeter';
-    const status = sync === 'konto' ? ['gut', 'Daten werden in deinem Claude-Konto gespeichert und bleiben auch erhalten, wenn der Browser aufgeräumt wird.']
-      : sync === 'fehler' ? ['', 'Speichern im Konto hat gerade nicht geklappt. Die Daten liegen auf diesem Gerät, speichere zur Sicherheit eine Sicherung.']
-      : ['', 'Daten liegen nur auf diesem Gerät. Speichere ab und zu eine Sicherung.'];
+    const status = ['', 'Daten liegen nur auf diesem Gerät. Speichere ab und zu eine Sicherung.'];
     let inhalt = '';
     if (g === 'tanks') inhalt = `
       ${behaelterFelder(E.behaelter)}
@@ -2216,7 +2192,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
       <button class="zeile-knopf" data-act="setupNeu">Einrichtung noch einmal durchgehen</button>
       <h2>Sicherung</h2>
       <p class="status ${status[0]}">${status[1]}</p>
-      <button class="zeile-knopf" data-act="export">${downloads || !window.claude ? 'Sicherung speichern' : 'Sicherung kopieren'}</button>
+      <button class="zeile-knopf" data-act="export">Sicherung speichern</button>
       <button class="zeile-knopf" data-act="import">Sicherung laden</button>
       <p class="leise" style="font-size:16px"><b style="color:var(--akzent)">Fotos sind in der Sicherung nicht enthalten.</b> Beim Wechsel auf ein neues Handy sind sie sonst weg. Lege wichtige Bilder vorher über „Foto speichern“ in deine Galerie.</p>
       <p class="leise" style="font-size:16px">Das Tagebuch behält die letzten ${LOG_MAX} Einträge. Fotos sind in der Sicherung nicht enthalten, sie liegen getrennt auf dem Gerät. Wichtige Bilder speicherst du am besten einzeln über „Foto speichern“ in deine Galerie.</p>`;
@@ -2663,19 +2639,10 @@ details.hilfe .inhalt b { color: var(--akzent); }
     konz: d => { Z.einst.saeure.konz = +d.wert; speichern(); render(); },
     export: async () => {
       const text = JSON.stringify(Z, null, 1), fn = 'hydro-sicherung-' + new Date().toISOString().slice(0, 10) + '.json';
-      if (downloads) {
-        try { await downloads.save({ filename: fn, data: text }); toast('Sicherung gespeichert'); }
-        catch (e) { if (e && e.code !== 'declined') toast('Speichern ging nicht'); }
-        return;
-        return;
-      }
-      if (!window.claude) { // eigene Seite (z. B. GitHub): normaler Download
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' })); a.download = fn;
-        document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-        toast('Sicherung gespeichert'); return;
-      }
-      try { await navigator.clipboard.writeText(text); toast('Sicherung kopiert'); } catch (e) { toast('Kopieren ging nicht'); }
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' })); a.download = fn;
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+      toast('Sicherung gespeichert');
     },
     import: () => document.getElementById('datei').click(),
   };
@@ -2762,7 +2729,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
   });
 
   render();
-  if ('serviceWorker' in navigator && !window.claude && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+  if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
   // Manche Hoster blenden unten rechts ein eigenes Abzeichen ein. Dann rücken die Knöpfe nach links.
   function eckePruefen() {
     const badge = document.querySelector('[id*="netlify"], [class*="netlify"], [data-netlify-badge], #wm-badge');

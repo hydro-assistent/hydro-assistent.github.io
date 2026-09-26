@@ -22,3 +22,6 @@ Fassung 3.7.0: Vier neue Salze zur Auswahl: Magnesiumnitrat, Kaliumsulfat, Ammon
 Fassung 3.8.0: Schwefelsäure als dritte Säure (z. B. Batteriesäure 37 %), bringt Schwefel statt Phosphor oder Stickstoff. Bei hartem Wasser mit Phosphorsäure weist die App darauf hin. Die EC-Schätzung mit Schwefelsäure ist noch nicht an echten Mischungen geprüft, die App sagt das in der Anleitung.
 Fassung 3.8.1: Bei schwachem Empfang wartet die App höchstens 3 Sekunden aufs Netz und startet dann aus dem Speicher; das Update kommt trotzdem im Hintergrund an.
 Fassung 3.9.0: Logo. Neues App-Symbol (Pflanze im Topf, auch als runde Android-Variante), großes Logo mit Begrüßung auf dem ersten Einrichtungsschritt, kleines Logo oben in der Hilfe.
+Fassung 3.9.1: Rezept-Rechnung bei niedriger Ziel-EC korrigiert. Bei der Wahl der Volldünger zählen jetzt Ammonium-Grenze und Eisen-Minimum mit (vorher z. B. im Wachstum bei EC 0,98 nur Soft Elite: 19 % Ammonium, zu wenig Eisen und Magnesium). Stammdaten ohne persönliche Angaben, Speichern nur noch auf dem Gerät.
+
+Tests: `node tests/rezept.test.js` prüft alle Phasen und Stärken. `python3 tests/vergleich_optimum.py` stellt die App gegen eine unabhängige Optimierung (braucht numpy und scipy).
