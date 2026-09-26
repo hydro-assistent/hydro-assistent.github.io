@@ -26,6 +26,8 @@ Fassung 3.9.1: Rezept-Rechnung bei niedriger Ziel-EC korrigiert. Bei der Wahl de
 
 Fassung 3.10.0: Eigene Werte sind Pflicht. Die Einrichtung (jetzt fünf Schritte) verlangt die eigene Wasseranalyse (EC, pH, Karbonathärte, Calcium, Magnesium, Sulfat; Kalium und Nitrat freiwillig), startet ohne vorausgewählte Salze und lässt die Gehalte jedes Salzes in Etikett-Einheiten (P₂O₅, K₂O, CaO, MgO, SO₃) prüfen. Gehalte lassen sich auch später unter Einstellungen → Salze & Zusatz ändern. Sicherheits- und Haftungshinweise zu Säuren mit Pflicht-Bestätigung, in der Anleitung und in jeder Mischanleitung mit Säure. Nitrat und Sulfat werden wie im Wasserbericht eingetragen (vorher wurde Nitrat versehentlich als Stickstoff gerechnet). Bestehende Stände behalten ihre Werte und gehen die Einrichtung einmal durch.
 
+Fassung 3.11.0: Die eingebauten Salze sind geprüft und werden nicht mehr abgefragt, die Einrichtung hat wieder vier Schritte. Neu: „Eigenes Salz hinzufügen“ (in der Einrichtung und unter Einstellungen → Salze & Zusatz) mit Name und Etikettwerten; speichern geht nur mit der Bestätigung, dass die Werte vom Etikett stammen. Eigene Salze mit Calcium werden wie Calcinit getrennt vorgelöst und zuletzt zugegeben.
+
 Tests: `node tests/rezept.test.js` prüft alle Phasen und Stärken, `node tests/schwefel.test.js` den Schwefelsäure-Zweig. `python3 tests/vergleich_optimum.py` stellt die App gegen eine unabhängige Optimierung (braucht numpy und scipy).
 
 ## Sicherheit und Haftung

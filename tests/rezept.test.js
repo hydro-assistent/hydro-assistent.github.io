@@ -32,5 +32,24 @@ for (const phase of Object.keys(D.phasen)) for (const typ of ['photo', 'auto']) 
   pruefe(r.ist.Mg > 10, `Regression EC 0,98: Mg nur ${r.ist.Mg.toFixed(1)} mg/L`);
 }
 
+// Eigene Salze (so wie die App sie anhängt): werden verplant, Calcium-Salze sind gekennzeichnet (getrennt vorlösen)
+{
+  const D2 = JSON.parse(JSON.stringify(D));
+  const leer = { NO3: 0, NH4: 0, P: 0, K: 0, Ca: 0, Mg: 0, S: 0, Fe: 0, Mn: 0, Zn: 0, Cu: 0, B: 0, Mo: 0 };
+  // Calciumnitrat eines anderen Herstellers statt Calcinit, dazu Kaliumsulfat als eigenes Salz
+  D2.salze.push(Object.assign({}, leer, { id: 'eigen_ca', name: 'Calciumnitrat X', aktiv: false, eigen: true, NO3: 15.5, Ca: 19.0 }));
+  D2.salze.push(Object.assign({}, leer, { id: 'eigen_k', name: 'Kaliumsulfat X', aktiv: false, eigen: true, K: 41.5, S: 18.0 }));
+  D2.reihenfolge.push('eigen_ca'); D2.reihenfolge.splice(D2.reihenfolge.indexOf('calcinit'), 0, 'eigen_k');
+  const r = K.rezept(D2, { phase: 'bluete', liter, ecZiel: 1.75, vorrat: { calcinit: false }, auswahl: { eigen_ca: true, eigen_k: true } });
+  const ca = r.mengen.find(m => m.id === 'eigen_ca');
+  pruefe(ca && ca.gramm > 0, 'Eigenes Calciumsalz wird verplant, wenn Calcinit fehlt');
+  pruefe(ca && ca.calcium === true, 'Eigenes Calciumsalz ist als Calcium-Salz gekennzeichnet');
+  pruefe(r.mengen.filter(m => m.id !== 'eigen_ca').every(m => m.calcium === false), 'Andere Salze nicht als Calcium-Salz gekennzeichnet');
+  pruefe(r.mengen[r.mengen.length - 1].id === 'eigen_ca', 'Calcium-Salz kommt zuletzt');
+  pruefe(Math.abs(r.ec.gesamt - 1.75) < 0.02, `EC mit eigenen Salzen ${r.ec.gesamt.toFixed(3)}`);
+  const rc = K.rezept(D, { phase: 'bluete', liter, ecZiel: 1.75 });
+  pruefe(rc.mengen.find(m => m.id === 'calcinit').calcium === true, 'Calcinit ist als Calcium-Salz gekennzeichnet');
+}
+
 console.log(`${faelle} Fälle geprüft, ${fehler} Fehler.`);
 process.exit(fehler ? 1 : 0);
