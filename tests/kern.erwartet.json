@@ -1,0 +1,555 @@
+{
+ "rezepte": {
+  "Wachstum Photo normal, 25 cm": {
+   "mengen": [
+    [
+     "bittersalz",
+     3.76,
+     0.17223
+    ],
+    [
+     "soft_elite",
+     1.96,
+     0.08999
+    ],
+    [
+     "basis3",
+     4.56,
+     0.20895
+    ],
+    [
+     "kno3",
+     1.92,
+     0.08819
+    ],
+    [
+     "calcinit",
+     6.49,
+     0.29739
+    ]
+   ],
+   "saeureMl": 1.7,
+   "ec": 1.35,
+   "faktorK": 0.57237,
+   "ist": {
+    "N": 86.31319,
+    "P": 52.06049,
+    "K": 106.83752,
+    "Ca": 97.78483,
+    "Mg": 25.46092,
+    "S": 56.73484
+   }
+  },
+  "Blüte Photo normal, 25 cm": {
+   "mengen": [
+    [
+     "bittersalz",
+     6.45,
+     0.2955
+    ],
+    [
+     "basis3",
+     7.53,
+     0.34499
+    ],
+    [
+     "kno3",
+     5.28,
+     0.2418
+    ],
+    [
+     "calcinit",
+     8.46,
+     0.38766
+    ]
+   ],
+   "saeureMl": 1.7,
+   "ec": 1.75,
+   "faktorK": 0.84254,
+   "ist": {
+    "N": 104.08148,
+    "P": 58.60997,
+    "K": 197.93196,
+    "Ca": 114.5668,
+    "Mg": 39.54962,
+    "S": 83.56362
+   }
+  },
+  "Blüte Auto stark, voll": {
+   "mengen": [
+    [
+     "bittersalz",
+     7.47,
+     0.30241
+    ],
+    [
+     "basis3",
+     8.7,
+     0.35249
+    ],
+    [
+     "kno3",
+     6.06,
+     0.24568
+    ],
+    [
+     "calcinit",
+     9.85,
+     0.39882
+    ]
+   ],
+   "saeureMl": 2,
+   "ec": 1.78,
+   "faktorK": 0.86029,
+   "ist": {
+    "N": 106.57404,
+    "P": 59.101,
+    "K": 201.67424,
+    "Ca": 116.64129,
+    "Mg": 40.39754,
+    "S": 85.13748
+   }
+  },
+  "Blüte Photo normal, Sparmodus": {
+   "mengen": [
+    [
+     "bittersalz",
+     4.07,
+     0.18623
+    ],
+    [
+     "basis3",
+     5.02,
+     0.22998
+    ],
+    [
+     "kno3",
+     3.79,
+     0.17363
+    ],
+    [
+     "calcinit",
+     4.97,
+     0.22764
+    ]
+   ],
+   "saeureMl": 1.7,
+   "ec": 1.29,
+   "faktorK": 0.56394,
+   "ist": {
+    "N": 66.37891,
+    "P": 51.08105,
+    "K": 137.19976,
+    "Ca": 84.81813,
+    "Mg": 26.23385,
+    "S": 59.008
+   }
+  },
+  "Reife Photo sanft, 20 cm": {
+   "mengen": [
+    [
+     "bittersalz",
+     2.04,
+     0.1189
+    ],
+    [
+     "basis3",
+     2.62,
+     0.15247
+    ],
+    [
+     "kno3",
+     2.05,
+     0.11909
+    ],
+    [
+     "calcinit",
+     2.12,
+     0.12328
+    ]
+   ],
+   "saeureMl": 1.4,
+   "ec": 0.98,
+   "faktorK": 0.51084,
+   "ist": {
+    "N": 40.31796,
+    "P": 46.00728,
+    "K": 92.94596,
+    "Ca": 65.41699,
+    "Mg": 17.86843,
+    "S": 43.27913
+   }
+  },
+  "Anzucht Photo normal, 15 cm": {
+   "mengen": [
+    [
+     "bittersalz",
+     0.29,
+     0.02272
+    ],
+    [
+     "basis3",
+     1.58,
+     0.12467
+    ],
+    [
+     "calcinit",
+     1.08,
+     0.08518
+    ]
+   ],
+   "saeureMl": 1,
+   "ec": 0.7,
+   "faktorK": 0.33238,
+   "ist": {
+    "N": 17.07237,
+    "P": 44.18794,
+    "K": 38.58715,
+    "Ca": 58.33411,
+    "Mg": 7.91675,
+    "S": 28.27368
+   }
+  },
+  "Wachstum EC 0,98 (Regression 3.9.1)": {
+   "mengen": [
+    [
+     "bittersalz",
+     1.87,
+     0.09332
+    ],
+    [
+     "soft_elite",
+     1.08,
+     0.05411
+    ],
+    [
+     "basis3",
+     2.62,
+     0.1308
+    ],
+    [
+     "kno3",
+     1.21,
+     0.06043
+    ],
+    [
+     "calcinit",
+     3.23,
+     0.16135
+    ]
+   ],
+   "saeureMl": 1.6,
+   "ec": 0.97999,
+   "faktorK": 0.35773,
+   "ist": {
+    "N": 50.42468,
+    "P": 46.00526,
+    "K": 69.17422,
+    "Ca": 72.49573,
+    "Mg": 15.53048,
+    "S": 38.86945
+   }
+  },
+  "Blüte ohne Calcinit": {
+   "mengen": [
+    [
+     "bittersalz",
+     6.73,
+     0.33634
+    ],
+    [
+     "soft_elite",
+     2.66,
+     0.13315
+    ],
+    [
+     "basis3",
+     5.08,
+     0.2542
+    ],
+    [
+     "kno3",
+     8,
+     0.39977
+    ]
+   ],
+   "saeureMl": 1.6,
+   "ec": 1.59987,
+   "faktorK": 0.90295,
+   "ist": {
+    "N": 95.1195,
+    "P": 56.15237,
+    "K": 245.14672,
+    "Ca": 42.5,
+    "Mg": 42.90897,
+    "S": 82.83254
+   }
+  },
+  "Wachstum mit Salpetersäure": {
+   "mengen": [
+    [
+     "bittersalz",
+     3.11,
+     0.15555
+    ],
+    [
+     "soft_elite",
+     2.13,
+     0.10675
+    ],
+    [
+     "basis3",
+     6.92,
+     0.346
+    ],
+    [
+     "calcinit",
+     5.81,
+     0.29027
+    ]
+   ],
+   "saeureMl": 3.2,
+   "ec": 1.39999,
+   "faktorK": 0.62752,
+   "ist": {
+    "N": 98.02628,
+    "P": 25.4678,
+    "K": 115.36167,
+    "Ca": 96.46121,
+    "Mg": 27.35654,
+    "S": 67.16938
+   }
+  },
+  "Blüte mit Salpetersäure, Kaliumcarbonat": {
+   "mengen": [
+    [
+     "kco",
+     8.22,
+     0.41103
+    ],
+    [
+     "bittersalz",
+     0.92,
+     0.04621
+    ],
+    [
+     "soft_elite",
+     6.17,
+     0.30867
+    ],
+    [
+     "calcinit",
+     3.33,
+     0.16674
+    ]
+   ],
+   "saeureMl": 17.5,
+   "ec": 1.7,
+   "faktorK": 0.23509,
+   "ist": {
+    "N": 191.11634,
+    "P": 8.10497,
+    "K": 264.63694,
+    "Ca": 73.49757,
+    "Mg": 10.90144,
+    "S": 25.04551
+   }
+  },
+  "Blüte mit Schwefelsäure": {
+   "mengen": [
+    [
+     "bittersalz",
+     3.45,
+     0.17262
+    ],
+    [
+     "basis3",
+     10.7,
+     0.53585
+    ],
+    [
+     "kno3",
+     1.05,
+     0.05232
+    ],
+    [
+     "calcinit",
+     8.03,
+     0.4014
+    ]
+   ],
+   "saeureMl": 2.5,
+   "ec": 1.7,
+   "faktorK": 0.73907,
+   "ist": {
+    "N": 85.67439,
+    "P": 35.10098,
+    "K": 181.69651,
+    "Ca": 117.1206,
+    "Mg": 32.29223,
+    "S": 104.11384
+   }
+  },
+  "Wachstum, magnesiumreiches Wasser": {
+   "mengen": [
+    [
+     "bittersalz",
+     0.6,
+     0.02998
+    ],
+    [
+     "soft_elite",
+     3.13,
+     0.15651
+    ],
+    [
+     "basis3",
+     5.4,
+     0.26989
+    ],
+    [
+     "kno3",
+     3.76,
+     0.1882
+    ],
+    [
+     "calcinit",
+     10,
+     0.5008
+    ]
+   ],
+   "saeureMl": 1.6,
+   "ec": 1.70006,
+   "faktorK": 0.94228,
+   "ist": {
+    "N": 149.49684,
+    "P": 57.79122,
+    "K": 170.34965,
+    "Ca": 135.59791,
+    "Mg": 51.28468,
+    "S": 44.79124
+   }
+  },
+  "Blüte, hartes Wasser, Phosphorsäure": {
+   "mengen": [
+    [
+     "bittersalz",
+     2.82,
+     0.14107
+    ],
+    [
+     "soft_elite",
+     2.44,
+     0.12192
+    ],
+    [
+     "basis3",
+     4.77,
+     0.23869
+    ],
+    [
+     "kno3",
+     5.91,
+     0.29544
+    ],
+    [
+     "calcinit",
+     2.01,
+     0.10068
+    ]
+   ],
+   "saeureMl": 3.7,
+   "ec": 1.80012,
+   "faktorK": 0.81263,
+   "ist": {
+    "N": 94.97432,
+    "P": 103.52896,
+    "K": 200.72089,
+    "Ca": 128.71558,
+    "Mg": 38.83599,
+    "S": 71.77169
+   }
+  }
+ },
+ "topUp": {
+  "Fall A, nur Wasser": {
+   "fall": "A",
+   "liter": 5.66341,
+   "ecDanach": 1.78017,
+   "saeureMl": 0.5
+  },
+  "Fall B, Nährlösung": {
+   "fall": "B",
+   "liter": 9.32367,
+   "ecNachfuell": 2.625,
+   "ecDanach": 1.73821,
+   "rezept": {
+    "mengen": [
+     [
+      "bittersalz",
+      4.08,
+      0.43805
+     ],
+     [
+      "basis3",
+      6.67,
+      0.71573
+     ],
+     [
+      "kno3",
+      2.25,
+      0.241
+     ],
+     [
+      "calcinit",
+      6.77,
+      0.72645
+     ]
+    ],
+    "saeureMl": 0.7,
+    "ec": 2.625,
+    "faktorK": 1.33172,
+    "ist": {
+     "N": 167.60326,
+     "P": 82.87847,
+     "K": 308.41215,
+     "Ca": 177.54631,
+     "Mg": 62.24102,
+     "S": 135.46226
+    }
+   }
+  }
+ },
+ "zielEC": {
+  "anzucht/photo/sanft": 0.6,
+  "anzucht/photo/normal": 0.7,
+  "anzucht/photo/stark": 0.81,
+  "anzucht/auto/sanft": 0.51,
+  "anzucht/auto/normal": 0.6,
+  "anzucht/auto/stark": 0.69,
+  "wachstum/photo/sanft": 1.15,
+  "wachstum/photo/normal": 1.35,
+  "wachstum/photo/stark": 1.55,
+  "wachstum/auto/sanft": 0.98,
+  "wachstum/auto/normal": 1.15,
+  "wachstum/auto/stark": 1.32,
+  "bluete/photo/sanft": 1.49,
+  "bluete/photo/normal": 1.75,
+  "bluete/photo/stark": 2.01,
+  "bluete/auto/sanft": 1.32,
+  "bluete/auto/normal": 1.55,
+  "bluete/auto/stark": 1.78,
+  "reife/photo/sanft": 0.98,
+  "reife/photo/normal": 1.15,
+  "reife/photo/stark": 1.32,
+  "reife/auto/sanft": 0.85,
+  "reife/auto/normal": 1,
+  "reife/auto/stark": 1.15
+ },
+ "liter": {
+  "konisch": 21.82825,
+  "rund": 14.13717,
+  "rechteck": 24,
+  "tabelle": 16.5
+ }
+}
