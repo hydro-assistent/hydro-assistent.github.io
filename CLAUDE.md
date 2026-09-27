@@ -39,7 +39,7 @@ Die ganze App steckt in **`index.html`** (~2930 Zeilen): ein `<style>`-Block und
 Die ersten drei Blöcke enden jeweils mit `if (typeof module !== 'undefined') module.exports = …; else root.… = …`. **`tests/laden.js` zieht die Skripte per Regex (`<script>…</script>`) aus `index.html` und führt die Blöcke, die `const DATEN` bzw. `const KERN` enthalten, in einer `vm`-Sandbox aus** – die Tests prüfen also genau den ausgelieferten Code. Folgen daraus:
 - Diese Blöcke müssen plain `<script>` ohne Attribute bleiben und die Merkmale `const DATEN` / `const KERN` behalten.
 - DATEN und KERN dürfen weder DOM noch Browser-APIs nutzen; die Sandbox stellt nur `Math, Object, Array, Number, JSON, Error` bereit.
-- `tests/vergleich_optimum.py` spiegelt Gewichte und Zielfunktion von `ziel()` im Solver nach. Wer die Zielfunktion in KERN ändert, muss das Python-Modell mitziehen. Es rechnet mit der festen `DATEN.saeure` (Phosphorsäure), nicht mit der Säure je Phase.
+- `tests/vergleich_optimum.py` spiegelt Gewichte und Zielfunktion von `ziel()` im Solver nach. Wer die Zielfunktion in KERN ändert, muss das Python-Modell mitziehen. Es rechnet mit der Säure je Phase (einmal Phosphor + Salpeter vorrätig, einmal nur Phosphor) und bewertet das App-Rezept mit dem für es besten k, misst also die Salzwahl; Grenze Faktor 1,3.
 
 ### Zustand und Speicher
 
