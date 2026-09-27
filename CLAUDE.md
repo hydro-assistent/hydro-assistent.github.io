@@ -14,6 +14,7 @@ Sprache: Code-Bezeichner, Kommentare, UI-Texte, Commit-Nachrichten und LIESMICH 
 node tests/rezept.test.js      # alle Phasen × Sorte (photo/auto) × Stärke, plus Regressionen
 node tests/schwefel.test.js    # Schwefelsäure-Zweig, Erwartungswerte unabhängig nachgerechnet
 node tests/saeure.test.js      # Wahl der Säure je Phase (saeureWahl)
+node tests/sparsam.test.js     # Rezept „Sparsam“ (DATEN.sparsam) und topUp mit nachfuellen: 'verbrauch'
 node tests/fassung.test.js     # VERSION in sw.js = neueste „Fassung“ in LIESMICH.md, DATEIEN vorhanden
 node tests/kern.test.js        # Golden-Master: 13 feste Rezepte, topUp, zielEC, liter gegen tests/kern.erwartet.json
 node tests/kern.test.js --neu  # erwartete Werte neu schreiben – nur bei gewollter Rechenänderung, Diff prüfen
@@ -32,7 +33,9 @@ Die ganze App steckt in **`index.html`** (~2930 Zeilen): ein `<style>`-Block und
 
 1. **Stammdaten** – `const DATEN` (Salze mit Gehalten in % Element, P/K schon aus P₂O₅/K₂O umgerechnet; Phasenprofile, Stärken, Säuren, `kalibrierung`, Beispielwasser nur für Tests/alte Stände). Export als `window.HYDRO_DATEN`.
 2. **Rechenkern** – `const KERN = { saeureWahl, saeurenDa, saeureKonz, liter, saeure, wasserglasProMl, ecSchaetzung, zugabe, rezept, vollansatz, topUp, zielEC, runden }`. Reine Funktionen ohne DOM; `rezept()` ist der Solver (Salzmengen + Faktor k auf Ziel-EC, mit Ammonium-Grenze ≤ 15 % und Eisen-Minimum). Export als `window.HydroKern`.
-   - Säure je Phase (seit 3.12): `saeureWahl(s, phase)` nimmt nach `SAEURE_VORRANG` die erste vorrätige Säure (Anzucht/Wachstum Salpeter, Blüte/Reife Phosphor, Schwefel zuletzt). Neues Format `s.vorrat` + `konzPhosphor`/`konzSalpeter`/`konzSchwefel`; alte Stände mit nur `typ`/`konz` gelten als eine vorrätige Säure. Salze mit `nurMitSalpeter` (Kaliumcarbonat) werden nur mit Salpetersäure verplant.
+   - Säure je Phase (seit 3.12): `saeureWahl(s, phase)` nimmt nach `SAEURE_VORRANG` die erste vorrätige Säure (Anzucht/Wachstum Salpeter, Blüte/Reife Phosphor, Schwefel zuletzt). Neues Format `s.vorrat` + `konzPhosphor`/`konzSalpeter`/`konzSchwefel`; alte Stände mit nur `typ`/`konz` gelten als eine vorrätige Säure. Salze mit `nurMitSalpeter` (Kaliumcarbonat) werden nur mit Salpetersäure verplant. Dritter Parameter `wenigP` (Rezept „Sparsam“): Vorrang wie im Wachstum, also Salpetersäure vor Phosphorsäure.
+   - Zusatzwege seit 3.13, die bisherige Rechnung bleibt unberührt: `rezept(…, { rezeptSparsam })` nimmt das Verhältnis `DATEN.sparsam` = Cannabis-Lösung aus „Utah Hydroponic Solutions“, in der Blüte stattdessen `phasen.bluete.profilSparsam` = Versuchslösung EC 2 / P 15 (Hershkowitz et al. 2025, Supplementary Table 1) (nicht in der Reife); `rezept().hinweise` meldet knappes Bor/Zink gegen dieselbe Lösung (`SPUREN_REF`), ohne die Mengen zu ändern; `topUp(…, { nachfuellen: 'verbrauch' })` füllt immer mit Ziel-EC nach und gibt erst über 1,25 × Ziel-EC reines Wasser. In der UI: `e.rezept === 'sparsam'` je Tank, `Z.einst.nachfuellen` (`'ec'`/`'verbrauch'`).
+   - In der Oberfläche stehen keine Forschernamen; Quellen nur als Kommentar im Code.
 3. **Pflanzendoktor** – `const DOKTOR` (Symptome/Probleme), Export als `window.HydroDoktor`.
 4. **UI** – IIFE mit Zustand `Z`, `render()`, allen Ansichten, Einrichtung, Sicherung.
 
