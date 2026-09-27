@@ -63,5 +63,13 @@ const ecZiel = K.zielEC(d, 'wachstum', 'photo', 'normal');
   pruefe(v.fall === '–', 'Voller Tank: nichts nachfüllen');
 }
 
+// Spurenelement-Hinweis (seit 3.13.1): die eingebauten Salze bringen wenig Bor, das meldet das Rezept – ohne die Mengen zu ändern
+{
+  const d2 = mitSaeure('salpeter'), ec = K.zielEC(d2, 'bluete', 'photo', 'normal');
+  const r = K.rezept(d2, { phase: 'bluete', liter: 28, ecZiel: ec });
+  pruefe(r.hinweise.some(h => /^Bor nur/.test(h)), 'Hinweis Bor knapp fehlt');
+  pruefe(!r.hinweise.some(h => /^Zink nur/.test(h)), 'Zink reicht, kein Hinweis');
+}
+
 console.log(`${n} Prüfungen, ${fehler} Fehler.`);
 if (fehler) process.exit(1);

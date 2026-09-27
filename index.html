@@ -357,6 +357,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
   const UEBERSCHUSS_MILD = { P: true, S: true, Ca: true, Mg: true }; // Überschuss halb so schlimm wie Mangel
   const NH4_MAX = 0.15;
   const FE_MAX = 3; // mg/L
+  const SPUREN_REF = { B: 0.43, Zn: 0.2 }; // mg/L bei 100 mg N/L, nur für Hinweise
   const GRENZE = { N: 250, P: 100, K: 400, Ca: 250, Mg: 100, S: 999 }; // mg/L, ab hier Hinweis 'hoch'
   const MOLMASSE = { K: 39.098, Ca: 40.078, Mg: 24.305, N: 14.007, P: 30.974, S: 32.06 };
 
@@ -654,6 +655,13 @@ details.hilfe .inhalt b { color: var(--akzent); }
     if (ist.NH4anteil > NH4_MAX + 0.01) hinweise.push(`Ammonium-Anteil ${(ist.NH4anteil * 100).toFixed(0)} % (Ziel höchstens 15 %).`);
     if (ist.Fe < 0.5) hinweise.push(`Eisen nur ${ist.Fe.toFixed(2)} mg/L – eher knapp.`);
     if (ist.Fe > 3) hinweise.push(`Eisen ${ist.Fe.toFixed(1)} mg/L – über 3 mg/L.`);
+    // Bor und Zink steuert der Solver nicht, sie kommen nur mit den Volldüngern. Vergleich mit einer Referenzlösung
+    // (Nachfülllösung für zweikeimblättrige Pflanzen, Bugbee & Langenfeld 2024: B 40 µM, Zn 3 µM bei 100 mg N/L; B 0,4 mg/L auch
+    // in der Cannabis-Lösung von Hershkowitz, Westmoreland, Bugbee 2025). Hinweis ab unter einem Viertel davon, auf den N-Gehalt bezogen.
+    for (const [e, ref, name] of [['B', SPUREN_REF.B, 'Bor'], ['Zn', SPUREN_REF.Zn, 'Zink']]) {
+      const soll = ref * ist.N / 100;
+      if (ist[e] < soll * 0.25) hinweise.push(`${name} nur ${ist[e].toFixed(2)} mg/L aus den Salzen – knapp (gut wären etwa ${soll.toFixed(2)}). Leitungswasser bringt oft etwas mit (steht im Wasserbericht). Sonst hilft ein Spurenelement-Dünger mit ${name}.`);
+    }
     if (Math.abs(ec.gesamt - opt.ecZiel) > 0.15) hinweise.push(`Geschätzte EC ${ec.gesamt.toFixed(2)} weicht mehr als 0,15 vom Ziel ab.`);
 
     // Winzige Mengen (unter 0,2 g bei einem vollen Ansatz) weglassen und ohne dieses Salz neu rechnen
