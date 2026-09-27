@@ -325,11 +325,12 @@ details.hilfe .inhalt b { color: var(--akzent); }
         profilStudie: { N: 194, P: 59, K: 200, Ca: 140, Mg: 50, S: 60 } },
       reife:    { name: 'Reife',    ecPhoto: [1.0, 1.3], ecAuto: [0.8, 1.2], profil: { N: 80,  P: 40, K: 180, Ca: 120, Mg: 40, S: 40 }, deckel: 1.5 },
     },
-    // Rezept „Sparsam“ (Anzucht bis Blüte): Verhältnis wie in der Nachfülllösung für zweikeimblättrige Pflanzen
-    // (Utah Hydroponic Solutions, Bugbee & Langenfeld 2024: N 100, P 12, K 141, Ca 60, Mg 19, S 26 mg/L). In Cannabis-Versuchen
-    // in Tiefwasserkultur reichten 15 mg P/L für vollen Ertrag und Cannabinoide (Hershkowitz, Westmoreland, Bugbee 2025,
-    // Front. Plant Sci. 16:1433985). Nur das Verhältnis zählt, die Stärke kommt wie immer aus der Ziel-EC.
-    sparsam: { N: 100, P: 12, K: 141, Ca: 60, Mg: 19, S: 26 },
+    // Rezept „Sparsam“ (Anzucht bis Blüte): Cannabis-Lösung aus Utah Hydroponic Solutions (Bugbee & Langenfeld, Stand 16.4.2024,
+    // S. 4, Cannabis-Tabelle vom März 2023): N 133 + 27 aus der pH-Regelung, P 31, K 242, Ca 80, Mg 19, S 26 mg/L bei EC 1,8,
+    // ausgelegt auf 4 g Trockenmasse je Liter Wasser (mehr CO2, etwa 60 % Luftfeuchte). Nur das Verhältnis zählt, die Stärke kommt
+    // wie immer aus der Ziel-EC. P bleibt damit unter 30 mg/L; in Tiefwasserkultur reichten sogar 15 mg P/L und EC 2 für vollen
+    // Ertrag und Cannabinoide (Hershkowitz, Westmoreland, Bugbee 2025, Front. Plant Sci. 16:1433985).
+    sparsam: { N: 160, P: 31, K: 242, Ca: 80, Mg: 19, S: 26 },
     staerke: { sanft: 0.85, normal: 1.0, stark: 1.15 },
     // Sparmodus in der Blüte: Nährstoffanteil der EC auf zwei Drittel (Crispim Massuela et al. 2023, Front. Plant Sci. 14:1233232:
     // 160 statt 240 mg N/L ergab 95 % des CBD-Ertrags bei rund 14 % weniger Blütenmasse; getestet mit einer CBD-Sorte in Erde-Substrat)
@@ -357,7 +358,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
   const UEBERSCHUSS_MILD = { P: true, S: true, Ca: true, Mg: true }; // Überschuss halb so schlimm wie Mangel
   const NH4_MAX = 0.15;
   const FE_MAX = 3; // mg/L
-  const SPUREN_REF = { B: 0.43, Zn: 0.2 }; // mg/L bei 100 mg N/L, nur für Hinweise
+  const SPUREN_REF = { B: 0.43 / 1.6, Zn: 0.2 / 1.6 }; // mg/L je 100 mg N/L (Cannabis-Lösung: B 40 µM, Zn 3 µM bei 160 mg N/L), nur für Hinweise
   const GRENZE = { N: 250, P: 100, K: 400, Ca: 250, Mg: 100, S: 999 }; // mg/L, ab hier Hinweis 'hoch'
   const MOLMASSE = { K: 39.098, Ca: 40.078, Mg: 24.305, N: 14.007, P: 30.974, S: 32.06 };
 
@@ -648,16 +649,15 @@ details.hilfe .inhalt b { color: var(--akzent); }
       for (const e of ['N', 'P', 'K', 'Ca', 'Mg']) { if (!liefert(e)) continue; const a = (ist[e] - soll[e]) / soll[e]; if (a < abwMin) { abwMin = a; schlimmstes = e; } }
       hinweise.push(`Nicht vorrätig: ${fehlend.join(', ')}.` + (schlimmstes ? ` Dadurch fehlt vor allem ${schlimmstes} (${(abwMin * 100).toFixed(0)} % gegenüber dem Verhältnis).` : ''));
     }
-    if (sparsam && sa.P > soll.P * 1.2) hinweise.push(`Die ${sa.name} bringt schon ${sa.P.toFixed(0)} mg/L Phosphor, mehr als das Rezept „Sparsam“ vorsieht (${soll.P.toFixed(0)} mg/L). Mit Salpetersäure wird es sparsamer.`);
+    if (sparsam && sa.P > soll.P * 0.5) hinweise.push(`Die ${sa.name} bringt allein schon ${sa.P.toFixed(0)} mg/L Phosphor, das Rezept „Sparsam“ sieht insgesamt ${soll.P.toFixed(0)} mg/L vor. Mit Salpetersäure wird es sparsamer.`);
     if (w.Na > 50) hinweise.push(`Natrium im Wasser ${w.Na.toFixed(0)} mg/L (über 50). Die Pflanze nimmt es kaum auf, es reichert sich im Tank an. Öfter neu ansetzen oder Osmose- bzw. Regenwasser beimischen.`);
     if (w.Cl > 100) hinweise.push(`Chlorid im Wasser ${w.Cl.toFixed(0)} mg/L (über 100). Es reichert sich im Tank an und kann die Wurzeln schädigen. Öfter neu ansetzen oder Osmose- bzw. Regenwasser beimischen.`);
     if (D.saeure.typ === 'schwefel') hinweise.push('Mit Schwefelsäure ist die EC-Schätzung noch nicht an echten Mischungen geprüft. Miss nach und trag die Werte ein.');
     if (ist.NH4anteil > NH4_MAX + 0.01) hinweise.push(`Ammonium-Anteil ${(ist.NH4anteil * 100).toFixed(0)} % (Ziel höchstens 15 %).`);
     if (ist.Fe < 0.5) hinweise.push(`Eisen nur ${ist.Fe.toFixed(2)} mg/L – eher knapp.`);
     if (ist.Fe > 3) hinweise.push(`Eisen ${ist.Fe.toFixed(1)} mg/L – über 3 mg/L.`);
-    // Bor und Zink steuert der Solver nicht, sie kommen nur mit den Volldüngern. Vergleich mit einer Referenzlösung
-    // (Nachfülllösung für zweikeimblättrige Pflanzen, Bugbee & Langenfeld 2024: B 40 µM, Zn 3 µM bei 100 mg N/L; B 0,4 mg/L auch
-    // in der Cannabis-Lösung von Hershkowitz, Westmoreland, Bugbee 2025). Hinweis ab unter einem Viertel davon, auf den N-Gehalt bezogen.
+    // Bor und Zink steuert der Solver nicht, sie kommen nur mit den Volldüngern. Vergleich mit der Cannabis-Lösung aus
+    // Utah Hydroponic Solutions (Bugbee & Langenfeld 2024), auf den N-Gehalt bezogen. Hinweis ab unter einem Viertel davon.
     for (const [e, ref, name] of [['B', SPUREN_REF.B, 'Bor'], ['Zn', SPUREN_REF.Zn, 'Zink']]) {
       const soll = ref * ist.N / 100;
       if (ist[e] < soll * 0.25) hinweise.push(`${name} nur ${ist[e].toFixed(2)} mg/L aus den Salzen – knapp (gut wären etwa ${soll.toFixed(2)}). Leitungswasser bringt oft etwas mit (steht im Wasserbericht). Sonst hilft ein Spurenelement-Dünger mit ${name}.`);

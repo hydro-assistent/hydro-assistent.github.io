@@ -34,6 +34,8 @@ Fassung 3.13.0: Zwei neue Wahlmöglichkeiten, alles Bisherige rechnet unverände
 
 Fassung 3.13.1: Die Mischanleitung sagt jetzt Bescheid, wenn Bor oder Zink knapp sind. Die eingebauten Dünger bringen nur sehr wenig Bor mit (meist unter 0,1 mg/L, gut wären um 0,4). Oft deckt das Leitungswasser den Rest, sonst hilft ein Spurenelement-Dünger mit Bor. An den Mengen ändert sich nichts.
 
+Fassung 3.13.2: Das Rezept „Sparsam“ folgt jetzt einer Nährlösung, die eigens für Cannabis in Wasserkultur erprobt wurde (vorher: allgemeine Werte für Gemüse wie Tomate und Salat). In der Blüte liegen damit etwa 160 mg/L Stickstoff, 27 mg/L Phosphor und 260 mg/L Kalium im Tank, bei weniger Calcium und Magnesium als im klassischen Rezept. Der Hinweis zu Bor rechnet mit denselben Werten. Das klassische Rezept rechnet unverändert.
+
 Tests: `node tests/rezept.test.js` prüft alle Phasen und Stärken, `node tests/schwefel.test.js` den Schwefelsäure-Zweig, `node tests/saeure.test.js` die Wahl der Säure je Phase, `node tests/sparsam.test.js` das Rezept „Sparsam“ und das Nachfüllen nach Verbrauch, `node tests/kern.test.js` feste Beispielrezepte mit den erwarteten Gramm-Mengen (nach gewollten Rechenänderungen mit `--neu` neu schreiben), `node tests/fassung.test.js` die Versionsnummer in `sw.js`. `python3 tests/vergleich_optimum.py` stellt die App gegen eine unabhängige Optimierung (braucht numpy und scipy).
 
 ## Sicherheit und Haftung
