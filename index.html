@@ -325,6 +325,11 @@ details.hilfe .inhalt b { color: var(--akzent); }
         profilStudie: { N: 194, P: 59, K: 200, Ca: 140, Mg: 50, S: 60 } },
       reife:    { name: 'Reife',    ecPhoto: [1.0, 1.3], ecAuto: [0.8, 1.2], profil: { N: 80,  P: 40, K: 180, Ca: 120, Mg: 40, S: 40 }, deckel: 1.5 },
     },
+    // Rezept „Sparsam“ (Anzucht bis Blüte): Verhältnis wie in der Nachfülllösung für zweikeimblättrige Pflanzen
+    // (Utah Hydroponic Solutions, Bugbee & Langenfeld 2024: N 100, P 12, K 141, Ca 60, Mg 19, S 26 mg/L). In Cannabis-Versuchen
+    // in Tiefwasserkultur reichten 15 mg P/L für vollen Ertrag und Cannabinoide (Hershkowitz, Westmoreland, Bugbee 2025,
+    // Front. Plant Sci. 16:1433985). Nur das Verhältnis zählt, die Stärke kommt wie immer aus der Ziel-EC.
+    sparsam: { N: 100, P: 12, K: 141, Ca: 60, Mg: 19, S: 26 },
     staerke: { sanft: 0.85, normal: 1.0, stark: 1.15 },
     // Sparmodus in der Blüte: Nährstoffanteil der EC auf zwei Drittel (Crispim Massuela et al. 2023, Front. Plant Sci. 14:1233232:
     // 160 statt 240 mg N/L ergab 95 % des CBD-Ertrags bei rund 14 % weniger Blütenmasse; getestet mit einer CBD-Sorte in Erde-Substrat)
@@ -438,8 +443,9 @@ details.hilfe .inhalt b { color: var(--akzent); }
     const k = { phosphor: s.konzPhosphor, salpeter: s.konzSalpeter, schwefel: s.konzSchwefel }[t];
     return k || (t === s.typ && s.konz) || { phosphor: 85, salpeter: 3, schwefel: 37 }[t];
   }
-  function saeureWahl(s, phase) {
-    const da = saeurenDa(s), t = (SAEURE_VORRANG[phase] || SAEURE_VORRANG.wachstum).find(x => da.includes(x));
+  // wenigP (Rezept „Sparsam“): Phosphorsäure nur, wenn keine Salpetersäure da ist – sie bringt sonst mehr P als das Rezept vorsieht
+  function saeureWahl(s, phase, wenigP) {
+    const da = saeurenDa(s), t = ((wenigP ? null : SAEURE_VORRANG[phase]) || SAEURE_VORRANG.wachstum).find(x => da.includes(x));
     return t ? { typ: t, konz: saeureKonz(s, t), zielPH: s.zielPH } : { typ: 'keine', konz: 0, zielPH: s.zielPH };
   }
 
@@ -541,7 +547,8 @@ details.hilfe .inhalt b { color: var(--akzent); }
       return Object.assign({}, s, { NO3: hProCO3(D.saeure.zielPH) * 14.007 / 138.205 * 100 });
     });
     const ph = D.phasen[opt.phase];
-    const profil = opt.rezeptStudie && ph.profilStudie ? ph.profilStudie : ph.profil;
+    const sparsam = !!(opt.rezeptSparsam && D.sparsam && opt.phase !== 'reife');
+    const profil = sparsam ? D.sparsam : opt.rezeptStudie && ph.profilStudie ? ph.profilStudie : ph.profil;
     // Wasserglas: K und Säurebedarf fest vorab, zählt wie Wasser zur Basis
     const wgDosis = opt.wasserglas > 0 && D.wasserglas ? opt.wasserglas : 0;
     const wg = wgDosis ? wasserglasProMl(D.wasserglas) : { K: 0, Si: 0, hBedarf: 0 };
@@ -640,6 +647,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
       for (const e of ['N', 'P', 'K', 'Ca', 'Mg']) { if (!liefert(e)) continue; const a = (ist[e] - soll[e]) / soll[e]; if (a < abwMin) { abwMin = a; schlimmstes = e; } }
       hinweise.push(`Nicht vorrätig: ${fehlend.join(', ')}.` + (schlimmstes ? ` Dadurch fehlt vor allem ${schlimmstes} (${(abwMin * 100).toFixed(0)} % gegenüber dem Verhältnis).` : ''));
     }
+    if (sparsam && sa.P > soll.P * 1.2) hinweise.push(`Die ${sa.name} bringt schon ${sa.P.toFixed(0)} mg/L Phosphor, mehr als das Rezept „Sparsam“ vorsieht (${soll.P.toFixed(0)} mg/L). Mit Salpetersäure wird es sparsamer.`);
     if (w.Na > 50) hinweise.push(`Natrium im Wasser ${w.Na.toFixed(0)} mg/L (über 50). Die Pflanze nimmt es kaum auf, es reichert sich im Tank an. Öfter neu ansetzen oder Osmose- bzw. Regenwasser beimischen.`);
     if (w.Cl > 100) hinweise.push(`Chlorid im Wasser ${w.Cl.toFixed(0)} mg/L (über 100). Es reichert sich im Tank an und kann die Wurzeln schädigen. Öfter neu ansetzen oder Osmose- bzw. Regenwasser beimischen.`);
     if (D.saeure.typ === 'schwefel') hinweise.push('Mit Schwefelsäure ist die EC-Schätzung noch nicht an echten Mischungen geprüft. Miss nach und trag die Werte ein.');
@@ -693,7 +701,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
   // ---------- 8. Vollansatz (Fall C) ----------
   function vollansatz(D, opt) { // opt: { phase, typ, staerke, fuellhoehe, vorrat }
     const h = Math.min(opt.fuellhoehe, D.eimer.maxFuell);
-    const r = rezept(D, { phase: opt.phase, liter: liter(D.eimer, h), ecZiel: zielEC(D, opt.phase, opt.typ, opt.staerke, opt.spar), vorrat: opt.vorrat, auswahl: opt.auswahl, wasserglas: opt.wasserglas, rezeptStudie: opt.rezeptStudie });
+    const r = rezept(D, { phase: opt.phase, liter: liter(D.eimer, h), ecZiel: zielEC(D, opt.phase, opt.typ, opt.staerke, opt.spar), vorrat: opt.vorrat, auswahl: opt.auswahl, wasserglas: opt.wasserglas, rezeptStudie: opt.rezeptStudie, rezeptSparsam: opt.rezeptSparsam });
     if (opt.fuellhoehe > D.eimer.maxFuell) r.hinweise.unshift(`Füllhöhe auf ${D.eimer.maxFuell} cm begrenzt – Luftspalt unter dem Netztopf.`);
     r.fuellhoehe = h;
     return r;
@@ -701,6 +709,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
 
   // ---------- 9. TOP-UP (Fall A und B) ----------
   // opt: { phase, typ, staerke, hJetzt, ecJetzt, hZiel?, vorrat }
+  const VERBRAUCH_EC_HOCH = 1.25, VERBRAUCH_EC_NIEDRIG = 0.6; // Nachfüllen nach Verbrauch: ab hier Hinweis bzw. nur Wasser
   function topUp(D, opt) {
     const hZielRoh = opt.hZiel !== undefined ? opt.hZiel : D.eimer.zielFuell;
     const hZiel = Math.min(hZielRoh, D.eimer.maxFuell);
@@ -714,7 +723,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
     if (fehlt < 0.2) return { fall: '–', text: 'Tank ist voll genug, nichts nachfüllen.', liter: 0, hinweise, ecZiel };
 
     const ecNurWasser = (opt.ecJetzt * vJetzt + ecW * fehlt) / vZiel;
-    if (ecNurWasser >= ecZiel - 0.05) {
+    function nurWasser() {
       const wgDosis = opt.wasserglas > 0 && D.wasserglas ? opt.wasserglas : 0;
       const sa = saeure(D.wasser, D.saeure, D.kalibrierung, wgDosis ? wasserglasProMl(D.wasserglas).hBedarf * wgDosis : 0);
       return {
@@ -723,13 +732,30 @@ details.hilfe .inhalt b { color: var(--akzent); }
         saeureMl: Math.round(sa.mmol * fehlt / sa.mmolProMl * 10) / 10, hinweise,
       };
     }
+    // Nachfüllen nach Verbrauch: immer dieselbe Lösung in Ziel-Stärke, egal wie tief die EC gefallen ist.
+    // Die Pflanze nimmt N, P und K schneller auf als Ca, S oder Natrium; eine niedrige EC ist darum kein Mangel,
+    // eine steigende zeigt, dass sich Salze anreichern (Bugbee 2004, Acta Hort. 648; Langenfeld & Bugbee 2026, Front. Plant Sci.).
+    if (opt.nachfuellen === 'verbrauch') {
+      if (opt.ecJetzt > ecZiel * VERBRAUCH_EC_HOCH) {
+        hinweise.push(`EC ${opt.ecJetzt.toFixed(2)} liegt deutlich über dem Ziel ${ecZiel.toFixed(2)}: Im Tank reichern sich Salze an. Diesmal nur Wasser. Passiert das öfter, einen Teil der Lösung wechseln.`);
+        return nurWasser();
+      }
+      const r = rezept(D, { phase: opt.phase, liter: fehlt, ecZiel, vorrat: opt.vorrat, auswahl: opt.auswahl, wasserglas: opt.wasserglas, rezeptStudie: opt.rezeptStudie, rezeptSparsam: opt.rezeptSparsam });
+      const ecDanach = (opt.ecJetzt * vJetzt + ecZiel * fehlt) / vZiel;
+      if (opt.ecJetzt < ecZiel * VERBRAUCH_EC_NIEDRIG) hinweise.push(`EC im Tank niedrig (${opt.ecJetzt.toFixed(2)}). Beim Nachfüllen nach Verbrauch ist das normal: Die Pflanzen nehmen gut auf. Nur wenn Mangelzeichen auftreten, neu ansetzen.`);
+      return {
+        fall: 'B', text: `${fehlt.toFixed(1)} L Nährlösung mit EC ${ecZiel.toFixed(2)} nachfüllen (wie immer, nach Verbrauch). EC danach etwa ${ecDanach.toFixed(2)}.`,
+        liter: fehlt, ecNachfuell: ecZiel, ecDanach, ecZiel, rezept: r, hinweise: hinweise.concat(r.hinweise),
+      };
+    }
+    if (ecNurWasser >= ecZiel - 0.05) return nurWasser();
     let ecNachfuell = (ecZiel * vZiel - opt.ecJetzt * vJetzt) / fehlt;
     const obergrenze = Math.max(ecZiel * 1.5, ecZiel + 0.5);
     if (ecNachfuell > obergrenze) {
       hinweise.push(`Nötige Nachfüll-EC ${ecNachfuell.toFixed(2)} wäre zu stark – auf ${obergrenze.toFixed(2)} begrenzt, Ziel-EC wird nicht ganz erreicht. Besser bald Wechsel.`);
       ecNachfuell = obergrenze;
     }
-    const r = rezept(D, { phase: opt.phase, liter: fehlt, ecZiel: ecNachfuell, vorrat: opt.vorrat, auswahl: opt.auswahl, wasserglas: opt.wasserglas, rezeptStudie: opt.rezeptStudie });
+    const r = rezept(D, { phase: opt.phase, liter: fehlt, ecZiel: ecNachfuell, vorrat: opt.vorrat, auswahl: opt.auswahl, wasserglas: opt.wasserglas, rezeptStudie: opt.rezeptStudie, rezeptSparsam: opt.rezeptSparsam });
     const ecDanach = (opt.ecJetzt * vJetzt + ecNachfuell * fehlt) / vZiel;
     return {
       fall: 'B', text: `${fehlt.toFixed(1)} L Nährlösung mit EC ${ecNachfuell.toFixed(2)} nachfüllen. EC danach etwa ${ecDanach.toFixed(2)}.`,
@@ -839,7 +865,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
       tun: ['Gelbtafeln direkt über den Netztöpfen aufstellen.', 'Oberfläche des Blähtons möglichst trocken halten und lichtdicht abdecken.', 'Bei starkem Befall Nematoden (Steinernema feltiae) in den Netztopf geben.'] },
     { id: 'mehltau', titel: 'Echter Mehltau', w: { unten: 1, oben: 1, ueberall: 1, blueten: 1 }, s: { weiss_belag: 4 }, tage: 2, schimmel: true,
       erkennen: 'Weißer, mehliger Belag auf den Blättern, zuerst in kleinen runden Flecken, die sich ausbreiten. Er lässt sich abwischen.',
-      tun: ['Befallene Blätter abschneiden und in einer Tüte entsorgen.', 'Luftfeuchte senken, für Luftbewegung sorgen, Pflanzen nicht zu dicht stellen.', 'Befallene Blüten nicht konsumieren.'] },
+      tun: ['Befallene Blätter abschneiden und in einer Tüte entsorgen.', 'Luftfeuchte senken, für Luftbewegung sorgen, Pflanzen nicht zu dicht stellen.', 'Befallene Blüten nicht konsumieren.', 'Vorbeugen: Kaliwasserglas (Silizium) in der Nährlösung macht die Blätter widerstandsfähiger. Einschalten unter Einstellungen → Salze & Zusatz.'] },
     { id: 'botrytis', titel: 'Knospenfäule (Grauschimmel)', w: { blueten: 3 }, s: { knospe_grau: 5, weiss_belag: 1 }, tage: 1, schimmel: true,
       erkennen: 'Graubraune, matschige Stellen im Inneren der Blüte. Oft fällt zuerst ein einzelnes Blatt auf, das mitten aus der Blüte heraus welkt.',
       tun: ['Sofort handeln: die befallene Blüte großzügig herausschneiden, mit Abstand zum sichtbaren Schimmel, und direkt in eine Tüte stecken.', 'Schere danach reinigen, nicht über andere Blüten schütteln.', 'Luftfeuchte in der späten Blüte unter 50 % halten, für Luftbewegung sorgen.', 'Ab jetzt täglich alle Blüten kontrollieren. Befallenes Material nicht konsumieren.'] },
@@ -982,6 +1008,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
         setup: false,
         saeure: { typ: 'phosphor', konz: 85, zielPH: 5.8, vorrat: {} },
         wasserglas: { an: false, mlProL: 0.1 },
+        nachfuellen: 'ec',
         wasser: {},
         quellen: [], wasserWahl: { a: 'leitung' },
       },
@@ -1018,6 +1045,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
         behaelter: Object.assign({}, s.einst.behaelter, e.behaelter), setup: !alt && e.setup === true,
         eigeneSalze: Array.isArray(e.eigeneSalze) ? e.eigeneSalze.filter(x => x && x.id && x.name && x.werte) : [], haftung: !alt && e.haftung === true, profil: !alt,
         saeure, wasserglas: Object.assign({}, s.einst.wasserglas, e.wasserglas), wasser: Object.assign({}, wasserAlt),
+        nachfuellen: e.nachfuellen === 'verbrauch' ? 'verbrauch' : 'ec',
         quellen: Array.isArray(e.quellen) ? e.quellen : [], wasserWahl: e.wasserWahl && e.wasserWahl.a ? e.wasserWahl : { a: 'leitung' },
       },
     };
@@ -1089,7 +1117,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
     D.eimer.zielFuell = D.eimer.maxFuell;
     D.eimer.anzahl = Z.eimer.length;
     D.wasser = wasserMisch(wasserWahlFuer(e));
-    D.saeure = K.saeureWahl(Z.einst.saeure, e ? e.phase : 'wachstum');
+    D.saeure = K.saeureWahl(Z.einst.saeure, e ? e.phase : 'wachstum', !!(e && e.rezept === 'sparsam' && e.phase !== 'reife'));
     Z.einst.eigeneSalze.forEach(x => {
       D.salze.push(Object.assign({ NO3: 0, NH4: 0, P: 0, K: 0, Ca: 0, Mg: 0, S: 0, Fe: 0, Mn: 0, Zn: 0, Cu: 0, B: 0, Mo: 0 }, x.werte, { id: x.id, name: x.name, aktiv: false, eigen: true }));
       if (x.werte.Ca > 0) D.reihenfolge.push(x.id); else D.reihenfolge.splice(D.reihenfolge.indexOf('calcinit'), 0, x.id);
@@ -1129,7 +1157,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
         : f('maxFuell', 'Höchste Füllhöhe in cm', b.maxFuell)}`;
   }
   // Kaliwasserglas nur bis zur Blüte: in der Reife baut die Pflanze nichts mehr auf, beim Spülen gibt es gar keine Zusätze
-  const ctx = e => ({ vorrat: Z.einst.vorrat, auswahl: Z.einst.auswahl, wasserglas: Z.einst.wasserglas.an && !(e && e.phase === 'reife') ? Z.einst.wasserglas.mlProL : 0 });
+  const ctx = e => ({ vorrat: Z.einst.vorrat, auswahl: Z.einst.auswahl, nachfuellen: Z.einst.nachfuellen, wasserglas: Z.einst.wasserglas.an && !(e && e.phase === 'reife') ? Z.einst.wasserglas.mlProL : 0 });
   const WG = 'Kaliwasserglas';
   // Kurze Meldung unten. Mit rueck erscheint „Rückgängig“ und macht die letzte Änderung ungeschehen.
   function toast(t, rueck) {
@@ -1169,10 +1197,10 @@ details.hilfe .inhalt b { color: var(--akzent); }
   const inArchiv = (x, i, k) => { const g = anbauGrenzen(Z.eimer[i], k); return x.eimer === i && x.datum >= g.von && x.datum < g.bis; };
   // Blüte-Optionen je Behälter: beide wirken nur in der Blüte
   const sparPhase = ph => ph === 'bluete';
-  const optE = e => ({ spar: !!e.spar && sparPhase(e.phase), rezeptStudie: e.rezept === 'studie' && e.phase === 'bluete', spuelen: !!e.spuelen && e.phase === 'reife' });
+  const optE = e => ({ spar: !!e.spar && sparPhase(e.phase), rezeptStudie: e.rezept === 'studie' && e.phase === 'bluete', rezeptSparsam: e.rezept === 'sparsam' && e.phase !== 'reife', spuelen: !!e.spuelen && e.phase === 'reife' });
   // Beim Spülen ist das Ziel das reine Leitungswasser
   const zielEC = e => optE(e).spuelen ? Math.round(daten(e).wasser.ecGemessen * 100) / 100 : K.zielEC(daten(e), e.phase, e.typ, e.staerke, optE(e).spar);
-  const reglerText = e => { const o = optE(e); return `${name(PHASEN, e.phase)} · ${name(TYPEN, e.typ)} · ${name(STAERKEN, e.staerke)}${o.rezeptStudie ? ' · Rezept neu' : ''}${o.spar ? ' · Sparen' : ''}${o.spuelen ? ' · Spülen' : ''}${e.wasser ? ' · ' + wahlText(e.wasser) : ''}`; };
+  const reglerText = e => { const o = optE(e); return `${name(PHASEN, e.phase)} · ${name(TYPEN, e.typ)} · ${name(STAERKEN, e.staerke)}${o.rezeptStudie ? ' · Rezept neu' : ''}${o.rezeptSparsam ? ' · Sparsam' : ''}${o.spar ? ' · Sparen' : ''}${o.spuelen ? ' · Spülen' : ''}${e.wasser ? ' · ' + wahlText(e.wasser) : ''}`; };
   // Blütewoche 6 bis 9 (Tag 36 bis 63): Blüten legen am meisten zu, Nährstoffbedarf am höchsten. Nur bei Photos, bei Autos zählt der Kalender ab Keimung.
   const hauptphase = (e, k) => !!k && !k.auto && e.phase === 'bluete' && k.tag >= 36 && k.tag <= 63;
 
@@ -1307,16 +1335,25 @@ details.hilfe .inhalt b { color: var(--akzent); }
       (versteckt ? `<p class="leise" style="font-size:15px">${versteckt === 1 ? 'Ein Tank ist' : versteckt + ' Tanks sind'} ausgeblendet. <button data-act="einstGruppe" data-g="tanks" style="text-decoration:underline;color:var(--leise);font-size:15px">In den Einstellungen einblenden</button></p>` : '') + nav();
   }
 
+  // Rezept-Wahl: Klassisch überall, „Neu“ nur in der Blüte, „Sparsam“ von Anzucht bis Blüte (die Reife ist schon knapp)
+  function rezeptHtml(e) {
+    if (e.phase === 'reife') return '';
+    const liste = [['klassisch', 'Klassisch']].concat(e.phase === 'bluete' ? [['studie', 'Neu']] : [], [['sparsam', 'Sparsam']]);
+    const wert = liste.some(x => x[0] === e.rezept) ? e.rezept : 'klassisch';
+    const text = wert === 'studie' ? 'Mehr Stickstoff, weniger Kalium. Kann mehr Ertrag bringen.'
+      : wert === 'sparsam' ? 'Weniger Phosphor, Calcium und Magnesium – so viel, wie die Pflanze tatsächlich verbraucht. In Versuchen gab das denselben Ertrag. Klappt am besten mit Salpetersäure.'
+      : e.phase === 'bluete' ? 'Viel Kalium, so wie bisher.' : 'So wie bisher.';
+    return `<div class="gruppe"><div class="gruppe-titel">${e.phase === 'bluete' ? 'Blüte-Rezept' : 'Rezept'}</div>${segment('rezept', liste, wert)}</div>
+          <p class="leise" style="font-size:15px;margin-top:-8px">${text}</p>`;
+  }
+
   // Phase, Sorte, Stärke und Blüte-Optionen eines Tanks. i steht an jedem Knopf, damit es überall funktioniert.
   function reglerHtml(e, i) {
     const mitI = h => h.replace(/data-act="setz"/g, `data-act="setz" data-i="${i}"`);
     return mitI(`<div class="gruppe"><div class="gruppe-titel">Phase</div>${segment('phase', PHASEN, e.phase)}</div>
         <div class="gruppe"><div class="gruppe-titel">Sorte</div>${segment('typ', TYPEN, e.typ)}</div>
         <div class="gruppe"><div class="gruppe-titel">Stärke</div>${segment('staerke', STAERKEN, e.staerke)}</div>
-        ${e.phase === 'bluete' ? `<div class="gruppe"><div class="gruppe-titel">Blüte-Rezept</div>${segment('rezept', [['klassisch', 'Klassisch'], ['studie', 'Neu']], e.rezept === 'studie' ? 'studie' : 'klassisch')}</div>
-          <p class="leise" style="font-size:15px;margin-top:-8px">${e.rezept === 'studie'
-            ? 'Mehr Stickstoff, weniger Kalium. Kann mehr Ertrag bringen.'
-            : 'Viel Kalium, so wie bisher.'}</p>` : ''}`)
+        ${rezeptHtml(e)}`)
       + (sparPhase(e.phase) ? `<button class="schalter" role="switch" aria-checked="${!!e.spar}" data-act="spar" data-i="${i}">
           <span>Sparmodus<small>${e.spar ? 'an, Ziel-EC ' + fmt(zielEC(e), 2) : 'aus'}</small></span><span class="pille"></span></button>
           <p class="leise" style="font-size:15px">Spart ein Drittel Dünger. Die Blüten werden etwas leichter, sind aber fast genauso stark. Geht am besten mit Rezept „Neu“. Erst an einem Tank ausprobieren.</p>` : '')
@@ -1418,7 +1455,10 @@ details.hilfe .inhalt b { color: var(--akzent); }
       ${masseZeile(D)}
       ${quellenListe().length > 1 ? wasserZeile(e) : ''}
       ${fehlerText()}${info}
-      <p class="leise">Die App entscheidet anhand der EC, ob nur Wasser oder Nährlösung nachkommt. ${frage('nachfuellen')}</p>
+      <div class="gruppe"><div class="gruppe-titel">Nachfüllen</div>${segment('nachfuellen', [['ec', 'Nach EC'], ['verbrauch', 'Nach Verbrauch']], Z.einst.nachfuellen).replace(/data-act="setz"/g, 'data-act="nachfuellWeg"')}</div>
+      <p class="leise">${Z.einst.nachfuellen === 'verbrauch'
+        ? 'Es kommt immer dieselbe Nährlösung in Ziel-Stärke nach. Nur wenn die EC deutlich über dem Ziel liegt, gibt es reines Wasser.'
+        : 'Die App entscheidet anhand der EC, ob nur Wasser oder Nährlösung nachkommt.'} ${frage('nachfuellen')}</p>
       <div class="knoepfe"><div class="knoepfe-innen"><button class="gross haupt" data-act="rechneTopup" ${UI.rechnet ? 'disabled' : ''}>${UI.rechnet ? 'Rechnet …' : 'Berechnen'}</button></div></div>`;
   }
 
@@ -1827,7 +1867,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
     ec: ['Was ist EC?', 'EC zeigt, wie viel Dünger im Wasser gelöst ist. Steigt sie, hat die Pflanze mehr Wasser getrunken als Nährstoffe genommen. Sinkt sie, hat sie Hunger.'],
     ph: ['Was ist pH?', 'pH zeigt, ob das Wasser eher sauer oder basisch ist. Zwischen etwa 5,6 und 6,2 kann die Pflanze die Nährstoffe am besten aufnehmen. Liegt er daneben, kommt sie an manche nicht mehr dran, obwohl sie im Wasser sind.'],
     ziel: ['Was ist die Ziel-EC?', 'So stark soll die Lösung im Tank sein, passend zu Phase, Sorte und Stärke. Das Leitungswasser ist schon mit eingerechnet. Liegt deine Messung mehr als 0,3 darüber oder darunter, färbt die App die Zahl ein.'],
-    nachfuellen: ['Wasser oder Nährlösung?', 'Die App rechnet aus, wo die EC landet, wenn du nur Wasser nachfüllst. Bleibt sie dann am Ziel, reicht Wasser. Fällt sie darunter, kommt Nährlösung nach. Deshalb vorher immer frisch messen.'],
+    nachfuellen: ['Wasser oder Nährlösung?', 'Nach EC: Die App rechnet aus, wo die EC landet, wenn du nur Wasser nachfüllst. Bleibt sie dann am Ziel, reicht Wasser. Fällt sie darunter, kommt stärkere Nährlösung nach. Deshalb vorher immer frisch messen. Nach Verbrauch: Es kommt immer dieselbe Nährlösung in Ziel-Stärke nach. Die Pflanze nimmt Stickstoff, Phosphor und Kalium schnell auf, Calcium, Sulfat und Natrium bleiben eher liegen. Eine sinkende EC heißt deshalb meist nur, dass die Pflanzen gut fressen – kein Mangel. Steigt die EC über mehrere Nachfüllungen, reichern sich Salze an: dann einen Teil der Lösung wechseln.'],
     seit: ['Seit dem letzten Mal', 'Der Unterschied zwischen deiner letzten Messung und dem Stand davor. Minus-Liter heißt: So viel hat die Pflanze getrunken. Steigt die EC, hat sie mehr Wasser als Nährstoffe genommen.'],
     kurve: ['Die EC-Kurve', 'Jeder Punkt ist eine Messung in diesem Anbau. Das helle Band ist dein Zielbereich. Läuft die Linie darüber, eher Wasser nachfüllen. Läuft sie darunter, eher Nährlösung.'],
     dazu: ['Was kommt dazu?', 'So viel Stickstoff, Phosphor, Kalium, Calcium und Magnesium bringen Dünger und Säure beim Nachfüllen in den ganzen Tank, gerechnet auf die volle Füllhöhe. Was die Pflanze schon verbraucht hat, weiß die App nicht. Wie viel insgesamt drin ist, zeigt dir die EC.'],
@@ -2349,6 +2389,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
         : v === 'einstGruppe' ? 'einst' : v === 'foto' ? 'fotos' : v === 'archiv' ? (UI.archivVon || 'eimer') : v === 'archivAnbau' ? 'archiv' : 'eimer');
     },
     gehe: d => { UI.eingabe = {}; if (d.v === 'anbauEnde') { UI.ende = null; UI.fehler = ''; } gehe(d.v); },
+    nachfuellWeg: d => { Z.einst.nachfuellen = d.wert === 'verbrauch' ? 'verbrauch' : 'ec'; UI.info = ''; speichern(); render(); },
     setz: d => {
       const i = d.i != null ? +d.i : UI.eimer, e = Z.eimer[i], alt = e[d.feld];
       e[d.feld] = d.wert;
