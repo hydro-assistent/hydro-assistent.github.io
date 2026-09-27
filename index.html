@@ -843,7 +843,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
       tun: ['pH prüfen: Unter 5,5 wird Calcium schlecht aufgenommen.', 'Hartes Leitungswasser bringt schon viel Calcium mit, dann ist ein echter Mangel selten. Meist ist es der pH oder zu hohe Luftfeuchte.'] },
     { id: 'fe_mangel', titel: 'Eisenmangel', w: { oben: 3 }, s: { gelb_adern: 3, gelb_ganz: 1 },
       erkennen: 'Die jüngsten Blätter werden zwischen den Adern hellgelb bis fast weiß, die Adern bleiben grün.',
-      tun: ['pH prüfen: Schon ab 6,3 wird Eisen deutlich schlechter aufgenommen. Das ist die häufigste Ursache.', 'Eisen kommt nur aus dem Hakaphos. Ein Eisenchelat wäre eine spätere Verbesserung.'] },
+      tun: ['pH prüfen: Schon ab 6,3 wird Eisen deutlich schlechter aufgenommen. Das ist die häufigste Ursache.', 'Eisen kommt nur aus dem Hakaphos. In vielen Volldüngern ist es mit EDTA gebunden, das nur bis etwa pH 7 hält. Steigt der pH im Tank darüber, fällt Eisen aus.', 'Hilft das nicht: einen Eisendünger mit DTPA-Chelat dazugeben, der hält bis etwa pH 8.'] },
     { id: 'spuren', titel: 'Spurenelemente (Mangan, Zink)', w: { oben: 2 }, s: { verformt: 2, gelb_adern: 1, flecken: 1 },
       erkennen: 'Neue Blätter bleiben klein, sind verdreht oder schmal, dazu feine Aufhellungen zwischen den Adern.',
       tun: ['pH prüfen: Über 6,5 werden Spurenelemente gesperrt.', 'Spurenelemente kommen nur aus dem Volldünger. Plant die App davon wenig ein, werden sie knapp.'] },
@@ -1766,12 +1766,20 @@ details.hilfe .inhalt b { color: var(--akzent); }
           <li>Fiele sie darunter, kommt <b>Nährlösung</b> nach, die du in einer Kanne anmischst.</li>
         </ul>
         <p>Es kommt also nicht nur darauf an, ob die EC gestiegen ist, sondern auch, wie viel Wasser fehlt. Deshalb vorher frisch messen. Hast du gerade gemessen, stehen Füllstand und EC schon drin.</p>
-        <p>Bei Nährlösung zeigt die App, wie viel N, P, K, Ca und Mg im ganzen Tank dazukommt.</p>`)}
+        <p>Bei Nährlösung zeigt die App, wie viel N, P, K, Ca und Mg im ganzen Tank dazukommt.</p>
+        <p>So läuft es bei <b>„Nach EC“</b>. Stellst du auf <b>„Nach Verbrauch“</b> um, kommt immer dieselbe Nährlösung in Ziel-Stärke nach. Die Pflanzen nehmen Stickstoff, Phosphor und Kalium schneller auf als den Rest, deshalb sinkt die EC oft – das ist dann kein Mangel. Liegt die EC deutlich über dem Ziel, gibt es nur Wasser. Passiert das öfter, einen Teil der Lösung wechseln.</p>`)}
       ${teil('Phase, Sorte, Stärke', `
         <p><b>Phase</b> steuert das Nährstoffverhältnis und die Ziel-EC: Anzucht, Wachstum, Blüte, Reife.</p>
         <p><b>Sorte</b>: Autos bekommen etwas schwächere Lösungen als Photoperiodische.</p>
         <p><b>Stärke</b> ist dein Regler: Sanft, Normal oder Stark. Bei Anzeichen von Überdüngung eine Stufe herunter, bei blassen Pflanzen mit passendem pH eine hoch.</p>
         <p>Einstellen kannst du das beim Tank oder für alle Tanks auf einen Blick unter Einstellungen → Rezepte. Ein Phasenwechsel landet automatisch im Tagebuch.</p>`)}
+      ${teil('Keimen und Anzucht', `
+        <p>Samen lassen sich gut auf einer <b>schrägen Platte</b> keimen: Keimpapier auf eine dünne Kunststoffplatte legen, anfeuchten, die Samen darauf legen und mit dünnem Papier abdecken. Die Platte steht fast senkrecht in einem Gefäß mit etwas Wasser, die Wurzeln wachsen nach unten.</p>
+        <p>Nach 4 bis 12 Tagen haben die Keimlinge lange, gerade Wurzeln. Sie lassen sich ohne Schaden vom Papier lösen und direkt in den Netztopf setzen. So kommen keine Krümel aus Steinwolle oder Erde in den Tank, und die Wurzel hängt gleich in der Lösung.</p>
+        <p>Bis die Wurzel lang genug ist, den Tank höher füllen, damit das Wasser den Netztopf berührt (beim Nachfüllen unter „Auf eine andere Höhe auffüllen“).</p>`)}
+      ${teil('Rezept „Sparsam“', `
+        <p>Gibt deutlich weniger Phosphor, so viel, wie die Pflanze tatsächlich verbraucht. In Versuchen mit Cannabis in Wasserkultur gab das denselben Ertrag und denselben Wirkstoffgehalt. Einstellbar von Anzucht bis Blüte.</p>
+        <p>Klappt am besten mit Salpetersäure. Mit „Sparsam“ nimmt die App sie auch in der Blüte, wenn sie vorrätig ist. Phosphorsäure bringt selbst schon viel Phosphor mit.</p>`)}
       ${teil('Blüte, Reife und Spülen', `
         <p><b>Rezept „Neu“</b> gibt mehr Stickstoff und weniger Kalium. Das kann mehr Ertrag bringen.</p>
         <p><b>Sparmodus</b> spart ein Drittel Dünger. Die Blüten werden etwas leichter, sind aber fast genauso stark. Die unteren Blätter werden gegen Ende gelb, das ist normal. Erst an einem Tank ausprobieren.</p>

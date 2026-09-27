@@ -40,6 +40,8 @@ Fassung 3.13.3: In der Blüte nimmt das Rezept „Sparsam“ jetzt genau die Nä
 
 Fassung 3.13.4: Wer „Nach Verbrauch“ nachfüllt, sieht eine niedrige EC in der Übersicht nicht mehr blau markiert – dort ist sie normal. Eine deutlich zu hohe EC bleibt rot.
 
+Fassung 3.13.5: Die Anleitung hat einen neuen Teil „Keimen und Anzucht“: Samen auf Keimpapier an einer schrägen Platte keimen lassen und die Keimlinge nach 4 bis 12 Tagen mit langen Wurzeln direkt in den Netztopf setzen, ohne Steinwolle. Dazu Erklärungen zu Rezept „Sparsam“ und zum Nachfüllen „Nach Verbrauch“. Im Pflanzendoktor beim Eisenmangel steht jetzt, warum ein zu hoher pH das Eisen ausfallen lässt und dass ein Eisendünger mit DTPA bis etwa pH 8 hält.
+
 Tests: `node tests/rezept.test.js` prüft alle Phasen und Stärken, `node tests/schwefel.test.js` den Schwefelsäure-Zweig, `node tests/saeure.test.js` die Wahl der Säure je Phase, `node tests/sparsam.test.js` das Rezept „Sparsam“ und das Nachfüllen nach Verbrauch, `node tests/kern.test.js` feste Beispielrezepte mit den erwarteten Gramm-Mengen (nach gewollten Rechenänderungen mit `--neu` neu schreiben), `node tests/fassung.test.js` die Versionsnummer in `sw.js`. `python3 tests/vergleich_optimum.py` stellt die App gegen eine unabhängige Optimierung (braucht numpy und scipy).
 
 ## Sicherheit und Haftung
