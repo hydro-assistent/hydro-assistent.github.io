@@ -249,6 +249,7 @@ input[type="date"] { width: 100%; min-height: 60px; border-radius: 14px; border:
 .eimer-zu .rechts b.tief { color: #86A8BF; }
 .setup-kopf { color: var(--leise); font-size: 15px; margin-bottom: 6px; }
 .setup h1 { margin-bottom: 8px; }
+.setup { padding-bottom: 120px; } /* Platz unter dem festen Weiter-Knopf, sonst verdeckt er die letzten Felder */
 .setup .weiter { position: fixed; left: 0; right: 0; bottom: 0; padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px)); background: linear-gradient(transparent, var(--bg) 30%); }
 .fotos { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 12px; }
 .fotos button { padding: 0; border-radius: 12px; overflow: hidden; background: var(--flaeche); aspect-ratio: 1; }
@@ -362,6 +363,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
   const UEBERSCHUSS_MILD = { P: true, S: true, Ca: true, Mg: true }; // Überschuss halb so schlimm wie Mangel
   const NH4_MAX = 0.15;
   const FE_MAX = 3; // mg/L
+  const FE_LOCKERN = [1, 0.5, 0.25, 0]; // Stufen, wenn das Eisen-Minimum nicht erreichbar ist
   const SPUREN_REF = { B: 0.43 / 1.6, Zn: 0.2 / 1.6 }; // mg/L je 100 mg N/L (Cannabis-Lösung: B 40 µM, Zn 3 µM bei 160 mg N/L), nur für Hinweise
   const GRENZE = { N: 250, P: 100, K: 400, Ca: 250, Mg: 100, S: 999 }; // mg/L, ab hier Hinweis 'hoch'
   const MOLMASSE = { K: 39.098, Ca: 40.078, Mg: 24.305, N: 14.007, P: 30.974, S: 32.06 };
@@ -397,6 +399,15 @@ details.hilfe .inhalt b { color: var(--akzent); }
     }
     return DICHTE_H2SO4[DICHTE_H2SO4.length - 1][1];
   }
+  // Phosphorsäure, g/ml bei 20 °C; 75 % und 85 % wie bisher (1,579 und 1,685). pH-Minus im Handel oft 59 bis 81 %.
+  const DICHTE_H3PO4 = [[0, 0.998], [10, 1.053], [20, 1.114], [30, 1.181], [40, 1.254], [50, 1.335], [60, 1.426], [70, 1.526], [75, 1.579], [80, 1.633], [85, 1.685], [90, 1.746]];
+  function dichteH3PO4(konz) {
+    for (let i = 1; i < DICHTE_H3PO4.length; i++) if (konz <= DICHTE_H3PO4[i][0]) {
+      const [c0, d0] = DICHTE_H3PO4[i - 1], [c1, d1] = DICHTE_H3PO4[i];
+      return d0 + (d1 - d0) * (Math.max(konz, c0) - c0) / (c1 - c0);
+    }
+    return DICHTE_H3PO4[DICHTE_H3PO4.length - 1][1];
+  }
   const DICHTE_HNO3 = [[0, 0.998], [3, 1.015], [10, 1.054], [20, 1.115], [30, 1.180], [38, 1.235], [53, 1.330], [65, 1.391]];
   function dichteHNO3(konz) {
     for (let i = 1; i < DICHTE_HNO3.length; i++) if (konz <= DICHTE_HNO3[i][0]) {
@@ -421,7 +432,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
     if (s.typ === 'phosphor') {
       const hProMol = 1 + 1 / (1 + 10 ** (7.2 - pH));
       const mmol = hBedarf / hProMol;
-      const dichte = s.konz >= 80 ? 1.685 : 1.579; // 85 % bzw. 75 %
+      const dichte = dichteH3PO4(s.konz);
       const mmolProMl = dichte * (s.konz / 100) / 97.994 * 1000;
       return { mmol, P: mmol * MOLMASSE.P, N: 0, mmolProMl, name: `Phosphorsäure ${s.konz} %` };
     }
@@ -622,6 +633,27 @@ details.hilfe .inhalt b { color: var(--akzent); }
 
     const erg = loese(salze, false);
     const x = erg.x, k = erg.k, ec = erg.ec, z = erg.z, soll = erg.soll;
+    // Eisen-Minimum mit den vorrätigen Salzen nicht erreichbar (z. B. Eisen nur aus einem Volldünger mit viel Ammonium):
+    // Dann drückt die Eisen-Strafe Nitratsalze in den Tank, das EC-Budget ist verbraucht, k bricht ein und der Rest des
+    // Profils (etwa Magnesium) fällt weg. Deshalb die Eisen-Vorgabe stufenweise lockern und das beste Ergebnis nach demselben
+    // Maßstab nehmen wie bei der Wahl der Volldünger: Form des Profils plus Verstöße bei Ammonium und Eisen (gegen das volle Ziel).
+    if (feMin > 0 && z.Fe + basis.Fe < feMin * 0.8 && opt.feMin === undefined) {
+      const bewerte = r => {
+        let sIst = 0, sSoll = 0, form = 0;
+        for (const e of MAKRO) { sIst += r.ist[e]; sSoll += profil[e]; }
+        for (const e of MAKRO) { const p = r.ist[e] / sIst, q = profil[e] / sSoll; form += GEWICHT[e] * (p - q) * (p - q) / q; }
+        const nh4 = Math.max(0, r.ist.NH4anteil - NH4_MAX) / NH4_MAX, fe = Math.max(0, feMin - r.ist.Fe) / feMin;
+        return form + nh4 * nh4 + fe * fe;
+      };
+      let beste = null;
+      for (const f of FE_LOCKERN) {
+        const r = rezept(D, Object.assign({}, opt, { feMin: feMin * f }));
+        const w = bewerte(r);
+        if (!beste || w < beste.w - 1e-9) beste = { r, w, f };
+      }
+      if (beste.f < 1) beste.r.hinweise.push('Mit den vorrätigen Salzen reicht das Eisen nicht, ohne zu viel Ammonium oder zu wenig von anderem einzuplanen. Ein Volldünger mit mehr Eisen (z. B. Hakaphos Basis 3) oder ein Eisendünger würde helfen.');
+      return beste.r;
+    }
 
     // Wenn schon ohne Salze über dem Ziel
     const ecOhneSalz = w.ecGemessen + kal.ecProMmolSaeure * saBasis.mmol * (saBasis.ecFaktor || 1) + kal.ecSalzFaktor * wg.K * wgDosis / 39.098 / 10;
@@ -1010,7 +1042,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
   function standard() {
     return {
       version: 3, geaendert: 0,
-      eimer: [1, 2, 3].map(i => ({ name: 'Tank ' + i, phase: 'wachstum', typ: 'photo', staerke: 'normal' })),
+      eimer: [1].map(i => ({ name: 'Tank ' + i, phase: 'wachstum', typ: 'photo', staerke: 'normal' })),
       log: [],
       einst: {
         // Neu: nichts vorausgewählt, jede Person trägt eigenes Wasser und eigene Salze ein
@@ -1203,6 +1235,8 @@ details.hilfe .inhalt b { color: var(--akzent); }
   function merkeEingaben() { ['h', 'hj', 'ecj', 'hziel'].forEach(id => { const el = document.getElementById(id); if (el) UI.eingabe[id] = el.value; }); }
   // Laufender Anbau: alles ab e.anbauSeit. Beendete Anbauten liegen in e.anbauten (Archiv), ihre Einträge bleiben im Tagebuch.
   const imAnbau = (x, i) => { const e = Z.eimer[i]; return !!e && (!e.anbauSeit || x.datum >= e.anbauSeit); };
+  // Noch nichts eingetragen im laufenden Anbau: dann ist „Neu ansetzen“ der nächste Schritt, nicht „Nachfüllen“
+  const leerTank = i => !Z.log.some(x => x.eimer === i && imAnbau(x, i));
   const letzter = i => { for (let j = Z.log.length - 1; j >= 0; j--) if (Z.log[j].eimer === i && Z.log[j].ec != null && imAnbau(Z.log[j], i)) return Z.log[j]; return null; };
   // Grenzen eines archivierten Anbaus k: nach dem Ende des vorigen, vor dem eigenen Ende
   function anbauGrenzen(e, k) { const a = e.anbauten[k]; return { von: k > 0 ? e.anbauten[k - 1].ende : '', bis: a.ende }; }
@@ -1344,7 +1378,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
       </button>
       <button class="klapp" data-act="klappen" data-i="${i}" aria-expanded="true" aria-label="${esc(e.name)} einklappen">▴</button>
       <button class="karte-eintragen" data-act="eintragWahl" data-i="${i}">+ Eintragen</button>
-      <button class="karte-topup" data-act="${lg && lg.knopf ? lg.knopf[0] : 'karteTopup'}" data-i="${i}">${lg && lg.knopf ? lg.knopf[1] : 'Nachfüllen'}</button></div>`; }).join('') +
+      <button class="karte-topup" data-act="${lg && lg.knopf ? lg.knopf[0] : leerTank(i) ? 'karteNeu' : 'karteTopup'}" data-i="${i}">${lg && lg.knopf ? lg.knopf[1] : leerTank(i) ? 'Neu ansetzen' : 'Nachfüllen'}</button></div>`; }).join('') +
       (versteckt ? `<p class="leise" style="font-size:15px">${versteckt === 1 ? 'Ein Tank ist' : versteckt + ' Tanks sind'} ausgeblendet. <button data-act="einstGruppe" data-g="tanks" style="text-decoration:underline;color:var(--leise);font-size:15px">In den Einstellungen einblenden</button></p>` : '') + nav();
   }
 
@@ -1431,8 +1465,8 @@ details.hilfe .inhalt b { color: var(--akzent); }
       ${(e.anbauten || []).length ? `<button class="zeile-knopf doktor" data-act="archiv" style="margin-top:14px">Frühere Anbauten (${e.anbauten.length})</button>` : ''}
       <button class="zeile-knopf leise-knopf" data-act="gehe" data-v="anbauEnde" style="margin-top:${(e.anbauten || []).length ? 0 : 14}px">Anbau beenden oder Tank entfernen</button>
       ${UI.kalEdit ? '' : `<div class="knoepfe"><div class="knoepfe-innen">
-        <button class="gross ruhig" data-act="gehe" data-v="neu">Neu ansetzen</button>
-        <button class="gross haupt" data-act="gehe" data-v="topup">Nachfüllen</button>
+        <button class="gross ${leerTank(UI.eimer) ? 'haupt' : 'ruhig'}" data-act="gehe" data-v="neu">Neu ansetzen</button>
+        <button class="gross ${leerTank(UI.eimer) ? 'ruhig' : 'haupt'}" data-act="gehe" data-v="topup">Nachfüllen</button>
       </div></div>`}`;
   }
 
@@ -1475,19 +1509,29 @@ details.hilfe .inhalt b { color: var(--akzent); }
       <div class="knoepfe"><div class="knoepfe-innen"><button class="gross haupt" data-act="rechneTopup" ${UI.rechnet ? 'disabled' : ''}>${UI.rechnet ? 'Rechnet …' : 'Berechnen'}</button></div></div>`;
   }
 
+  // Soll für die Balken: das Rezeptverhältnis, auf N und K des Ergebnisses skaliert. Das Soll des Rechenkerns (Profil × k)
+  // fällt bei hartem Wasser klein aus, weil Calcium aus dem Wasser und die Säure schon EC mitbringen; dann stünde fast alles
+  // auf „etwas viel“. So zeigen die Balken, ob das Verhältnis stimmt – etwa zu viel Phosphor durch Phosphorsäure.
+  function sollAnzeige(r) {
+    const f = (r.soll.N + r.soll.K) > 0 ? (r.ist.N + r.ist.K) / (r.soll.N + r.soll.K) : 1;
+    return { N: r.soll.N * f, P: r.soll.P * f, K: r.soll.K * f, Ca: r.soll.Ca * f, Mg: r.soll.Mg * f };
+  }
   // Nährstoffe im Tank mit gutem Bereich (so wie der Rechenkern prüft: bis 15 % drunter, bis 30 % drüber)
   function naehrBalken(a) {
     const zeilen = ['N', 'P', 'K', 'Ca', 'Mg'].map(x => {
       const ist = a.werte[x], soll = a.werteSoll[x], lo = soll * 0.85, hi = soll * 1.3;
       const max = Math.max(soll * 1.6, ist * 1.1), pz = v => Math.max(0, Math.min(100, v / max * 100));
-      const lage = ist < lo ? 'etwas wenig' : ist > hi ? 'etwas viel' : 'gut';
-      const wa = a.wasserWerte && a.wasserWerte[x] >= 1 && a.wasserWerte[x] >= ist * 0.1 ? `davon ${fmt(a.wasserWerte[x], 0)} aus dem Wasser` : lage;
+      const ww = a.wasserWerte ? a.wasserWerte[x] || 0 : 0;
+      // Calcium und Magnesium aus hartem Wasser: kommt ohne Zutun, die App plant dafür nichts ein – kein Grund zur Sorge
+      const vomWasser = (x === 'Ca' || x === 'Mg') && ist > hi && ww >= lo;
+      const lage = vomWasser ? 'vom Wasser gedeckt' : ist < lo ? 'etwas wenig' : ist > hi ? 'etwas viel' : 'gut';
+      const wa = ww >= 1 && ww >= ist * 0.1 ? `davon ${fmt(ww, 0)} aus dem Wasser` : lage;
       return `<div class="naehr-zeile"><span class="el">${x}</span>
-        <div class="balken2" role="img" aria-label="${x}: ${fmt(ist, 0)} mg/L, guter Bereich ${fmt(lo, 0)} bis ${fmt(hi, 0)}, ${lage}"><span class="band" style="left:${pz(lo)}%;width:${pz(hi) - pz(lo)}%"></span><span class="punkt${lage === 'gut' ? '' : ' daneben'}" style="left:${pz(ist)}%"></span></div>
+        <div class="balken2" role="img" aria-label="${x}: ${fmt(ist, 0)} mg/L, guter Bereich ${fmt(lo, 0)} bis ${fmt(hi, 0)}, ${lage}"><span class="band" style="left:${pz(lo)}%;width:${pz(hi) - pz(lo)}%"></span><span class="punkt${lage === 'gut' || vomWasser ? '' : ' daneben'}" style="left:${pz(ist)}%"></span></div>
         <span class="wert zahl">${fmt(ist, 0)}<small>${esc(wa)}</small></span></div>`;
     }).join('');
     return `<div class="naehr"><div class="klein leise" style="font-size:15px;margin-bottom:4px">Nährstoffe im Tank, in mg/L</div>${zeilen}
-      <p class="fuss">Grün ist der gute Bereich für diese Phase. Gelb heißt: etwas daneben, meist kein Problem.</p></div>`;
+      <p class="fuss">Grün ist der gute Bereich für diese Phase. Gelb heißt: etwas daneben, meist kein Problem. Bringt dein Wasser schon viel Calcium oder Magnesium mit, plant die App dafür nichts mehr ein.</p></div>`;
   }
   function dazuKarte(a) {
     if (a.dazu) return `<div class="naehr"><div class="klein leise" style="font-size:15px">Im ganzen Tank kommt dazu, in mg/L ${frage('dazu')}</div>
@@ -2151,7 +2195,8 @@ details.hilfe .inhalt b { color: var(--akzent); }
       const an = da.includes(t), k = K.saeureKonz(s, t);
       return `<button class="schalter" role="switch" aria-checked="${an}" data-act="saeureAn" data-t="${t}"><span>${SAEURE_INFO[t][0]}<small>${an ? SAEURE_INFO[t][1] : 'habe ich nicht'}</small></span><span class="pille"></span></button>`
         + (!an ? '' : t === 'phosphor'
-          ? `<div class="gruppe"><div class="gruppe-titel">Konzentration Phosphorsäure</div>${segment('konz', [['75', '75 %'], ['85', '85 %']], String(k)).replace(/data-act="setz"/g, 'data-act="konz"')}</div>`
+          ? `<label class="feld"><span>Konzentration Phosphorsäure in %</span><input type="text" inputmode="decimal" data-feld="konz:phosphor" value="${fmt(k, 0)}"></label>
+             <p class="leise" style="font-size:16px;margin-top:-8px"><b>Bitte mit dem Etikett vergleichen.</b> Laborware hat meist 75 oder 85 %, fertiges pH-Minus oft weniger, zum Beispiel 59 oder 81 %. Mit dem falschen Wert stimmt die Säuremenge nicht.</p>`
           : `<label class="feld"><span>Konzentration ${SAEURE_INFO[t][0]} in %</span><input type="text" inputmode="decimal" data-feld="konz:${t}" value="${fmt(k, 0)}"></label>
              <p class="leise" style="font-size:16px;margin-top:-8px">${t === 'salpeter' ? 'Für Privatpersonen ist Salpetersäure nur bis 3 % erhältlich. Bei 3 % sind es rund 60 ml pro vollem Tank.' : 'Batteriesäure hat meist 37 bis 38 %, die Konzentration steht auf dem Etikett.'}</p>`);
     };
@@ -2247,6 +2292,8 @@ details.hilfe .inhalt b { color: var(--akzent); }
         <span>${esc(x.name)}<small>${x.an ? 'habe ich' : 'habe ich nicht'}</small></span><span class="pille"></span></button>`;
       inhalt = `<h1>Deine Salze</h1>
         <p class="leise">Schalte ein, was bei dir im Regal steht. Die App plant nur damit.</p>
+        <div class="hinweise"><p><b>Noch nichts gekauft?</b> Mit Hakaphos Basis 3, Hakaphos Soft Elite, Calcinit, Kaliumnitrat und Bittersalz rechnet die App am besten. Basis 3 bringt das meiste Eisen mit.</p>
+          <button class="zeile-knopf" data-act="grundSatz" style="margin:8px 0 0">Diese fünf einschalten</button></div>
         ${D.salze.filter(s2 => !s2.eigen).map(s2 => zeile({ id: s2.id, name: s2.name, std: s2.aktiv !== false, an: gewaehlt(s2, E) })).join('')}
         ${eigeneSalzeHtml(E)}
         <p class="leise" style="font-size:16px">Alles lässt sich später in den Einstellungen ändern. Dort kannst du auch das Kaliwasserglas als Zusatz einschalten.</p>`;
@@ -2441,7 +2488,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
       UI.anl = { art: 'Neuansatz', titel: 'Neu ansetzen', text: `${e.name} auf ${fmt(r.fuellhoehe, 1)} cm, Ziel-EC ${fmt(r.ecZiel, 2)}.`,
         h: r.fuellhoehe, liter: r.liter, ecZiel: r.ecZiel, ecErwartet: r.ec.gesamt, ecVorSaeure: r.saeure.ml > 0 ? r.ec.vorSaeure + (r.saeure.zuerstMl / r.saeure.ml) * (r.ec.saeure || 0) : null, hinweise: r.hinweise, schritte: schritteEimer(r, r.fuellhoehe),
         werte: { N: r.ist.N, P: r.ist.P, K: r.ist.K, Ca: r.ist.Ca, Mg: r.ist.Mg },
-        werteSoll: { N: r.soll.N, P: r.soll.P, K: r.soll.K, Ca: r.soll.Ca, Mg: r.soll.Mg },
+        werteSoll: sollAnzeige(r),
         wasserWerte: { N: (D.wasser.NO3 || 0) + (D.wasser.NH4 || 0), P: D.wasser.P || 0, K: D.wasser.K || 0, Ca: D.wasser.Ca || 0, Mg: D.wasser.Mg || 0 } };
       UI.anl.wasser = wahlText(wasserWahlFuer(e)); UI.haken = new Set(); UI.eingabe = {}; gehe('anleitung');
     },
@@ -2514,6 +2561,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
     },
     filter: d => { UI.filter = +d.i; render(); },
     loesche: d => { const r = schnapp(); Z.log = Z.log.filter(x => x.id !== d.id); speichern(); render(); toast('Eintrag gelöscht', r); },
+    grundSatz: () => { const v = Z.einst.vorrat; ['basis3', 'soft_elite', 'calcinit', 'kno3', 'bittersalz'].forEach(id => { delete v[id]; }); speichern(); render(); },
     vorrat: d => { const v = Z.einst.vorrat; if (v[d.id] === false) delete v[d.id]; else v[d.id] = false; speichern(); render(); },
     auswahl: d => { const v = Z.einst.auswahl; if (v[d.id]) delete v[d.id]; else v[d.id] = true; speichern(); render(); },
     saeureAn: d => {
@@ -2641,6 +2689,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
           ursachen: r.ursachen.map(u => ({ id: u.id, titel: u.titel })), kontrolleAb: new Date(Date.now() + r.ursachen[0].tage * 864e5).toISOString() } : null });
       speichern(); UI.tab = 'start'; gehe('eimer'); toast(r.ursachen.length ? `Notiert. Nachkontrolle in ${r.ursachen[0].tage} ${r.ursachen[0].tage === 1 ? 'Tag' : 'Tagen'}` : 'Im Tagebuch notiert');
     },
+    karteNeu: d => { if (d && d.i != null) UI.eimer = +d.i; UI.eingabe = {}; gehe('neu'); },
     karteTopup: d => { if (d && d.i != null) UI.eimer = +d.i; topupVorbereiten(); gehe('topup'); },
     eintragMess: d => { UI.eimer = +d.i; UI.eVon = UI.view; UI.eingabe = {}; UI.eTyp = 'mess'; gehe('eintragNeu'); },
     eintragPh: d => { UI.eimer = +d.i; UI.eVon = UI.view; UI.eingabe = {}; UI.eTyp = 'ph'; gehe('eintragNeu'); },
@@ -2903,9 +2952,9 @@ details.hilfe .inhalt b { color: var(--akzent); }
     }
     const f = el.dataset && el.dataset.feld; if (!f) return;
     if (f.startsWith('konz:')) {
-      const t = f.slice(5), n = Number(el.value.trim().replace(',', '.')), max = t === 'salpeter' ? 65 : 98;
-      if (!['salpeter', 'schwefel'].includes(t) || isNaN(n) || n < 1 || n > max) { toast(t === 'salpeter' && n > 65 ? 'Salpetersäure gibt es höchstens mit 65 %, bitte prüfen' : 'Wert außerhalb des sinnvollen Bereichs, bitte prüfen'); setTimeout(render, 0); return; }
-      const r = schnapp(); Z.einst.saeure[t === 'salpeter' ? 'konzSalpeter' : 'konzSchwefel'] = n; speichern(); setTimeout(render, 0); toast('Übernommen', r); return;
+      const t = f.slice(5), n = Number(el.value.trim().replace(',', '.')), max = t === 'salpeter' ? 65 : t === 'phosphor' ? 90 : 98;
+      if (!['salpeter', 'schwefel', 'phosphor'].includes(t) || isNaN(n) || n < 1 || n > max) { toast(t === 'salpeter' && n > 65 ? 'Salpetersäure gibt es höchstens mit 65 %, bitte prüfen' : 'Wert außerhalb des sinnvollen Bereichs, bitte prüfen'); setTimeout(render, 0); return; }
+      const r = schnapp(); Z.einst.saeure[{ salpeter: 'konzSalpeter', schwefel: 'konzSchwefel', phosphor: 'konzPhosphor' }[t]] = n; speichern(); setTimeout(render, 0); toast('Übernommen', r); return;
     }
     if (f.startsWith('q:')) {
       const [, id, key] = f.split(':'), q = Z.einst.quellen.find(x => x.id === id), n = Number(el.value.trim().replace(',', '.'));

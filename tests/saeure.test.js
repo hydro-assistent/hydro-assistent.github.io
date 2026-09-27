@@ -50,5 +50,14 @@ fall({}, ['keine', 'keine', 'keine', 'keine'], 'keine Säure');
   wahr(r0.saeure.ml === 0 && r0.ec.saeure === 0, 'Ohne Säure: 0 ml, kein EC-Beitrag');
 }
 
+// Phosphorsäure mit beliebiger Konzentration (seit 3.13.6): 75 und 85 % wie bisher, dazwischen und darunter nach Dichtetabelle
+{
+  const ml = konz => { const x = K.saeure(BASIS.wasser, { typ: 'phosphor', konz, zielPH: 5.8 }, BASIS.kalibrierung); return x.mmolProMl; };
+  wahr(Math.abs(ml(85) - 1.685 * 0.85 / 97.994 * 1000) < 1e-9, '85 %: Dichte 1,685 wie bisher');
+  wahr(Math.abs(ml(75) - 1.579 * 0.75 / 97.994 * 1000) < 1e-9, '75 %: Dichte 1,579 wie bisher');
+  wahr(Math.abs(ml(59) / (1.4159 * 0.59 / 97.994 * 1000) - 1) < 0.01, '59 %: Dichte etwa 1,416');
+  wahr(ml(59) < ml(75) && ml(75) < ml(81) && ml(81) < ml(85), 'Mehr Konzentration, mehr Säure je ml');
+}
+
 console.log(`${pruefungen} Prüfungen, ${fehler} Fehler.`);
 process.exit(fehler ? 1 : 0);
