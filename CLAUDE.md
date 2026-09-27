@@ -52,6 +52,8 @@ Die ersten drei Blöcke enden jeweils mit `if (typeof module !== 'undefined') mo
 
 `sw.js`: Netz zuerst mit 3 s Zeitlimit, dann Cache; Updates kommen im Hintergrund an. Cache-Name ist `VERSION = 'hydro-X.Y.Z'`.
 
+CSP als `<meta>` im `<head>`: nur eigene Dateien, Google Fonts und `blob:` (Fotos); Inline-Skripte erlaubt. Neue externe Quellen dort ergänzen, sonst blockiert der Browser sie still. Das Logo ist `logo.webp` (in `DATEIEN` eingetragen).
+
 ## Neue Fassung
 
 Bei jeder Veröffentlichung:

@@ -30,6 +30,8 @@ Fassung 3.11.0: Die eingebauten Salze sind geprüft und werden nicht mehr abgefr
 
 Fassung 3.12.0: Mehrere Säuren. Jede vorrätige Säure lässt sich einzeln einschalten (mit eigener Konzentration). Die App wählt je Phase: Anzucht und Wachstum Salpetersäure (bringt Stickstoff), Blüte und Reife Phosphorsäure (bringt Phosphor). Fehlt die passende, nimmt sie die nächste vorrätige, Schwefelsäure zuletzt. Bisherige Stände behalten ihre eine Säure. Wasseranalyse vollständiger: Ammonium (NH₄), Phosphat (PO₄), Natrium und Chlorid lassen sich eintragen (Einrichtung und Einstellungen); Ammonium und Phosphat zählen im Rezept mit, bei viel Natrium (über 50 mg/L) oder Chlorid (über 100 mg/L) warnt die App.
 
+Fassung 3.12.1: Die App lädt schneller, weil das Logo jetzt eine eigene Datei ist. „Sicherung laden“ fragt nicht mehr nach, sondern lädt sofort und lässt sich wie alles andere mit „Rückgängig“ zurücknehmen. Gelöschte Fotos geben ihren Speicher gleich frei. Die App darf nur noch mit sich selbst und der Schrift von Google sprechen (Sicherheitsregel im Browser). Alle Rechnungen unverändert.
+
 Tests: `node tests/rezept.test.js` prüft alle Phasen und Stärken, `node tests/schwefel.test.js` den Schwefelsäure-Zweig, `node tests/saeure.test.js` die Wahl der Säure je Phase, `node tests/kern.test.js` feste Beispielrezepte mit den erwarteten Gramm-Mengen (nach gewollten Rechenänderungen mit `--neu` neu schreiben), `node tests/fassung.test.js` die Versionsnummer in `sw.js`. `python3 tests/vergleich_optimum.py` stellt die App gegen eine unabhängige Optimierung (braucht numpy und scipy).
 
 ## Sicherheit und Haftung
