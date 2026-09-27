@@ -36,6 +36,8 @@ Fassung 3.13.1: Die Mischanleitung sagt jetzt Bescheid, wenn Bor oder Zink knapp
 
 Fassung 3.13.2: Das Rezept „Sparsam“ folgt jetzt einer Nährlösung, die eigens für Cannabis in Wasserkultur erprobt wurde (vorher: allgemeine Werte für Gemüse wie Tomate und Salat). In der Blüte liegen damit etwa 160 mg/L Stickstoff, 27 mg/L Phosphor und 260 mg/L Kalium im Tank, bei weniger Calcium und Magnesium als im klassischen Rezept. Der Hinweis zu Bor rechnet mit denselben Werten. Das klassische Rezept rechnet unverändert.
 
+Fassung 3.13.3: In der Blüte nimmt das Rezept „Sparsam“ jetzt genau die Nährlösung, mit der in einem Versuch mit Cannabis in Wasserkultur voller Ertrag und voller Wirkstoffgehalt erreicht wurden – mit nur 15 mg/L Phosphor; mehr Phosphor oder eine doppelt so starke Lösung brachten dort nichts. Im Tank landen damit etwa 160 mg/L Stickstoff, 220 mg/L Kalium und 120 mg/L Calcium. Phosphor bleibt bei gut 20 mg/L, weil die Volldünger etwas mitbringen. Anzucht und Wachstum bleiben wie in 3.13.2, das klassische Rezept rechnet unverändert.
+
 Tests: `node tests/rezept.test.js` prüft alle Phasen und Stärken, `node tests/schwefel.test.js` den Schwefelsäure-Zweig, `node tests/saeure.test.js` die Wahl der Säure je Phase, `node tests/sparsam.test.js` das Rezept „Sparsam“ und das Nachfüllen nach Verbrauch, `node tests/kern.test.js` feste Beispielrezepte mit den erwarteten Gramm-Mengen (nach gewollten Rechenänderungen mit `--neu` neu schreiben), `node tests/fassung.test.js` die Versionsnummer in `sw.js`. `python3 tests/vergleich_optimum.py` stellt die App gegen eine unabhängige Optimierung (braucht numpy und scipy).
 
 ## Sicherheit und Haftung

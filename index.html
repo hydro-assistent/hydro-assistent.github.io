@@ -322,10 +322,14 @@ details.hilfe .inhalt b { color: var(--akzent); }
       wachstum: { name: 'Wachstum', ecPhoto: [1.2, 1.5], ecAuto: [1.0, 1.3], profil: { N: 160, P: 50, K: 180, Ca: 140, Mg: 50, S: 50 }, deckel: 1.7 },
       bluete:   { name: 'Blüte',    ecPhoto: [1.6, 1.9], ecAuto: [1.4, 1.7], profil: { N: 120, P: 60, K: 240, Ca: 140, Mg: 50, S: 60 }, deckel: 2.2, deckelAuto: 1.8,
         // Blüte-Rezept „Studie“ (Bevan, Jones, Zheng 2021, Front. Plant Sci. 12:764103): Ertragsoptimum bei N 194, P 59; K ohne Wirkung zwischen 60 und 340
-        profilStudie: { N: 194, P: 59, K: 200, Ca: 140, Mg: 50, S: 60 } },
+        profilStudie: { N: 194, P: 59, K: 200, Ca: 140, Mg: 50, S: 60 },
+        // Blüte-Rezept „Sparsam“: Nachfülllösung EC 2 mit P 15 aus Hershkowitz, Westmoreland, Bugbee 2025 (Front. Plant Sci. 16:1433985,
+        // Supplementary Tables 1 und 2: N 154, K 203 + 19,6 aus KH2PO4, Ca 120, Mg 20, S 26 mg/L). Tiefwasserkultur, 8 Wochen 12/12:
+        // voller Ertrag und volle Cannabinoide, P 30 bis 90 und EC 4 brachten nichts dazu.
+        profilSparsam: { N: 154, P: 15, K: 223, Ca: 120, Mg: 20, S: 26 } },
       reife:    { name: 'Reife',    ecPhoto: [1.0, 1.3], ecAuto: [0.8, 1.2], profil: { N: 80,  P: 40, K: 180, Ca: 120, Mg: 40, S: 40 }, deckel: 1.5 },
     },
-    // Rezept „Sparsam“ (Anzucht bis Blüte): Cannabis-Lösung aus Utah Hydroponic Solutions (Bugbee & Langenfeld, Stand 16.4.2024,
+    // Rezept „Sparsam“ (Anzucht und Wachstum; Blüte siehe phasen.bluete.profilSparsam): Cannabis-Lösung aus Utah Hydroponic Solutions (Bugbee & Langenfeld, Stand 16.4.2024,
     // S. 4, Cannabis-Tabelle vom März 2023): N 133 + 27 aus der pH-Regelung, P 31, K 242, Ca 80, Mg 19, S 26 mg/L bei EC 1,8,
     // ausgelegt auf 4 g Trockenmasse je Liter Wasser (mehr CO2, etwa 60 % Luftfeuchte). Nur das Verhältnis zählt, die Stärke kommt
     // wie immer aus der Ziel-EC. P bleibt damit unter 30 mg/L; in Tiefwasserkultur reichten sogar 15 mg P/L und EC 2 für vollen
@@ -550,7 +554,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
     });
     const ph = D.phasen[opt.phase];
     const sparsam = !!(opt.rezeptSparsam && D.sparsam && opt.phase !== 'reife');
-    const profil = sparsam ? D.sparsam : opt.rezeptStudie && ph.profilStudie ? ph.profilStudie : ph.profil;
+    const profil = sparsam ? (ph.profilSparsam || D.sparsam) : opt.rezeptStudie && ph.profilStudie ? ph.profilStudie : ph.profil;
     // Wasserglas: K und Säurebedarf fest vorab, zählt wie Wasser zur Basis
     const wgDosis = opt.wasserglas > 0 && D.wasserglas ? opt.wasserglas : 0;
     const wg = wgDosis ? wasserglasProMl(D.wasserglas) : { K: 0, Si: 0, hBedarf: 0 };
@@ -1349,7 +1353,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
     const liste = [['klassisch', 'Klassisch']].concat(e.phase === 'bluete' ? [['studie', 'Neu']] : [], [['sparsam', 'Sparsam']]);
     const wert = liste.some(x => x[0] === e.rezept) ? e.rezept : 'klassisch';
     const text = wert === 'studie' ? 'Mehr Stickstoff, weniger Kalium. Kann mehr Ertrag bringen.'
-      : wert === 'sparsam' ? 'Weniger Phosphor, Calcium und Magnesium – so viel, wie die Pflanze tatsächlich verbraucht. In Versuchen gab das denselben Ertrag. Klappt am besten mit Salpetersäure.'
+      : wert === 'sparsam' ? 'Deutlich weniger Phosphor – so viel, wie die Pflanze tatsächlich verbraucht. In Versuchen gab das denselben Ertrag. Klappt am besten mit Salpetersäure.'
       : e.phase === 'bluete' ? 'Viel Kalium, so wie bisher.' : 'So wie bisher.';
     return `<div class="gruppe"><div class="gruppe-titel">${e.phase === 'bluete' ? 'Blüte-Rezept' : 'Rezept'}</div>${segment('rezept', liste, wert)}</div>
           <p class="leise" style="font-size:15px;margin-top:-8px">${text}</p>`;

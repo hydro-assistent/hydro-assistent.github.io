@@ -24,6 +24,13 @@ for (const phase of ['anzucht', 'wachstum', 'bluete']) {
   pruefe(sp.ist.NH4anteil <= 0.16, `${phase}: Ammonium ${(sp.ist.NH4anteil * 100).toFixed(0)} %`);
   pruefe(!sp.hinweise.some(h => /Rezept „Sparsam“/.test(h)), `${phase}: Säure-Hinweis ohne Phosphorsäure`);
 }
+// Blüte nimmt die Lösung aus dem Cannabis-Versuch (eigenes Profil), die anderen Phasen das allgemeine Cannabis-Verhältnis
+{
+  const d2 = mitSaeure('salpeter');
+  pruefe(!!d2.phasen.bluete.profilSparsam && !d2.phasen.wachstum.profilSparsam, 'Profil Sparsam nur in der Blüte eigen');
+  const r = K.rezept(d2, { phase: 'bluete', liter: 28, ecZiel: 1.75, rezeptSparsam: true });
+  pruefe(r.soll.Ca / r.soll.N > 0.7, 'Blüte Sparsam: Verhältnis Ca/N aus dem Versuch (120/154)');
+}
 // In der Reife wirkt Sparsam nicht
 {
   const d = mitSaeure('salpeter'), ec = K.zielEC(d, 'reife', 'photo', 'normal');
