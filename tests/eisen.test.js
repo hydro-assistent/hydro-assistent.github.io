@@ -25,5 +25,19 @@ pruefe(r.hinweise.some(h => /reicht das Eisen nicht/.test(h)), 'Hinweis zum Eise
 const mitB3 = K.rezept(JSON.parse(JSON.stringify(D)), { phase: 'wachstum', liter: 20, ecZiel: 1.4 });
 pruefe(!mitB3.hinweise.some(h => /reicht das Eisen nicht/.test(h)), 'Standard-Satz: kein Eisen-Hinweis');
 
+// Einkaufstipp Phosphor (seit 3.13.8): nur Soft Elite und Salpetersäure, weiches Wasser – P bleibt knapp, die App nennt MKP
+{
+  const d2 = JSON.parse(JSON.stringify(D));
+  d2.saeure = { typ: 'salpeter', konz: 38, zielPH: 5.8 };
+  d2.wasser = { ecGemessen: 0.29, pH: 7, alkalitaet: 1.3, NO3: 0, NH4: 0, P: 0, K: 0, Ca: 40, Mg: 6, S: 4.3 };
+  const ids2 = ['soft_elite', 'calcinit', 'kno3', 'bittersalz'], v2 = {}, a2 = {};
+  for (const s of d2.salze) { v2[s.id] = ids2.includes(s.id); a2[s.id] = ids2.includes(s.id); }
+  const r2 = K.rezept(d2, { phase: 'wachstum', liter: 24.7, ecZiel: 1.35, vorrat: v2, auswahl: a2 });
+  pruefe(r2.hinweise.some(h => /Monokaliumphosphat/.test(h)), 'Einkaufstipp Phosphor fehlt');
+  ids2.push('mkp'); for (const s of d2.salze) { v2[s.id] = ids2.includes(s.id); a2[s.id] = ids2.includes(s.id); }
+  const r3 = K.rezept(d2, { phase: 'wachstum', liter: 24.7, ecZiel: 1.35, vorrat: v2, auswahl: a2 });
+  pruefe(!r3.hinweise.some(h => /Monokaliumphosphat/.test(h)) && r3.mengen.some(m => m.id === 'mkp'), 'Mit MKP: kein Tipp, MKP eingeplant');
+}
+
 console.log(`${n} Prüfungen, ${fehler} Fehler.`);
 if (fehler) process.exit(1);

@@ -674,6 +674,8 @@ details.hilfe .inhalt b { color: var(--akzent); }
       else if (abw > 0.3 && ist[e] > GRENZE[e]) hinweise.push(`${e} liegt bei ${ist[e].toFixed(0)} mg/L, das ist hoch (${(abw * 100).toFixed(0)} % über Soll)` + (e === 'P' && sa.P > 0 ? `. ${sa.P.toFixed(0)} mg/L davon bringt die Phosphorsäure.` : '.'));
       else if (abw < -0.15) hinweise.push(`${e} liegt ${(-abw * 100).toFixed(0)} % unter Soll – mit den vorrätigen Salzen nicht besser erreichbar.`);
     }
+    // Einkaufstipp: Phosphor deutlich zu knapp und kein Salz mit viel P vorrätig (z. B. nur Soft Elite plus Salpetersäure)
+    if (ist.P < soll.P * 0.75 && !salze.some(s => (s.P || 0) >= 5)) hinweise.push('Für mehr Phosphor fehlt ein Salz mit viel P, etwa Monokaliumphosphat (MKP) oder Hakaphos Basis 3. Einschalten unter Einstellungen → Salze & Zusatz.');
     const ersatzK = salze.some(s => s.co3);
     const fehlend = D.salze.filter(s => opt.vorrat && opt.vorrat[s.id] === false && s.aktiv !== false && !(s.nurMitSalpeter && !salpeter))
       .filter(s => !(s.id === 'kno3' && ersatzK)).map(s => s.name);
@@ -1323,7 +1325,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
     }
     const ziel = zielEC(e), zielPH = Z.einst.saeure.zielPH;
     if (std > 36) { o.text = `Letzte Messung ${vorZeit(last.datum)}. Zeit, wieder zu messen.`; o.knopf = ['eintragMess', 'Messen']; return o; }
-    if (last.art !== 'Messung') { o.text = `${artText(last.art)} ${vorZeit(last.datum)}. Beim nächsten Mal einfach messen.`; o.ruhig = true; return o; }
+    if (last.art !== 'Messung') { const a = artText(last.art); o.text = `${a.charAt(0).toUpperCase() + a.slice(1)} ${vorZeit(last.datum).replace(/\.$/, '')}. Beim nächsten Mal einfach messen.`; o.ruhig = true; return o; }
     const hoch = last.ec != null && last.ec >= ziel + 0.3, tief = last.ec != null && last.ec <= ziel - 0.3;
     const stieg = o.prev && o.prev.ec != null && last.ec != null && last.ec - o.prev.ec >= 0.05;
     if (last.h != null && last.ec != null) {
@@ -1425,6 +1427,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
     h += `<button class="schalter" role="switch" aria-checked="${!!ww.b}" ${attr('misch')}><span>Zwei Wasser mischen<small>${ww.b ? esc(wahlText(ww)) : 'aus'}</small></span><span class="pille"></span></button>`;
     if (ww.b) h += `<div class="gruppe" style="margin-top:12px"><div class="gruppe-titel">Dazu gemischt</div>${seg('b', q.filter(x => x[0] !== ww.a), ww.b)}</div>
       <div class="gruppe"><div class="gruppe-titel">Anteil ${esc(quelleName(ww.b))}</div>${seg('anteil', [[25, '25 %'], [50, '50 %'], [75, '75 %']], ww.anteil)}</div>`;
+    if (ww.b) { const m = wasserMisch(ww); h += `<p class="leise zahl" style="font-size:15px;margin-top:-4px">Die Mischung hat dann etwa: EC ${fmt(m.ecGemessen || 0, 2)} · Karbonathärte ${fmt(m.alkalitaet || 0, 2)} mmol/L · Calcium ${fmt(m.Ca || 0, 0)} · Magnesium ${fmt(m.Mg || 0, 0)} mg/L. Damit rechnet die App.</p>`; }
     return h;
   }
   function wasserZeile(e) {
@@ -1453,7 +1456,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
       <button class="regler-zeile" data-act="regler" aria-expanded="${!!UI.regler}">
         <span>${reglerText(e)}</span><span class="pfeil">${UI.regler ? '▴' : '▾'}</span></button>
       ${UI.regler ? reglerHtml(e, UI.eimer) : ''}
-      <div class="ziel"><div class="ec-gross zahl">${fmt(zielEC(e), 2)}</div><div class="leise">Ziel-EC für diesen Tank, inklusive Leitungswasser ${frage('ziel')}</div></div>
+      <div class="ziel"><div class="ec-gross zahl">${fmt(zielEC(e), 2)}</div><div class="leise">Ziel-EC für diesen Tank, inklusive ${esc(wasserWahlFuer(e).b ? 'Wassermischung' : quelleName(wasserWahlFuer(e).a))} ${frage('ziel')}</div></div>
       ${lage(UI.eimer) ? `<div class="kalender" style="padding-top:12px">${lageHtml(lage(UI.eimer))}${lage(UI.eimer).diff ? `<p class="klein" style="margin:8px 0 0">Was heißt das? ${frage('seit')}</p>` : ''}</div>` : ''}
       ${vKontrolle(UI.eimer)}
       ${vFotostreifen(UI.eimer)}
@@ -1516,10 +1519,11 @@ details.hilfe .inhalt b { color: var(--akzent); }
     const f = (r.soll.N + r.soll.K) > 0 ? (r.ist.N + r.ist.K) / (r.soll.N + r.soll.K) : 1;
     return { N: r.soll.N * f, P: r.soll.P * f, K: r.soll.K * f, Ca: r.soll.Ca * f, Mg: r.soll.Mg * f };
   }
-  // Nährstoffe im Tank mit gutem Bereich (so wie der Rechenkern prüft: bis 15 % drunter, bis 30 % drüber)
+  // Nährstoffe im Tank mit gutem Bereich: bis 25 % drunter, bis 40 % drüber. Die Salze treffen das Rezept nie genau;
+  // enger gefasst stünde fast jedes Rezept der App selbst auf Gelb.
   function naehrBalken(a) {
     const zeilen = ['N', 'P', 'K', 'Ca', 'Mg'].map(x => {
-      const ist = a.werte[x], soll = a.werteSoll[x], lo = soll * 0.85, hi = soll * 1.3;
+      const ist = a.werte[x], soll = a.werteSoll[x], lo = soll * 0.75, hi = soll * 1.4;
       const max = Math.max(soll * 1.6, ist * 1.1), pz = v => Math.max(0, Math.min(100, v / max * 100));
       const ww = a.wasserWerte ? a.wasserWerte[x] || 0 : 0;
       // Calcium und Magnesium aus hartem Wasser: kommt ohne Zutun, die App plant dafür nichts ein – kein Grund zur Sorge
@@ -1531,7 +1535,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
         <span class="wert zahl">${fmt(ist, 0)}<small>${esc(wa)}</small></span></div>`;
     }).join('');
     return `<div class="naehr"><div class="klein leise" style="font-size:15px;margin-bottom:4px">Nährstoffe im Tank, in mg/L</div>${zeilen}
-      <p class="fuss">Grün ist der gute Bereich für diese Phase. Gelb heißt: etwas daneben, meist kein Problem. Bringt dein Wasser schon viel Calcium oder Magnesium mit, plant die App dafür nichts mehr ein.</p></div>`;
+      <p class="fuss">Grün ist der gute Bereich für diese Phase. Mit den vorhandenen Salzen trifft kein Rezept jeden Wert genau; Gelb heißt: deutlich daneben, meist trotzdem kein Problem. Bringt dein Wasser schon viel Calcium oder Magnesium mit, plant die App dafür nichts mehr ein.</p></div>`;
   }
   function dazuKarte(a) {
     if (a.dazu) return `<div class="naehr"><div class="klein leise" style="font-size:15px">Im ganzen Tank kommt dazu, in mg/L ${frage('dazu')}</div>
@@ -1931,7 +1935,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
   const ERKL = {
     ec: ['Was ist EC?', 'EC zeigt, wie viel Dünger im Wasser gelöst ist. Steigt sie, hat die Pflanze mehr Wasser getrunken als Nährstoffe genommen. Sinkt sie, hat sie Hunger.'],
     ph: ['Was ist pH?', 'pH zeigt, ob das Wasser eher sauer oder basisch ist. Zwischen etwa 5,6 und 6,2 kann die Pflanze die Nährstoffe am besten aufnehmen. Liegt er daneben, kommt sie an manche nicht mehr dran, obwohl sie im Wasser sind.'],
-    ziel: ['Was ist die Ziel-EC?', 'So stark soll die Lösung im Tank sein, passend zu Phase, Sorte und Stärke. Das Leitungswasser ist schon mit eingerechnet. Liegt deine Messung mehr als 0,3 darüber oder darunter, färbt die App die Zahl ein.'],
+    ziel: ['Was ist die Ziel-EC?', 'So stark soll die Lösung im Tank sein, passend zu Phase, Sorte und Stärke. Das Wasser (auch eine Mischung) ist schon mit eingerechnet. Liegt deine Messung mehr als 0,3 darüber oder darunter, färbt die App die Zahl ein.'],
     nachfuellen: ['Wasser oder Nährlösung?', 'Nach EC: Die App rechnet aus, wo die EC landet, wenn du nur Wasser nachfüllst. Bleibt sie dann am Ziel, reicht Wasser. Fällt sie darunter, kommt stärkere Nährlösung nach. Deshalb vorher immer frisch messen. Nach Verbrauch: Es kommt immer dieselbe Nährlösung in Ziel-Stärke nach. Die Pflanze nimmt Stickstoff, Phosphor und Kalium schnell auf, Calcium, Sulfat und Natrium bleiben eher liegen. Eine sinkende EC heißt deshalb meist nur, dass die Pflanzen gut fressen – kein Mangel. Steigt die EC über mehrere Nachfüllungen, reichern sich Salze an: dann einen Teil der Lösung wechseln.'],
     seit: ['Seit dem letzten Mal', 'Der Unterschied zwischen deiner letzten Messung und dem Stand davor. Minus-Liter heißt: So viel hat die Pflanze getrunken. Steigt die EC, hat sie mehr Wasser als Nährstoffe genommen.'],
     kurve: ['Die EC-Kurve', 'Jeder Punkt ist eine Messung in diesem Anbau. Das helle Band ist dein Zielbereich. Läuft die Linie darüber, eher Wasser nachfüllen. Läuft sie darunter, eher Nährlösung.'],
