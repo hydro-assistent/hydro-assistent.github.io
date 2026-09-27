@@ -15,10 +15,12 @@ node tests/rezept.test.js      # alle Phasen × Sorte (photo/auto) × Stärke, p
 node tests/schwefel.test.js    # Schwefelsäure-Zweig, Erwartungswerte unabhängig nachgerechnet
 node tests/saeure.test.js      # Wahl der Säure je Phase (saeureWahl)
 node tests/fassung.test.js     # VERSION in sw.js = neueste „Fassung“ in LIESMICH.md, DATEIEN vorhanden
+node tests/kern.test.js        # Golden-Master: 13 feste Rezepte, topUp, zielEC, liter gegen tests/kern.erwartet.json
+node tests/kern.test.js --neu  # erwartete Werte neu schreiben – nur bei gewollter Rechenänderung, Diff prüfen
 python3 tests/vergleich_optimum.py   # App gegen unabhängige scipy-Optimierung (braucht numpy, scipy, node)
 ```
 
-Kein Test-Framework: jede Datei ist ein eigenständiges Skript, gibt „N Fälle/Prüfungen, M Fehler.“ aus und endet bei Fehlern mit Exit-Code 1. Einen einzelnen Fall prüft man, indem man die jeweilige Datei ausführt oder in einem Einzeiler `require('./tests/laden')` nutzt und `K.rezept(D, {...})` direkt aufruft.
+Kein Test-Framework und keine Abhängigkeiten: jede Datei ist ein eigenständiges Skript, gibt „N Fälle/Prüfungen, M Fehler.“ aus und endet bei Fehlern mit Exit-Code 1. Ausnahme `kern.test.js`, das das eingebaute `node:test` nutzt (`node --test-name-pattern "Blüte" tests/kern.test.js` für einzelne Fälle). Die übrigen Tests prüfen Eigenschaften (EC getroffen, Ammonium-Grenze …) und merken verschobene Gramm-Mengen nicht; das tut nur `kern.test.js`. Ändert sich eine Rechnung gewollt, `--neu` laufen lassen und die Änderung in `kern.erwartet.json` im Commit begründen. Einen einzelnen Fall prüft man, indem man die jeweilige Datei ausführt oder in einem Einzeiler `require('./tests/laden')` nutzt und `K.rezept(D, {...})` direkt aufruft.
 
 GitHub Actions (`.github/workflows/tests.yml`) läuft bei jedem Pull Request und Push auf `main`: Job `tests` führt jede Datei `tests/*.test.js` aus (neue Tests laufen automatisch mit), Job `vergleich` den Python-Vergleich.
 
