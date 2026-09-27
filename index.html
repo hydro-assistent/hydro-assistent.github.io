@@ -1333,7 +1333,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
         o.text = nurWasser
           ? `${stieg ? 'Die Pflanze hat mehr Wasser als Nährstoffe genommen. ' : ''}Mit Wasser auffüllen, etwa ${fmt(fehlt, 1)} L.`
           : `${tief ? 'Die Pflanze hat Hunger. ' : ''}Mit Nährlösung auffüllen, etwa ${fmt(fehlt, 1)} L.`;
-        if (last.ph != null && Math.abs(last.ph - zielPH) > 0.4) o.text += ' Den pH stellst du dabei gleich mit ein.';
+        if (last.ph != null && Math.abs(last.ph - zielPH) > 0.2) o.text += ` Danach den pH wieder auf ${fmt(zielPH, 1)} bringen (jetzt ${fmt(last.ph, 1)}).`;
         o.knopf = ['karteTopup', 'Nachfüllen']; return o;
       }
     }
