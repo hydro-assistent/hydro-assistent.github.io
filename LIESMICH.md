@@ -48,6 +48,8 @@ Fassung 3.13.7: Sagt die Tank-Karte „Mit Nährlösung auffüllen“ und weicht
 
 Fassung 3.13.8: Beim Mischen zweier Wasser zeigt die App gleich die Werte der Mischung (EC, Karbonathärte, Calcium, Magnesium), mit denen sie rechnet. Die Ziel-EC beim Tank nennt das tatsächlich verwendete Wasser statt immer „Leitungswasser“. Fehlt für genug Phosphor ein passendes Salz, schlägt die Mischanleitung Monokaliumphosphat oder Hakaphos Basis 3 vor. Die Nährstoff-Balken färben erst bei deutlicher Abweichung gelb, weil kein Rezept jeden Wert genau trifft. Die Statuszeile auf der Karte beginnt groß und hat keine doppelten Punkte mehr.
 
+Fassung 3.13.9: Rezept „Sparsam“ mit Hakaphos Soft Elite als einzigem Volldünger korrigiert. Vorher kam dabei zu viel Ammonium (19 %), fast kein Magnesium und kein Bittersalz heraus. Jetzt liegen Ammonium bei 15 % und Magnesium bei 18 bis 23 mg/L. Die klassischen Rezepte rechnen unverändert.
+
 Tests: `node tests/rezept.test.js` prüft alle Phasen und Stärken, `node tests/schwefel.test.js` den Schwefelsäure-Zweig, `node tests/saeure.test.js` die Wahl der Säure je Phase, `node tests/sparsam.test.js` das Rezept „Sparsam“ und das Nachfüllen nach Verbrauch, `node tests/eisen.test.js` das Rezept bei nicht erreichbarem Eisen-Minimum und den Einkaufstipp Phosphor, `node tests/kern.test.js` feste Beispielrezepte mit den erwarteten Gramm-Mengen (nach gewollten Rechenänderungen mit `--neu` neu schreiben), `node tests/fassung.test.js` die Versionsnummer in `sw.js`. `python3 tests/vergleich_optimum.py` stellt die App gegen eine unabhängige Optimierung (braucht numpy und scipy).
 
 ## Sicherheit und Haftung

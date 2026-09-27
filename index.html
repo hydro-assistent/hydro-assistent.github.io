@@ -645,11 +645,15 @@ details.hilfe .inhalt b { color: var(--akzent); }
         const nh4 = Math.max(0, r.ist.NH4anteil - NH4_MAX) / NH4_MAX, fe = Math.max(0, feMin - r.ist.Fe) / feMin;
         return form + nh4 * nh4 + fe * fe;
       };
+      // Stufen, bei denen k auf unter die Hälfte des besten k einbricht, scheiden aus: Dort beschreibt das Soll die Mischung
+      // nicht mehr (die Anteile allein sehen das nicht, z. B. bei „Sparsam“ mit Soft Elite als einzigem Volldünger).
+      const kandidaten = FE_LOCKERN.map(f => ({ f, r: rezept(D, Object.assign({}, opt, { feMin: feMin * f })) }));
+      const kMax = Math.max(...kandidaten.map(c => c.r.faktorK));
       let beste = null;
-      for (const f of FE_LOCKERN) {
-        const r = rezept(D, Object.assign({}, opt, { feMin: feMin * f }));
-        const w = bewerte(r);
-        if (!beste || w < beste.w - 1e-9) beste = { r, w, f };
+      for (const c of kandidaten) {
+        if (c.r.faktorK < kMax * 0.5) continue;
+        const w = bewerte(c.r);
+        if (!beste || w < beste.w - 1e-9) beste = Object.assign({ w }, c);
       }
       if (beste.f < 1) beste.r.hinweise.push('Mit den vorrätigen Salzen reicht das Eisen nicht, ohne zu viel Ammonium oder zu wenig von anderem einzuplanen. Ein Volldünger mit mehr Eisen (z. B. Hakaphos Basis 3) oder ein Eisendünger würde helfen.');
       return beste.r;

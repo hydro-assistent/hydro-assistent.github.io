@@ -39,5 +39,18 @@ pruefe(!mitB3.hinweise.some(h => /reicht das Eisen nicht/.test(h)), 'Standard-Sa
   pruefe(!r3.hinweise.some(h => /Monokaliumphosphat/.test(h)) && r3.mengen.some(m => m.id === 'mkp'), 'Mit MKP: kein Tipp, MKP eingeplant');
 }
 
+// „Sparsam“ mit Soft Elite als einzigem Volldünger (seit 3.13.9): Lockern darf keine Stufe wählen, bei der k einbricht
+for (const phase of ['wachstum', 'bluete']) {
+  const d3 = JSON.parse(JSON.stringify(D));
+  d3.saeure = { typ: 'salpeter', konz: 38, zielPH: 5.8 };
+  d3.wasser = { ecGemessen: 0.285, pH: 7, alkalitaet: 1.3, NO3: 0, NH4: 0, P: 0, K: 0, Ca: 40.25, Mg: 6.05, S: 4.27 };
+  const ids3 = ['soft_elite', 'calcinit', 'kno3', 'bittersalz'], v3 = {}, a3 = {};
+  for (const s of d3.salze) { v3[s.id] = ids3.includes(s.id); a3[s.id] = ids3.includes(s.id); }
+  const r = K.rezept(d3, { phase, liter: 24.7, ecZiel: K.zielEC(d3, phase, 'photo', 'normal'), vorrat: v3, auswahl: a3, rezeptSparsam: true });
+  pruefe(r.faktorK > 0.6, `Sparsam ${phase}: k ${r.faktorK.toFixed(2)} eingebrochen`);
+  pruefe(r.ist.NH4anteil <= 0.16, `Sparsam ${phase}: Ammonium ${(r.ist.NH4anteil * 100).toFixed(0)} %`);
+  pruefe(r.mengen.some(m => m.id === 'bittersalz') && r.ist.Mg >= 15, `Sparsam ${phase}: Mg ${r.ist.Mg.toFixed(0)}, Bittersalz fehlt`);
+}
+
 console.log(`${n} Prüfungen, ${fehler} Fehler.`);
 if (fehler) process.exit(1);
