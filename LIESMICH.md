@@ -38,6 +38,8 @@ Fassung 3.13.2: Das Rezept „Sparsam“ folgt jetzt einer Nährlösung, die eig
 
 Fassung 3.13.3: In der Blüte nimmt das Rezept „Sparsam“ jetzt genau die Nährlösung, mit der in einem Versuch mit Cannabis in Wasserkultur voller Ertrag und voller Wirkstoffgehalt erreicht wurden – mit nur 15 mg/L Phosphor; mehr Phosphor oder eine doppelt so starke Lösung brachten dort nichts. Im Tank landen damit etwa 160 mg/L Stickstoff, 220 mg/L Kalium und 120 mg/L Calcium. Phosphor bleibt bei gut 20 mg/L, weil die Volldünger etwas mitbringen. Anzucht und Wachstum bleiben wie in 3.13.2, das klassische Rezept rechnet unverändert.
 
+Fassung 3.13.4: Wer „Nach Verbrauch“ nachfüllt, sieht eine niedrige EC in der Übersicht nicht mehr blau markiert – dort ist sie normal. Eine deutlich zu hohe EC bleibt rot.
+
 Tests: `node tests/rezept.test.js` prüft alle Phasen und Stärken, `node tests/schwefel.test.js` den Schwefelsäure-Zweig, `node tests/saeure.test.js` die Wahl der Säure je Phase, `node tests/sparsam.test.js` das Rezept „Sparsam“ und das Nachfüllen nach Verbrauch, `node tests/kern.test.js` feste Beispielrezepte mit den erwarteten Gramm-Mengen (nach gewollten Rechenänderungen mit `--neu` neu schreiben), `node tests/fassung.test.js` die Versionsnummer in `sw.js`. `python3 tests/vergleich_optimum.py` stellt die App gegen eine unabhängige Optimierung (braucht numpy und scipy).
 
 ## Sicherheit und Haftung

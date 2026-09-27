@@ -1267,7 +1267,8 @@ details.hilfe .inhalt b { color: var(--akzent); }
     const t = Math.round(min / 1440);
     return t === 1 ? 'gestern' : `vor ${t} Tagen`;
   }
-  const ecKlasse = (ec, ziel) => ec >= ziel + 0.3 ? ' hoch' : ec <= ziel - 0.3 ? ' tief' : '';
+  // Beim Nachfüllen nach Verbrauch ist eine niedrige EC normal (die Pflanzen fressen gut), dann bleibt sie ungefärbt
+  const ecKlasse = (ec, ziel) => ec >= ziel + 0.3 ? ' hoch' : ec <= ziel - 0.3 && Z.einst.nachfuellen !== 'verbrauch' ? ' tief' : '';
   const letzteZeile = l => l ? `Zuletzt ${datum(l.datum)}: ${l.h != null ? fmt(l.h, 1) + ' cm, ' : ''}${l.ec != null ? 'EC ' + fmt(l.ec, 2) : ''}${l.ph != null ? ', pH ' + fmt(l.ph, 1) : ''}` : 'Noch keine Einträge';
 
   const pm = (v, d) => (v > 0.0049 ? '+' : v < -0.0049 ? '−' : '±') + fmt(Math.abs(v), d);
@@ -1737,7 +1738,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
         <p><b>Hilfe:</b> Pflanzendoktor, diese Anleitung und kurze Erklärungen.</p>
         <p><b>Einstellungen:</b> Tanks, Wasser und Säure, Salze, Rezepte, Sicherung. Alles, was man einmal einrichtet.</p>`)}
       ${teil('Die Tank-Karte', `
-        <p>Oben stehen Name, Phase und die zuletzt gemessene EC. Rot heißt deutlich zu hoch, blau deutlich zu niedrig.</p>
+        <p>Oben stehen Name, Phase und die zuletzt gemessene EC. Rot heißt deutlich zu hoch, blau deutlich zu niedrig. Wer nach Verbrauch nachfüllt, sieht kein Blau: Dort ist eine niedrige EC normal.</p>
         <p><b>Seit dem letzten Mal</b> zeigt, wie viele Liter fehlen und wie sich EC und pH verändert haben. Steigt die EC, hat die Pflanze mehr Wasser als Nährstoffe genommen.</p>
         <p>Darunter steht ein Satz, was zu tun ist, und rechts der passende Knopf. Mit <b>+ Eintragen</b> links hältst du alles andere fest.</p>`)}
       ${teil('Messrunde', `
