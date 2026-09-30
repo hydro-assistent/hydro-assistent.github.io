@@ -1088,7 +1088,8 @@ details.hilfe .inhalt b { color: var(--akzent); }
     return {
       version: 3, geaendert: d.geaendert || 0, pruefen: alt && !!d.einst,
       eimer: Array.isArray(d.eimer) && d.eimer.length >= 1 && d.eimer.length <= 6
-        ? d.eimer.map((x, i) => { const e = Object.assign({ name: 'Tank ' + (i + 1), phase: 'wachstum', typ: 'photo', staerke: 'normal' }, x); e.name = String(e.name).replace(/^(Behälter|Eimer) (\d+)$/, 'Tank $2'); return e; }) : s.eimer,
+        ? d.eimer.map((x, i) => { const e = Object.assign({ name: 'Tank ' + (i + 1), phase: 'wachstum', typ: 'photo', staerke: 'normal' }, x); e.name = String(e.name).replace(/^(Behälter|Eimer) (\d+)$/, 'Tank $2');
+            if (e.behaelter && typeof e.behaelter === 'object') e.behaelter = Object.assign({}, s.einst.behaelter, e.behaelter); else delete e.behaelter; return e; }) : s.eimer,
       log: Array.isArray(d.log) ? d.log : [],
       einst: {
         vorrat: Object.assign({}, e.vorrat || (d.einst ? {} : s.einst.vorrat)), auswahl: Object.assign({}, e.auswahl || {}),
@@ -1162,8 +1163,8 @@ details.hilfe .inhalt b { color: var(--akzent); }
   }
   function daten(e) {
     const D = JSON.parse(JSON.stringify(BASIS));
-    Object.assign(D.eimer, Z.einst.behaelter);
-    D.eimer.maxFuell = maxFuell(Z.einst.behaelter);
+    Object.assign(D.eimer, beh(e));
+    D.eimer.maxFuell = maxFuell(beh(e));
     D.eimer.zielFuell = D.eimer.maxFuell;
     D.eimer.anzahl = Z.eimer.length;
     D.wasser = wasserMisch(wasserWahlFuer(e));
@@ -1180,6 +1181,9 @@ details.hilfe .inhalt b { color: var(--akzent); }
   const de = s => wort(s).replace(/(\d)\.(\d)/g, '$1,$2');
   const FORMEN = [['konisch', 'Konisch'], ['rund', 'Rund'], ['rechteck', 'Eckig']];
   // Höchste Füllhöhe entweder direkt gesetzt oder aus Netztopf und Luftspalt gerechnet
+  // Maße eines Tanks: eigene, wenn der Tank welche hat, sonst die gemeinsamen
+  const beh = e => (e && e.behaelter) || Z.einst.behaelter;
+  const behZiel = i => (i != null && Z.eimer[+i] && Z.eimer[+i].behaelter) || Z.einst.behaelter;
   function maxFuell(b) {
     if (b.modus !== 'netztopf') return b.maxFuell;
     return Math.max(1, Math.round((b.hoehe - b.netztopf - b.luftspalt) * 10) / 10);
@@ -1191,16 +1195,17 @@ details.hilfe .inhalt b { color: var(--akzent); }
       : `konisch, ${fmt(b.dOben, 0)} cm oben, ${fmt(b.dUnten, 0)} cm unten`;
     return `${masse}, ${fmt(b.hoehe, 1)} cm hoch. Höchstens ${fmt(b.maxFuell, 1)} cm füllen, das sind ${l} L.`;
   }
-  function behaelterFelder(b) {
-    const f = (id, label, wert, hinweis) => `<label class="feld"><span>${label}</span><input type="text" inputmode="decimal" data-feld="${id}" value="${fmt(wert, 1)}">${hinweis || ''}</label>`;
+  function behaelterFelder(b, i) {
+    const pre = i != null ? `b${i}:` : '', di = i != null ? ` data-i="${i}"` : '';
+    const f = (id, label, wert, hinweis) => `<label class="feld"><span>${label}</span><input type="text" inputmode="decimal" data-feld="${pre}${id}" value="${fmt(wert, 1)}">${hinweis || ''}</label>`;
     const masse = b.form === 'rund' ? f('durchmesser', 'Durchmesser in cm', b.durchmesser)
       : b.form === 'rechteck' ? `<div class="feld-zeile">${f('laenge', 'Länge in cm', b.laenge)}${f('breite', 'Breite in cm', b.breite)}</div>`
       : `<div class="feld-zeile">${f('dOben', 'Durchmesser oben in cm', b.dOben)}${f('dUnten', 'Durchmesser unten in cm', b.dUnten)}</div>`;
     const netz = b.modus === 'netztopf';
-    return `<div class="gruppe"><div class="gruppe-titel">Form</div>${segment('form', FORMEN, b.form).replace(/data-act="setz"/g, 'data-act="behForm"')}</div>
+    return `<div class="gruppe"><div class="gruppe-titel">Form</div>${segment('form', FORMEN, b.form).replace(/data-act="setz"/g, 'data-act="behForm"' + di)}</div>
       ${masse}
       ${f('hoehe', 'Höhe gesamt in cm', b.hoehe)}
-      <div class="gruppe"><div class="gruppe-titel">Höchste Füllhöhe</div>${segment('modus', [['direkt', 'Selbst festlegen'], ['netztopf', 'Aus Netztopf rechnen']], b.modus || 'direkt').replace(/data-act="setz"/g, 'data-act="behModus"')}</div>
+      <div class="gruppe"><div class="gruppe-titel">Höchste Füllhöhe</div>${segment('modus', [['direkt', 'Selbst festlegen'], ['netztopf', 'Aus Netztopf rechnen']], b.modus || 'direkt').replace(/data-act="setz"/g, 'data-act="behModus"' + di)}</div>
       ${netz
         ? `<div class="feld-zeile">${f('netztopf', 'Netztopf ragt hinein, cm', b.netztopf)}${f('luftspalt', 'Luftspalt darunter, cm', b.luftspalt)}</div>
            <p class="leise zahl" style="font-size:16px;margin-top:-4px">Ergibt eine höchste Füllhöhe von ${fmt(maxFuell(b), 1)} cm. In der Anzucht darfst du bis ${fmt(Math.max(1, b.hoehe - b.netztopf), 1)} cm füllen, dann berührt das Wasser den Netztopf und die jungen Wurzeln kommen dran.</p>`
@@ -1413,7 +1418,17 @@ details.hilfe .inhalt b { color: var(--akzent); }
       + (e.phase === 'reife' ? `<button class="schalter" role="switch" aria-checked="${!!e.spuelen}" data-act="spuelen" data-i="${i}">
           <span>Spülen<small>${e.spuelen ? 'an: nur Wasser und Säure' : 'aus'}</small></span><span class="pille"></span></button>
           <p class="leise" style="font-size:15px">Nur Wasser, kein Dünger, kein Wasserglas. Höchstens eine Woche vor der Ernte.</p>` : '')
-      + wasserWahlHtml(e.wasser, 'tank', i);
+      + wasserWahlHtml(e.wasser, 'tank', i)
+      + masseTankHtml(e, i);
+  }
+  // Eigene Maße für einen Tank, sobald es mehrere gibt (z. B. zwei verschieden große Eimer)
+  function masseTankHtml(e, i) {
+    if (Z.eimer.length < 2) return '';
+    const eigen = !!e.behaelter;
+    const seg = segment('behEigen', [['std', 'Wie alle Tanks'], ['eigen', 'Eigene Maße']], eigen ? 'eigen' : 'std').replace(/data-act="setz"/g, `data-act="behEigen" data-i="${i}"`);
+    return `<div class="gruppe" style="margin-top:16px"><div class="gruppe-titel">Maße dieses Tanks</div>${seg}</div>
+      ${eigen ? behaelterFelder(e.behaelter, i) + `<p class="leise zahl" style="font-size:16px">${behaelterText(daten(e))}</p>`
+        : `<p class="leise zahl" style="font-size:15px;margin-top:-8px">${behaelterText(daten(e))}</p>`}`;
   }
 
   // Wasser auswählen: für alle Tanks (std), für einen Tank (tank) oder nur für diese Rechnung (einmal)
@@ -1442,10 +1457,10 @@ details.hilfe .inhalt b { color: var(--akzent); }
 
   // Tankmaße direkt dort ändern, wo gerechnet wird
   function masseZeile(D) {
-    const b = Z.einst.behaelter, L = K.liter(D.eimer, D.eimer.maxFuell);
+    const e = Z.eimer[UI.eimer], eigen = !!(e && e.behaelter), b = beh(e), L = K.liter(D.eimer, D.eimer.maxFuell);
     return `<button class="wert-zeile" data-act="masse" aria-expanded="${!!UI.masse}"><span class="zahl">Tank: bis ${fmt(D.eimer.maxFuell, 1)} cm, ${fmt(L, 1)} L${b.modus === 'netztopf' ? `, Netztopf ${fmt(b.netztopf, 1)} cm` : ''}</span><span class="aendern-text">${UI.masse ? 'fertig' : 'ändern'}</span></button>
-      ${UI.masse ? `<div class="wert-panel">${behaelterFelder(b)}<p class="leise zahl" style="font-size:16px;margin:0">${behaelterText(D)}</p>
-        <p class="leise" style="font-size:15px;margin:8px 0 0">Gilt für alle Tanks, sofort. Du bleibst auf dieser Seite.</p></div>` : ''}`;
+      ${UI.masse ? `<div class="wert-panel">${behaelterFelder(b, eigen ? UI.eimer : null)}<p class="leise zahl" style="font-size:16px;margin:0">${behaelterText(D)}</p>
+        <p class="leise" style="font-size:15px;margin:8px 0 0">${eigen ? 'Gilt nur für diesen Tank' : Z.eimer.length > 1 ? 'Gilt für alle Tanks ohne eigene Maße' : 'Gilt sofort'}. Du bleibst auf dieser Seite.</p></div>` : ''}`;
   }
 
   function vEimer() {
@@ -2166,7 +2181,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
     const t = id => { const el = document.getElementById('e_' + id); if (!el) return undefined; UI.eingabe[id] = el.value; return el.value.trim() || null; };
     const o = { h: n('h'), ec: n('ec'), ph: n('ph'), saeureMl: n('saeureMl'), zusatz: t('zusatz'), menge: t('menge'), notiz: t('notiz') };
     Object.keys(o).forEach(k => o[k] === undefined && delete o[k]);
-    const hoehe = Z.einst.behaelter.hoehe;
+    const hoehe = beh(Z.eimer[UI.eimer]).hoehe;
     if (o.h != null && !(o.h > 0 && o.h <= hoehe)) return (UI.fehler = `Der Füllstand sieht nicht richtig aus. Er muss zwischen 0 und ${fmt(hoehe, 1)} cm liegen.`), null;
     if (o.ec != null && !(o.ec > 0 && o.ec < 5)) return (UI.fehler = 'Die EC sieht nicht richtig aus, zum Beispiel 1,6.'), null;
     if (o.ph != null && !(o.ph > 2 && o.ph < 12)) return (UI.fehler = 'Der pH sieht nicht richtig aus, zum Beispiel 5,9.'), null;
@@ -2261,9 +2276,11 @@ details.hilfe .inhalt b { color: var(--akzent); }
       <div class="gruppe"><div class="gruppe-titel">Anzahl</div>${segment('anzahl', [1, 2, 3, 4, 5, 6].map(n => [String(n), String(n)]), String(Z.eimer.length)).replace(/data-act="setz"/g, 'data-act="anzahl"')}</div>
       ${behaelterFelder(E.behaelter)}
       <p class="leise zahl" style="font-size:16px">${behaelterText(D)}</p>
+      ${Z.eimer.length > 1 ? '<p class="leise" style="font-size:15px">Sind deine Tanks verschieden groß? Trag hier die Maße der meisten ein, die anderen bekommen später beim Tank eigene Maße.</p>' : ''}
       <p class="leise" style="font-size:16px">Die höchste Füllhöhe ist die Marke, bis zu der du auffüllst. Wenn du sie nicht kennst: „Aus Netztopf rechnen“ wählen, dann miss, wie tief der Netztopf in den Tank hineinragt, und wie viel Luft darunter bleiben soll (meist 2 bis 4 cm).</p>`;
     if (s === 2) inhalt = `<h1>Dein Wasser</h1>
       <p class="leise">Damit rechnet die App aus, wie viel Säure nötig ist und was das Wasser schon mitbringt. Ohne diese Werte kann sie nicht richtig rechnen.</p>
+      <p class="leise" style="font-size:15px">Hier kommt dein <b>Leitungswasser</b> hin. Mischst du es mit Osmose- oder Regenwasser, stellst du die Mischung nach der Einrichtung unter Einstellungen → Wasser &amp; Säure ein, bevor du zum ersten Mal ansetzt.</p>
       <div class="feld-zeile">
         <label class="feld"><span>EC des Wassers</span><input type="text" inputmode="decimal" id="sEC" value="${w('ecGemessen', 1, 2)}"></label>
         <label class="feld"><span>pH des Wassers</span><input type="text" inputmode="decimal" id="sPH" value="${w('pH', 1, 1)}"></label>
@@ -2351,7 +2368,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
     if (g === 'tanks') inhalt = `
       ${behaelterFelder(E.behaelter)}
       <p class="leise zahl" style="font-size:16px">${behaelterText(D)}</p>
-      <p class="leise" style="font-size:15px">Namen, Phase und Rezept stellst du beim jeweiligen Tank ein.</p>
+      <p class="leise" style="font-size:15px">Namen, Phase und Rezept stellst du beim jeweiligen Tank ein. Ist ein Tank anders groß, bekommt er dort eigene Maße (unter Phase, Sorte, Stärke).</p>
       <div class="gruppe" style="margin-top:16px"><div class="gruppe-titel">Anzahl</div>
         ${segment('anzahl', [1, 2, 3, 4, 5, 6].map(n => [String(n), String(n)]), String(Z.eimer.length)).replace(/data-act="setz"/g, 'data-act="anzahl"')}</div>
       <p class="leise" style="font-size:16px">Nur so viele Tanks anzeigen, wie gerade Pflanzen stehen. Ausgeblendete behalten ihr Tagebuch.</p>
@@ -2492,7 +2509,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
       const ueber = h > D.eimer.maxFuell;
       if (ueber) { D.eimer.maxFuell = h; D.eimer.zielFuell = h; } // bewusst höher, z. B. in der Anzucht
       const r = K.vollansatz(D, Object.assign({ phase: e.phase, typ: e.typ, staerke: e.staerke, fuellhoehe: h }, ctx(e), optE(e)));
-      if (ueber) r.hinweise.unshift(`${fmt(h, 1)} cm liegen über deiner normalen Marke von ${fmt(maxFuell(Z.einst.behaelter), 1)} cm. In der Anzucht ist das richtig, damit das Wasser den Netztopf berührt. Später brauchen die Wurzeln den Luftspalt.`);
+      if (ueber) r.hinweise.unshift(`${fmt(h, 1)} cm liegen über deiner normalen Marke von ${fmt(maxFuell(beh(e)), 1)} cm. In der Anzucht ist das richtig, damit das Wasser den Netztopf berührt. Später brauchen die Wurzeln den Luftspalt.`);
       UI.anl = { art: 'Neuansatz', titel: 'Neu ansetzen', text: `${e.name} auf ${fmt(r.fuellhoehe, 1)} cm, Ziel-EC ${fmt(r.ecZiel, 2)}.`,
         h: r.fuellhoehe, liter: r.liter, ecZiel: r.ecZiel, ecErwartet: r.ec.gesamt, ecVorSaeure: r.saeure.ml > 0 ? r.ec.vorSaeure + (r.saeure.zuerstMl / r.saeure.ml) * (r.ec.saeure || 0) : null, hinweise: r.hinweise, schritte: schritteEimer(r, r.fuellhoehe),
         werte: { N: r.ist.N, P: r.ist.P, K: r.ist.K, Ca: r.ist.Ca, Mg: r.ist.Mg },
@@ -2854,7 +2871,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
         const ec = zahl('#sEC'), ph = zahl('#sPH'), kh = zahl('#sKH'), ca = zahl('#sCa'), mg = zahl('#sMg'), so4 = zahl('#sSO4');
         const frei = id => document.getElementById(id).value.trim() === '' ? 0 : zahl('#' + id);
         const k = frei('sK'), no3 = frei('sNO3'), nh4 = frei('sNH4'), po4 = frei('sPO4'), na = frei('sNa'), cl = frei('sCl');
-        if (!(ec >= 0 && ec < 2)) { UI.fehler = 'Bitte die EC deines Wassers eintragen (zwischen 0 und 2).'; return render(); }
+        if (!(ec >= 0 && ec < 5)) { UI.fehler = 'Bitte die EC deines Wassers eintragen (zwischen 0 und 5).'; return render(); }
         if (!(ph > 4 && ph < 10)) { UI.fehler = 'Bitte den pH deines Wassers eintragen.'; return render(); }
         const mmol = (UI.kh === 'dh' ? kh / 2.8 : kh);
         if (!(mmol >= 0 && mmol <= 10)) { UI.fehler = 'Bitte die Karbonathärte eintragen.'; return render(); }
@@ -2863,8 +2880,8 @@ details.hilfe .inhalt b { color: var(--akzent); }
         if (!(so4 >= 0 && so4 <= 900)) { UI.fehler = 'Bitte Sulfat aus der Wasseranalyse eintragen (mg/L).'; return render(); }
         if (!(k >= 0 && k <= 100)) { UI.fehler = 'Kalium bitte zwischen 0 und 100 mg/L eintragen oder leer lassen.'; return render(); }
         if (!(no3 >= 0 && no3 <= 250)) { UI.fehler = 'Nitrat bitte zwischen 0 und 250 mg/L eintragen oder leer lassen.'; return render(); }
-        if (!(nh4 >= 0 && nh4 <= 5)) { UI.fehler = 'Ammonium bitte zwischen 0 und 5 mg/L eintragen oder leer lassen.'; return render(); }
-        if (!(po4 >= 0 && po4 <= 20)) { UI.fehler = 'Phosphat bitte zwischen 0 und 20 mg/L eintragen oder leer lassen.'; return render(); }
+        if (!(nh4 >= 0 && nh4 <= 5)) { UI.fehler = `Ammonium ${fmt(nh4, 1)} mg/L wäre für Trinkwasser sehr viel (Grenzwert 0,5). Vielleicht fehlt ein Komma? Das Feld ist freiwillig, leer lassen geht auch.`; return render(); }
+        if (!(po4 >= 0 && po4 <= 20)) { UI.fehler = `Phosphat ${fmt(po4, 1)} mg/L wäre für Trinkwasser sehr viel. Vielleicht fehlt ein Komma? Das Feld ist freiwillig, leer lassen geht auch.`; return render(); }
         if (!(na >= 0 && na <= 500) || !(cl >= 0 && cl <= 500)) { UI.fehler = 'Natrium und Chlorid bitte zwischen 0 und 500 mg/L eintragen oder leer lassen.'; return render(); }
         Object.assign(Z.einst.wasser, { ecGemessen: ec, pH: ph, alkalitaet: Math.round(mmol * 100) / 100, Ca: ca, Mg: mg, S: so4 * SULFAT_S, K: k, NO3: no3 * NITRAT_N, NH4: nh4 * AMMONIUM_N, P: po4 * PHOSPHAT_P, Na: na, Cl: cl });
         UI.setupW = null;
@@ -2915,8 +2932,14 @@ details.hilfe .inhalt b { color: var(--akzent); }
     },
     setupZurueck: () => { merkSetup(); UI.step = Math.max(1, (UI.step || 1) - 1); UI.fehler = ''; render(); window.scrollTo(0, 0); },
     setupNeu: () => { Z.einst.setup = false; UI.step = 1; speichern(); render(); window.scrollTo(0, 0); },
-    behModus: d => { merkeEingaben(); Z.einst.behaelter.modus = d.wert; speichern(); render(); },
-    behForm: d => { merkeEingaben(); Z.einst.behaelter.form = d.wert; speichern(); render(); },
+    behModus: d => { merkeEingaben(); behZiel(d.i).modus = d.wert; speichern(); render(); },
+    behForm: d => { merkeEingaben(); behZiel(d.i).form = d.wert; speichern(); render(); },
+    behEigen: d => {
+      const e = Z.eimer[+d.i]; if (!e) return;
+      const r = schnapp();
+      if (d.wert === 'eigen') e.behaelter = JSON.parse(JSON.stringify(Z.einst.behaelter)); else delete e.behaelter;
+      speichern(); render(); toast(d.wert === 'eigen' ? 'Eigene Maße für diesen Tank' : 'Wieder die gemeinsamen Maße', r);
+    },
     anzahl: d => {
       const n = +d.wert, r = schnapp(), vorher = Z.eimer.filter(e => e.aktiv !== false).length;
       while (Z.eimer.length < n) Z.eimer.push({ name: 'Tank ' + (Z.eimer.length + 1), phase: 'wachstum', typ: 'photo', staerke: 'normal' });
@@ -2958,7 +2981,8 @@ details.hilfe .inhalt b { color: var(--akzent); }
       if (!q || !n) { setTimeout(render, 0); return; }
       const r = schnapp(); q.name = n; speichern(); setTimeout(render, 0); toast('Übernommen', r); return;
     }
-    const f = el.dataset && el.dataset.feld; if (!f) return;
+    let f = el.dataset && el.dataset.feld; if (!f) return;
+    let bi = null; const bm = /^b(\d+):(.+)$/.exec(f); if (bm) { bi = bm[1]; f = bm[2]; }
     if (f.startsWith('konz:')) {
       const t = f.slice(5), n = Number(el.value.trim().replace(',', '.')), max = t === 'salpeter' ? 65 : t === 'phosphor' ? 90 : 98;
       if (!['salpeter', 'schwefel', 'phosphor'].includes(t) || isNaN(n) || n < 1 || n > max) { toast(t === 'salpeter' && n > 65 ? 'Salpetersäure gibt es höchstens mit 65 %, bitte prüfen' : 'Wert außerhalb des sinnvollen Bereichs, bitte prüfen'); setTimeout(render, 0); return; }
@@ -2966,17 +2990,17 @@ details.hilfe .inhalt b { color: var(--akzent); }
     }
     if (f.startsWith('q:')) {
       const [, id, key] = f.split(':'), q = Z.einst.quellen.find(x => x.id === id), n = Number(el.value.trim().replace(',', '.'));
-      const gr = { ecGemessen: [0, 2], pH: [4, 10], alkalitaet: [0, 10], Ca: [0, 300], Mg: [0, 150], sulfat: [0, 900] }[key];
+      const gr = { ecGemessen: [0, 5], pH: [4, 10], alkalitaet: [0, 10], Ca: [0, 300], Mg: [0, 150], sulfat: [0, 900] }[key];
       if (!q || !gr || isNaN(n) || n < gr[0] || n > gr[1]) { toast('Wert außerhalb des sinnvollen Bereichs, bitte prüfen'); setTimeout(render, 0); return; }
       const r = schnapp(); if (key === 'sulfat') q.werte.S = n * SULFAT_S; else q.werte[key] = n; speichern(); setTimeout(render, 0); toast('Übernommen', r); return;
     }
     const n = Number(el.value.trim().replace(',', '.'));
-    const grenzen = { K: [0, 100], nitrat: [0, 250], ammonium: [0, 5], phosphat: [0, 20], Na: [0, 500], Cl: [0, 500], Ca: [0, 300], Mg: [0, 150], sulfat: [0, 900], netztopf: [0, 60], luftspalt: [0, 40], dOben: [5, 200], dUnten: [5, 200], durchmesser: [5, 200], laenge: [5, 300], breite: [5, 300], hoehe: [5, 250], maxFuell: [2, 250], wgDosis: [0.02, 0.5], konz: [1, 98], zielPH: [4.5, 7], ecGemessen: [0, 2], pH: [5, 9.5], alkalitaet: [0, 10] };
+    const grenzen = { K: [0, 100], nitrat: [0, 250], ammonium: [0, 5], phosphat: [0, 20], Na: [0, 500], Cl: [0, 500], Ca: [0, 300], Mg: [0, 150], sulfat: [0, 900], netztopf: [0, 60], luftspalt: [0, 40], dOben: [5, 200], dUnten: [5, 200], durchmesser: [5, 200], laenge: [5, 300], breite: [5, 300], hoehe: [5, 250], maxFuell: [2, 250], wgDosis: [0.02, 0.5], konz: [1, 98], zielPH: [4.5, 7], ecGemessen: [0, 5], pH: [4, 10], alkalitaet: [0, 10] };
     merkeEingaben();
     if (isNaN(n) || !grenzen[f] || n < grenzen[f][0] || n > grenzen[f][1]) { toast('Wert außerhalb des sinnvollen Bereichs, bitte prüfen'); setTimeout(render, 0); return; }
     const r = schnapp();
     if (['dOben', 'dUnten', 'durchmesser', 'laenge', 'breite', 'hoehe', 'maxFuell', 'netztopf', 'luftspalt'].includes(f)) {
-      const b = Z.einst.behaelter;
+      const b = behZiel(bi);
       if (f === 'maxFuell' && n > b.hoehe) { toast('Höher als der Tank selbst'); setTimeout(render, 0); return; }
       if ((f === 'netztopf' || f === 'luftspalt') && b.hoehe - n - (f === 'netztopf' ? b.luftspalt : b.netztopf) < 1) { toast('Dann bliebe kein Platz für Wasser'); setTimeout(render, 0); return; }
       if (f === 'hoehe' && n < b.maxFuell) b.maxFuell = n;
