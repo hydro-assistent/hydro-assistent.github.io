@@ -58,6 +58,8 @@ Fassung 3.13.12: Die Karte erinnert je nach Phase ans Messen: in Anzucht, Blüte
 
 Fassung 3.13.13: Die Eingabefelder für die Wasserwerte (Einrichtung und Einstellungen → Wasser & Säure) sind aufgeräumt: gleich große Felder, auf dem Handy zwei nebeneinander, die Einheit klein hinter dem Namen, auf großen Bildschirmen nicht mehr über die ganze Breite. Die Felder unter „Weitere Werte“ laufen nicht mehr rechts aus dem Kasten. „Alkalität“ heißt jetzt auch in den Einstellungen Karbonathärte. Beim Weiter in Schritt 1 erscheint kein überflüssiges „Übernommen“ mehr.
 
+Fassung 3.13.14: Wasser mischen direkt in der Einrichtung. Unter „Dein Wasser“ steht jetzt „Mischst du dein Leitungswasser?“ mit Nein, Osmose- oder Regenwasser und dem Anteil (25, 50 oder 75 %). Die App zeigt sofort, welche Werte die Mischung hat, und rechnet ab dem ersten Ansatz damit. Der frühere Knopf „Nur Osmosewasser?“ ist weg – er hat die Werte des Leitungswassers überschrieben.
+
 Tests: `node tests/rezept.test.js` prüft alle Phasen und Stärken, `node tests/schwefel.test.js` den Schwefelsäure-Zweig, `node tests/saeure.test.js` die Wahl der Säure je Phase, `node tests/sparsam.test.js` das Rezept „Sparsam“ und das Nachfüllen nach Verbrauch, `node tests/eisen.test.js` das Rezept bei nicht erreichbarem Eisen-Minimum und den Einkaufstipp Phosphor, `node tests/kern.test.js` feste Beispielrezepte mit den erwarteten Gramm-Mengen (nach gewollten Rechenänderungen mit `--neu` neu schreiben), `node tests/fassung.test.js` die Versionsnummer in `sw.js`. `python3 tests/vergleich_optimum.py` stellt die App gegen eine unabhängige Optimierung (braucht numpy und scipy).
 
 ## Sicherheit und Haftung

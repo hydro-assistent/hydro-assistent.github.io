@@ -2286,6 +2286,35 @@ details.hilfe .inhalt b { color: var(--akzent); }
   // Eingetippte Wasserwerte merken, damit sie ein Neuzeichnen (Fehlermeldung, Einheit) überstehen
   const merkSetup = () => ['sEC', 'sPH', 'sKH', 'sCa', 'sMg', 'sSO4', 'sK', 'sNO3', 'sNH4', 'sPO4', 'sNa', 'sCl'].forEach(id => { const el = document.getElementById(id); if (el) (UI.setupW = UI.setupW || {})[id] = el.value; });
   const SETUP_SCHRITTE = 4;
+  // Wassermischung in der Einrichtung: Stand aus UI oder aus der gespeicherten Wahl
+  function setupMischStand() {
+    if (UI.setupMisch) return UI.setupMisch;
+    const w = wahlSauber(Z.einst.wasserWahl), q = w.b && Z.einst.quellen.find(x => x.id === w.b);
+    return { typ: q && (q.vorlage === 'osmose' || q.vorlage === 'regen') ? q.vorlage : 'nein', anteil: w.anteil || 50 };
+  }
+  // Zahl aus einem Einrichtungsfeld (auch bevor gespeichert ist), sonst gespeicherter Wert
+  function setupZahl(id, k, f) {
+    const t = UI.setupW && UI.setupW[id] !== undefined ? String(UI.setupW[id]).trim().replace(',', '.') : '';
+    if (t !== '' && !isNaN(+t)) return +t * (f || 1);
+    return Z.einst.wasser[k];
+  }
+  function setupMischHtml() {
+    const m = setupMischStand();
+    const seg = (teil, liste, wert) => segment('m', liste, String(wert)).replace(/data-act="setz" data-feld="m"/g, `data-act="setupMisch" data-teil="${teil}"`);
+    let h = `<h2 style="margin-top:18px">Mischst du dein Leitungswasser?</h2>
+      <p class="leise" style="font-size:15px;margin-top:-6px">Ist dein Leitungswasser hart, kannst du es mit Osmose- oder Regenwasser strecken. Die App rechnet dann mit der Mischung.</p>
+      <div class="gruppe">${seg('typ', [['nein', 'Nein'], ['osmose', 'Mit Osmose'], ['regen', 'Mit Regen']], m.typ)}</div>`;
+    if (m.typ === 'nein') return h;
+    const B = VORLAGEN[m.typ].werte, f = m.anteil / 100;
+    const kh = setupZahl('sKH', 'alkalitaet', (UI.kh || 'mmol') === 'dh' ? 1 / 2.8 : 1);
+    const mix = (a, b) => a == null || isNaN(a) ? null : (1 - f) * a + f * (b || 0);
+    const werte = [['EC', mix(setupZahl('sEC', 'ecGemessen'), B.ecGemessen), 2, ''], ['Karbonathärte', mix(kh, B.alkalitaet), 2, ' mmol/L'],
+      ['Calcium', mix(setupZahl('sCa', 'Ca'), B.Ca), 0, ' mg/L'], ['Magnesium', mix(setupZahl('sMg', 'Mg'), B.Mg), 0, ' mg/L']].filter(x => x[1] != null);
+    h += `<div class="gruppe"><div class="gruppe-titel">Anteil ${VORLAGEN[m.typ].name}</div>${seg('anteil', [['25', '25 %'], ['50', '50 %'], ['75', '75 %']], m.anteil)}</div>`;
+    h += werte.length ? `<p class="leise zahl" style="font-size:15px;margin-top:-4px">${100 - m.anteil} % Leitung, ${m.anteil} % ${VORLAGEN[m.typ].name}. Die Mischung hat dann etwa: ${werte.map(x => `${x[0]} ${fmt(x[1], x[2])}${x[3]}`).join(' · ')}.</p>`
+      : `<p class="leise" style="font-size:15px;margin-top:-4px">Trag oben die Werte des Leitungswassers ein, dann zeigt die App die Werte der Mischung.</p>`;
+    return h + '<p class="leise" style="font-size:14px;margin-top:-4px">Die Werte des Osmose- bzw. Regenwassers kannst du später unter Einstellungen → Wasser &amp; Säure anpassen.</p>';
+  }
   function vSetup() {
     const E = Z.einst, D = daten(), s = UI.step || 1;
     const kopf = `<p class="setup-kopf">Einrichtung, Schritt ${s} von ${SETUP_SCHRITTE}</p>`;
@@ -2306,7 +2335,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
       <p class="leise" style="font-size:16px">Die höchste Füllhöhe ist die Marke, bis zu der du auffüllst. Wenn du sie nicht kennst: „Aus Netztopf rechnen“ wählen, dann miss, wie tief der Netztopf in den Tank hineinragt, und wie viel Luft darunter bleiben soll (meist 2 bis 4 cm).</p>`;
     if (s === 2) inhalt = `<h1>Dein Wasser</h1>
       <p class="leise">Damit rechnet die App aus, wie viel Säure nötig ist und was das Wasser schon mitbringt. Ohne diese Werte kann sie nicht richtig rechnen.</p>
-      <p class="leise" style="font-size:15px">Hier kommt dein <b>Leitungswasser</b> hin. Mischst du es mit Osmose- oder Regenwasser, stellst du die Mischung nach der Einrichtung unter Einstellungen → Wasser &amp; Säure ein, bevor du zum ersten Mal ansetzt.</p>
+      <p class="leise" style="font-size:15px">Hier kommen die Werte deines <b>Leitungswassers</b> hin. Mischst du es mit Osmose- oder Regenwasser, stellst du das weiter unten ein.</p>
       <div class="gruppe" style="margin-bottom:10px"><div class="gruppe-titel">Karbonathärte angegeben in</div>${segment('kh', [['mmol', 'mmol/L'], ['dh', '°dH']], UI.kh || 'mmol').replace('class="segment"', 'class="segment klein"').replace(/data-act="setz"/g, 'data-act="khEinheit"')}</div>
       <div class="werte-raster">
         ${wf('sEC', 'EC', 'mS/cm', w('ecGemessen', 1, 2))}
@@ -2326,8 +2355,8 @@ details.hilfe .inhalt b { color: var(--akzent); }
         ${wf('sNa', 'Natrium', 'mg/L', w('Na', 1, 1))}
         ${wf('sCl', 'Chlorid', 'mg/L', w('Cl', 1, 1))}
       </div></div></details>
-      <button class="zeile-knopf" data-act="setupOsmose" style="margin-bottom:10px">Nur Osmosewasser? Werte übernehmen</button>
-      <details class="hilfe"><summary>Wo finde ich die Werte?</summary><div class="inhalt"><p class="leise" style="font-size:16px;margin:0">EC und pH misst du selbst. Die übrigen Werte stehen in der Trinkwasseranalyse deines Wasserversorgers, meist auf dessen Website. Die Karbonathärte heißt dort oft „Säurekapazität bis pH 4,3“ (mmol/L) oder „Karbonathärte“ (°dH). Nutzt du Osmose- oder Regenwasser, trag dessen Werte ein, sie liegen meist nahe 0.</p></div></details>`;
+      ${setupMischHtml()}
+      <details class="hilfe"><summary>Wo finde ich die Werte?</summary><div class="inhalt"><p class="leise" style="font-size:16px;margin:0">EC und pH misst du selbst. Die übrigen Werte stehen in der Trinkwasseranalyse deines Wasserversorgers, meist auf dessen Website. Die Karbonathärte heißt dort oft „Säurekapazität bis pH 4,3“ (mmol/L) oder „Karbonathärte“ (°dH). Osmose- und Regenwasser brauchst du nicht zu messen, deren typische Werte kennt die App.</p></div></details>`;
     if (s === 3) inhalt = `<h1>Deine Säuren</h1>
       ${saeurenHtml(E)}
       <label class="feld"><span>Ziel-pH</span><input type="text" inputmode="decimal" data-feld="zielPH" value="${fmt(E.saeure.zielPH, 1)}"></label>
@@ -2630,12 +2659,11 @@ details.hilfe .inhalt b { color: var(--akzent); }
     },
     filter: d => { UI.filter = +d.i; render(); },
     loesche: d => { const r = schnapp(); Z.log = Z.log.filter(x => x.id !== d.id); speichern(); render(); toast('Eintrag gelöscht', r); },
-    setupOsmose: () => {
-      const o = VORLAGEN.osmose.werte, setze = (id, v) => { const el = document.getElementById(id); if (el) el.value = fmt(v, id === 'sEC' ? 2 : 1); };
-      setze('sEC', o.ecGemessen); setze('sPH', o.pH); setze('sKH', (UI.kh || 'mmol') === 'dh' ? o.alkalitaet * 2.8 : o.alkalitaet);
-      setze('sCa', o.Ca); setze('sMg', o.Mg); setze('sSO4', o.S / SULFAT_S);
-      ['sK', 'sNO3', 'sNH4', 'sPO4', 'sNa', 'sCl'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-      toast('Typische Werte für Osmosewasser eingetragen. EC und pH gern selbst nachmessen.');
+    setupMisch: d => {
+      merkSetup();
+      const m = UI.setupMisch = setupMischStand();
+      if (d.teil === 'typ') m.typ = d.wert; else m.anteil = +d.wert;
+      render();
     },
     grundSatz: () => { const v = Z.einst.vorrat; ['basis3', 'soft_elite', 'calcinit', 'kno3', 'bittersalz'].forEach(id => { delete v[id]; }); speichern(); render(); },
     vorrat: d => { const v = Z.einst.vorrat; if (v[d.id] === false) delete v[d.id]; else v[d.id] = false; speichern(); render(); },
@@ -2935,7 +2963,14 @@ details.hilfe .inhalt b { color: var(--akzent); }
         if (!(po4 >= 0 && po4 <= 20)) { UI.fehler = `Phosphat ${fmt(po4, 1)} mg/L wäre für Trinkwasser sehr viel. Vielleicht fehlt ein Komma? Das Feld ist freiwillig, leer lassen geht auch.`; return render(); }
         if (!(na >= 0 && na <= 500) || !(cl >= 0 && cl <= 500)) { UI.fehler = 'Natrium und Chlorid bitte zwischen 0 und 500 mg/L eintragen oder leer lassen.'; return render(); }
         Object.assign(Z.einst.wasser, { ecGemessen: ec, pH: ph, alkalitaet: Math.round(mmol * 100) / 100, Ca: ca, Mg: mg, S: so4 * SULFAT_S, K: k, NO3: no3 * NITRAT_N, NH4: nh4 * AMMONIUM_N, P: po4 * PHOSPHAT_P, Na: na, Cl: cl });
-        UI.setupW = null;
+        const m = setupMischStand();
+        if (m.typ === 'nein') Z.einst.wasserWahl = { a: 'leitung' };
+        else {
+          let q = Z.einst.quellen.find(x => x.vorlage === m.typ);
+          if (!q) { q = { id: 'q' + Date.now().toString(36), vorlage: m.typ, name: VORLAGEN[m.typ].name, werte: Object.assign({}, VORLAGEN[m.typ].werte) }; Z.einst.quellen.push(q); }
+          Z.einst.wasserWahl = { a: 'leitung', b: q.id, anteil: m.anteil };
+        }
+        UI.setupW = null; UI.setupMisch = null;
       }
       if (s === 3 && !K.saeurenDa(Z.einst.saeure).length) { UI.fehler = 'Bitte mindestens eine Säure einschalten.'; return render(); }
       if (s === 3 && !Z.einst.haftung) { UI.fehler = 'Bitte die Sicherheitshinweise lesen und bestätigen.'; return render(); }
