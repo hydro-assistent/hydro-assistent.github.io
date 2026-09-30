@@ -1317,6 +1317,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
   const letzteZeile = l => l ? `Zuletzt ${datum(l.datum)}: ${l.h != null ? fmt(l.h, 1) + ' cm, ' : ''}${l.ec != null ? 'EC ' + fmt(l.ec, 2) : ''}${l.ph != null ? ', pH ' + fmt(l.ph, 1) : ''}` : 'Noch keine Einträge';
 
   const pm = (v, d) => (v > 0.0049 ? '+' : v < -0.0049 ? '−' : '±') + fmt(Math.abs(v), d);
+  const PH_SCHWELLE = 0.25; // ab 0,3 über dem Ziel: pH-Satz beim Auffüllen und „pH korrigieren“ auf der Karte (gleiche Schwelle)
   function lage(i) {
     const e = Z.eimer[i], D = daten(e), b = D.eimer;
     const mess = Z.log.filter(x => x.eimer === i && imAnbau(x, i) && (x.h != null || x.ec != null || x.ph != null));
@@ -1344,11 +1345,11 @@ details.hilfe .inhalt b { color: var(--akzent); }
         o.text = nurWasser
           ? `${stieg ? 'Die Pflanze hat mehr Wasser als Nährstoffe genommen. ' : ''}Mit Wasser auffüllen, etwa ${fmt(fehlt, 1)} L.`
           : `${tief ? 'Die Pflanze hat Hunger. ' : ''}Mit Nährlösung auffüllen, etwa ${fmt(fehlt, 1)} L.`;
-        if (last.ph != null && Math.abs(last.ph - zielPH) > 0.2) o.text += ` Danach den pH wieder auf ${fmt(zielPH, 1)} bringen (jetzt ${fmt(last.ph, 1)}).`;
+        if (last.ph != null && Math.abs(last.ph - zielPH) > PH_SCHWELLE) o.text += ` Danach den pH wieder auf ${fmt(zielPH, 1)} bringen (jetzt ${fmt(last.ph, 1)}).`;
         o.knopf = ['karteTopup', 'Nachfüllen']; return o;
       }
     }
-    if (last.ph != null && last.ph > zielPH + 0.4) { o.text = `Der pH ist mit ${fmt(last.ph, 1)} zu hoch. Etwas Säure zugeben, Ziel ${fmt(zielPH, 1)}.`; o.knopf = ['eintragPh', 'pH korrigieren']; return o; }
+    if (last.ph != null && last.ph > zielPH + PH_SCHWELLE) { o.text = `Der pH ist mit ${fmt(last.ph, 1)} zu hoch. Etwas Säure zugeben, Ziel ${fmt(zielPH, 1)}.`; o.knopf = ['eintragPh', 'pH korrigieren']; return o; }
     if (last.ph != null && last.ph < zielPH - 0.5) { o.text = `Der pH ist mit ${fmt(last.ph, 1)} niedrig. Erst mal beobachten, beim Nachfüllen gleicht es sich meist aus.`; return o; }
     if (hoch) { o.text = 'Die EC ist hoch. Beim nächsten Nachfüllen nur Wasser nehmen.'; return o; }
     if (tief) { o.text = 'Die EC ist niedrig, die Pflanze hat Hunger. Bald mit Nährlösung nachfüllen oder neu ansetzen.'; return o; }
@@ -1359,6 +1360,13 @@ details.hilfe .inhalt b { color: var(--akzent); }
     return (lg.diff ? `<div class="seit zahl"><small>Seit dem letzten Mal (${esc(lg.seit)})</small><b>${lg.diff}</b></div>` : '')
       + `<p class="empf${lg.ruhig ? ' ruhig' : ''}">${esc(lg.text)}</p>`;
   }
+
+  // Der eine nächste Job eines Tanks: was die Lage vorschlägt, sonst bei leerem Tank ansetzen, sonst messen
+  function hauptKnopf(i, lg) {
+    if (lg && lg.knopf) return lg.knopf;
+    return leerTank(i) ? ['karteNeu', 'Neu ansetzen'] : ['eintragMess', 'Messen'];
+  }
+  const JOB_TYP = { karteTopup: 'nachfuellen', karteNeu: 'neu', eintragMess: 'mess', eintragPh: 'ph' };
 
   function vStart() {
     const versteckt = Z.eimer.filter(e => e.aktiv === false).length;
@@ -1378,10 +1386,10 @@ details.hilfe .inhalt b { color: var(--akzent); }
           ${l ? `<div class="ec-gross zahl${ecKlasse(l.ec, ziel)}">${fmt(l.ec, 2)}<small>EC zuletzt, Soll ${fmt(ziel, 2)}</small></div>`
               : `<div class="ec-gross zahl leer">${fmt(ziel, 2)}<small>Soll-EC, noch nicht gemessen</small></div>`}
         </div>
-        ${lg && lg.diff ? '' : l ? `<div class="eimer-zeile zahl">${[l.h != null ? fmt(l.h, 0) + ' cm' : null, 'EC ' + fmt(l.ec, 2), l.ph != null ? 'pH ' + fmt(l.ph, 1) : null].filter(Boolean).join(' · ')}</div>
+        ${lg && lg.diff ? '' : l ? `<div class="eimer-zeile zahl">${[l.h != null ? fmt(l.h, 0) + ' cm (' + fmt(K.liter(daten(e).eimer, l.h), 1) + ' L)' : null, 'EC ' + fmt(l.ec, 2), l.ph != null ? 'pH ' + fmt(l.ph, 1) : null].filter(Boolean).join(' · ')}</div>
                <div class="karte-zeile2">${vorZeit(l.datum)}</div>`
-            : '<div class="eimer-zeile">Noch keine Einträge</div>'}
-        ${lageHtml(lg)}
+            : ''}
+        ${lg ? lageHtml(lg) : leerTank(i) ? '<p class="empf">Noch leer: Nährlösung frisch ansetzen.</p>' : ''}
         ${offeneKontrolle(i) ? '<span class="badge">Nachkontrolle fällig</span>' : ''}
         ${hauptphase(e, kal) && (!l || Date.now() - new Date(l.datum).getTime() > 2 * 864e5) ? '<div class="ernte-wichtig">Blütewoche ' + kal.woche + ': Bitte EC messen</div><br>' : ''}
         ${!kal && vegi(e) && vegi(e).tag >= 1 ? `<div class="karte-zeile2 zahl">Wachstum, Tag ${vegi(e).tag} seit Keimung</div>` : ''}
@@ -1389,7 +1397,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
       </button>
       <button class="klapp" data-act="klappen" data-i="${i}" aria-expanded="true" aria-label="${esc(e.name)} einklappen">▴</button>
       <button class="karte-eintragen" data-act="eintragWahl" data-i="${i}">+ Eintragen</button>
-      <button class="karte-topup" data-act="${lg && lg.knopf ? lg.knopf[0] : leerTank(i) ? 'karteNeu' : 'karteTopup'}" data-i="${i}">${lg && lg.knopf ? lg.knopf[1] : leerTank(i) ? 'Neu ansetzen' : 'Nachfüllen'}</button></div>`; }).join('') +
+      <button class="karte-topup" data-act="${hauptKnopf(i, lg)[0]}" data-i="${i}">${hauptKnopf(i, lg)[1]}</button></div>`; }).join('') +
       (versteckt ? `<p class="leise" style="font-size:15px">${versteckt === 1 ? 'Ein Tank ist' : versteckt + ' Tanks sind'} ausgeblendet. <button data-act="einstGruppe" data-g="tanks" style="text-decoration:underline;color:var(--leise);font-size:15px">In den Einstellungen einblenden</button></p>` : '') + nav();
   }
 
@@ -2139,8 +2147,9 @@ details.hilfe .inhalt b { color: var(--akzent); }
   ];
   function vEintragWahl() {
     const e = Z.eimer[UI.eimer];
+    const ohne = UI.eVon === 'eimer' ? ['nachfuellen', 'neu'] : UI.eVon === 'start' ? [JOB_TYP[hauptKnopf(UI.eimer, lage(UI.eimer))[0]]] : [];
     return kopf('Eintragen') + `<p class="leise" style="font-size:16px">${esc(e.name)}: Was hast du gemacht?</p>
-      <div class="liste">${ETYPEN.slice(0, 4).map(([id, l, t]) => `<button class="listen-zeile" data-act="eintragTyp" data-t="${id}"><span><b>${l}</b><small>${t}</small></span><span class="pfeil" aria-hidden="true">›</span></button>`).join('')}</div>
+      <div class="liste">${ETYPEN.slice(0, 4).filter(([id]) => !ohne.includes(id)).map(([id, l, t]) => `<button class="listen-zeile" data-act="eintragTyp" data-t="${id}"><span><b>${l}</b><small>${t}</small></span><span class="pfeil" aria-hidden="true">›</span></button>`).join('')}</div>
       <div class="liste">${ETYPEN.slice(4).map(([id, l, t]) => `<button class="listen-zeile" data-act="eintragTyp" data-t="${id}"><span><b>${l}</b><small>${t}</small></span><span class="pfeil" aria-hidden="true">›</span></button>`).join('')}</div>`;
   }
   // Ein Formular für neue und bestehende Einträge. x = bestehender Eintrag oder null
@@ -2275,6 +2284,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
       <p class="leise">Miss einmal nach, dann rechnet die App aus jeder Füllhöhe die Liter aus. Bei einem Tank, der nach unten schmaler wird, nimm „Konisch“.</p>
       <div class="gruppe"><div class="gruppe-titel">Anzahl</div>${segment('anzahl', [1, 2, 3, 4, 5, 6].map(n => [String(n), String(n)]), String(Z.eimer.length)).replace(/data-act="setz"/g, 'data-act="anzahl"')}</div>
       ${behaelterFelder(E.behaelter)}
+      <p class="zahl" style="font-size:22px;margin:4px 0 0"><b>${fmt(K.liter(D.eimer, D.eimer.maxFuell), 1)} L</b> <span class="leise" style="font-size:16px">bis zur Füllmarke</span></p>
       <p class="leise zahl" style="font-size:16px">${behaelterText(D)}</p>
       ${Z.eimer.length > 1 ? '<p class="leise" style="font-size:15px">Sind deine Tanks verschieden groß? Trag hier die Maße der meisten ein, die anderen bekommen später beim Tank eigene Maße.</p>' : ''}
       <p class="leise" style="font-size:16px">Die höchste Füllhöhe ist die Marke, bis zu der du auffüllst. Wenn du sie nicht kennst: „Aus Netztopf rechnen“ wählen, dann miss, wie tief der Netztopf in den Tank hineinragt, und wie viel Luft darunter bleiben soll (meist 2 bis 4 cm).</p>`;
@@ -2293,8 +2303,8 @@ details.hilfe .inhalt b { color: var(--akzent); }
         <label class="feld"><span>Magnesium mg/L</span><input type="text" inputmode="decimal" id="sMg" value="${w('Mg', 1, 1)}"></label>
         <label class="feld"><span>Sulfat (SO₄) mg/L</span><input type="text" inputmode="decimal" id="sSO4" value="${w('S', SULFAT_S, 1)}"></label>
       </div>
-      <h2>Weitere Werte (freiwillig)</h2>
-      <p class="leise" style="font-size:16px;margin-top:-6px">Stehen sie in deiner Analyse, trag sie ein. Leere Felder zählen als 0.</p>
+      <details class="hilfe" style="margin-bottom:14px"${['K', 'NO3', 'NH4', 'P', 'Na', 'Cl'].some(k => (E.wasser[k] || 0) > 0) || /Ammonium|Phosphat|Kalium|Nitrat|Natrium|Chlorid/.test(UI.fehler || '') ? ' open' : ''}><summary>Weitere Werte (freiwillig)</summary><div class="inhalt">
+      <p class="leise" style="font-size:16px;margin-top:0">Stehen sie in deiner Analyse, trag sie ein. Leere Felder zählen als 0.</p>
       <div class="feld-zeile">
         <label class="feld"><span>Kalium mg/L</span><input type="text" inputmode="decimal" id="sK" value="${w('K', 1, 1)}"></label>
         <label class="feld"><span>Nitrat (NO₃) mg/L</span><input type="text" inputmode="decimal" id="sNO3" value="${w('NO3', NITRAT_N, 1)}"></label>
@@ -2302,8 +2312,9 @@ details.hilfe .inhalt b { color: var(--akzent); }
         <label class="feld"><span>Phosphat (PO₄) mg/L</span><input type="text" inputmode="decimal" id="sPO4" value="${w('P', PHOSPHAT_P, 2)}"></label>
         <label class="feld"><span>Natrium mg/L</span><input type="text" inputmode="decimal" id="sNa" value="${w('Na', 1, 1)}"></label>
         <label class="feld"><span>Chlorid mg/L</span><input type="text" inputmode="decimal" id="sCl" value="${w('Cl', 1, 1)}"></label>
-      </div>
-      <p class="leise" style="font-size:16px">EC und pH misst du selbst. Die übrigen Werte stehen in der Trinkwasseranalyse deines Wasserversorgers, meist auf dessen Website. Die Karbonathärte heißt dort oft „Säurekapazität bis pH 4,3“ (mmol/L) oder „Karbonathärte“ (°dH). Nutzt du Osmose- oder Regenwasser, trag dessen Werte ein, sie liegen meist nahe 0.</p>`;
+      </div></div></details>
+      <button class="zeile-knopf" data-act="setupOsmose" style="margin-bottom:10px">Nur Osmosewasser? Werte übernehmen</button>
+      <details class="hilfe"><summary>Wo finde ich die Werte?</summary><div class="inhalt"><p class="leise" style="font-size:16px;margin:0">EC und pH misst du selbst. Die übrigen Werte stehen in der Trinkwasseranalyse deines Wasserversorgers, meist auf dessen Website. Die Karbonathärte heißt dort oft „Säurekapazität bis pH 4,3“ (mmol/L) oder „Karbonathärte“ (°dH). Nutzt du Osmose- oder Regenwasser, trag dessen Werte ein, sie liegen meist nahe 0.</p></div></details>`;
     if (s === 3) inhalt = `<h1>Deine Säuren</h1>
       ${saeurenHtml(E)}
       <label class="feld"><span>Ziel-pH</span><input type="text" inputmode="decimal" data-feld="zielPH" value="${fmt(E.saeure.zielPH, 1)}"></label>
@@ -2315,8 +2326,9 @@ details.hilfe .inhalt b { color: var(--akzent); }
     if (s === 4) {
       const zeile = x => `<button class="schalter" role="switch" aria-checked="${x.an}" data-act="${x.std ? 'vorrat' : 'auswahl'}" data-id="${x.id}">
         <span>${esc(x.name)}<small>${x.an ? 'habe ich' : 'habe ich nicht'}</small></span><span class="pille"></span></button>`;
-      inhalt = `<h1>Deine Salze</h1>
-        <p class="leise">Schalte ein, was bei dir im Regal steht. Die App plant nur damit.</p>
+      inhalt = `<h1>Welche Salze hast du?</h1>
+        <p class="leise">Schalte ein, was bei dir im Regal steht. Die App rechnet daraus Gramm für deinen Tank, nur mit diesen Salzen.</p>
+        <p class="leise" style="font-size:15px">Fertige Flüssigdünger (Flasche A/B) rechnet die App nicht, sie ist für Salze gebaut. Weiter geht es erst mit mindestens einem Salz mit Stickstoff, damit am Ende ein echtes Rezept steht und kein halbes.</p>
         <div class="hinweise"><p><b>Noch nichts gekauft?</b> Mit Hakaphos Basis 3, Hakaphos Soft Elite, Calcinit, Kaliumnitrat und Bittersalz rechnet die App am besten. Basis 3 bringt das meiste Eisen mit.</p>
           <button class="zeile-knopf" data-act="grundSatz" style="margin:8px 0 0">Diese fünf einschalten</button></div>
         ${D.salze.filter(s2 => !s2.eigen).map(s2 => zeile({ id: s2.id, name: s2.name, std: s2.aktiv !== false, an: gewaehlt(s2, E) })).join('')}
@@ -2586,6 +2598,13 @@ details.hilfe .inhalt b { color: var(--akzent); }
     },
     filter: d => { UI.filter = +d.i; render(); },
     loesche: d => { const r = schnapp(); Z.log = Z.log.filter(x => x.id !== d.id); speichern(); render(); toast('Eintrag gelöscht', r); },
+    setupOsmose: () => {
+      const o = VORLAGEN.osmose.werte, setze = (id, v) => { const el = document.getElementById(id); if (el) el.value = fmt(v, id === 'sEC' ? 2 : 1); };
+      setze('sEC', o.ecGemessen); setze('sPH', o.pH); setze('sKH', (UI.kh || 'mmol') === 'dh' ? o.alkalitaet * 2.8 : o.alkalitaet);
+      setze('sCa', o.Ca); setze('sMg', o.Mg); setze('sSO4', o.S / SULFAT_S);
+      ['sK', 'sNO3', 'sNH4', 'sPO4', 'sNa', 'sCl'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+      toast('Typische Werte für Osmosewasser eingetragen. EC und pH gern selbst nachmessen.');
+    },
     grundSatz: () => { const v = Z.einst.vorrat; ['basis3', 'soft_elite', 'calcinit', 'kno3', 'bittersalz'].forEach(id => { delete v[id]; }); speichern(); render(); },
     vorrat: d => { const v = Z.einst.vorrat; if (v[d.id] === false) delete v[d.id]; else v[d.id] = false; speichern(); render(); },
     auswahl: d => { const v = Z.einst.auswahl; if (v[d.id]) delete v[d.id]; else v[d.id] = true; speichern(); render(); },
@@ -2890,7 +2909,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
       if (s === 3 && !Z.einst.haftung) { UI.fehler = 'Bitte die Sicherheitshinweise lesen und bestätigen.'; return render(); }
       if (s === 4 && UI.neuSalz) { UI.fehler = 'Bitte das eigene Salz erst speichern oder abbrechen.'; return render(); }
       if (s === 4 && !daten().salze.some(x => gewaehlt(x, Z.einst) && !(x.nurMitSalpeter && !K.saeurenDa(Z.einst.saeure).includes('salpeter')) && (x.NO3 || 0) + (x.NH4 || 0) > 0)) {
-        UI.fehler = 'Bitte mindestens ein Salz mit Stickstoff einschalten, zum Beispiel Calcinit, Kaliumnitrat oder einen Volldünger.'; return render();
+        UI.fehler = 'Bitte mindestens ein Salz mit Stickstoff einschalten, zum Beispiel Calcinit, Kaliumnitrat oder Hakaphos. Ohne Stickstoff-Salz kann die App kein Rezept rechnen – ein halbes Regal ergäbe nur ein Schein-Rezept.'; return render();
       }
       UI.fehler = '';
       if (s < SETUP_SCHRITTE) { UI.step = s + 1; speichern(); render(); window.scrollTo(0, 0); return; }
