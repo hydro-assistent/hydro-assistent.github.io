@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Projekt
 
-Hydro-Assistent (HydroAPP): offlinefähige PWA auf Deutsch – Nährlösungs-Rechner und Tagebuch für Hydroponik-Tanks. Kein Build, keine Abhängigkeiten, kein Server: alle Daten bleiben im Browser. Ausgeliefert wird der Ordner so, wie er ist (laut LIESMICH per Drag-and-drop bei Netlify unter „Deploys“; das Repo heißt `*.github.io`, also ebenfalls GitHub Pages-tauglich).
+Hydro-Assistent (HydroAPP): offlinefähige PWA auf Deutsch – Nährlösungs-Rechner und Tagebuch für Hydroponik-Tanks. Kein Build, keine Abhängigkeiten, kein Server: alle Daten bleiben im Browser. Ausgeliefert wird der Ordner so, wie er ist, über GitHub Pages aus `main` (https://hydro-assistent.github.io/). Netlify wird nicht mehr genutzt.
 
 Sprache: Code-Bezeichner, Kommentare, UI-Texte, Commit-Nachrichten und LIESMICH sind durchgehend Deutsch (z. B. `rezept`, `saeure`, `eimer`, `speichern`). So beibehalten.
 

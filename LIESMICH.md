@@ -5,7 +5,7 @@ Nährlösungs-Rechner und Tagebuch für Hydroponik-Tanks: Neu ansetzen, Nachfül
 Alle Daten bleiben auf dem Handy (im Browser gespeichert). Nichts wird an einen Server geschickt.
 Sicherung: Einstellungen → App & Sicherung → „Sicherung speichern“ / „Sicherung laden“.
 
-Neue Fassung einspielen: bei Netlify im Projekt unter „Deploys“ den ganzen Ordner hineinziehen. Vorher in der App „Sicherung speichern“.
+Die App läuft über GitHub Pages unter https://hydro-assistent.github.io/. Neue Fassung einspielen: Pull Request auf GitHub nach `main` übernehmen („Merge pull request“), GitHub Pages veröffentlicht dann von selbst, meist in ein, zwei Minuten. Das Handy holt sich die neue Fassung beim nächsten Öffnen. Vorher in der App „Sicherung speichern“.
 
 Fassung 2.7.0: In der Blüte zwei neue Regler pro Tank (Rezept „Neu“, Sparmodus) und ein Hinweis in Blütewoche 6 bis 9.
 Fassung 2.7.1: Spülen-Schalter in der Reife. Kaliwasserglas nur bis zur Blüte. Beim Neu ansetzen stehen N, P, K, Ca, Mg in mg/L unter der EC.
