@@ -1317,6 +1317,9 @@ details.hilfe .inhalt b { color: var(--akzent); }
   const letzteZeile = l => l ? `Zuletzt ${datum(l.datum)}: ${l.h != null ? fmt(l.h, 1) + ' cm, ' : ''}${l.ec != null ? 'EC ' + fmt(l.ec, 2) : ''}${l.ph != null ? ', pH ' + fmt(l.ph, 1) : ''}` : 'Noch keine Einträge';
 
   const pm = (v, d) => (v > 0.0049 ? '+' : v < -0.0049 ? '−' : '±') + fmt(Math.abs(v), d);
+  // Nach so vielen Stunden erinnert die Karte ans Messen. Anzucht: wenig Puffer, Blüte: hoher Entzug, Reife: dünne Lösung, pH unruhig.
+  // Das Wachstum darf am längsten warten (viel Lösung und Wurzelmasse puffern). Nie unter 24 h, sonst nörgelt die Karte, obwohl morgens messen reicht.
+  const MESS_TAKT = { anzucht: 24, wachstum: 36, bluete: 24, reife: 24 };
   const PH_SCHWELLE = 0.25; // ab 0,3 über dem Ziel: pH-Satz beim Auffüllen und „pH korrigieren“ auf der Karte (gleiche Schwelle)
   function lage(i) {
     const e = Z.eimer[i], D = daten(e), b = D.eimer;
@@ -1334,7 +1337,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
       if (t.length) { o.diff = t.join(' · '); o.seit = vorZeit(prev.datum).replace(/^vor /, 'vor ') ; o.prev = prev; }
     }
     const ziel = zielEC(e), zielPH = Z.einst.saeure.zielPH;
-    if (std > 36) { o.text = `Letzte Messung ${vorZeit(last.datum)}. Zeit, wieder zu messen.`; o.knopf = ['eintragMess', 'Messen']; return o; }
+    if (std > (MESS_TAKT[e.phase] || 36)) { o.text = `Letzte Messung ${vorZeit(last.datum)}. Zeit, wieder zu messen.`; o.knopf = ['eintragMess', 'Messen']; return o; }
     if (last.art !== 'Messung') { const a = artText(last.art); o.text = `${a.charAt(0).toUpperCase() + a.slice(1)} ${vorZeit(last.datum).replace(/\.$/, '')}. Beim nächsten Mal einfach messen.`; o.ruhig = true; return o; }
     const hoch = last.ec != null && last.ec >= ziel + 0.3, tief = last.ec != null && last.ec <= ziel - 0.3;
     const stieg = o.prev && o.prev.ec != null && last.ec != null && last.ec - o.prev.ec >= 0.05;
@@ -1371,6 +1374,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
   function vStart() {
     const versteckt = Z.eimer.filter(e => e.aktiv === false).length;
     return `<h1>${Z.eimer.filter(e => e.aktiv !== false).length === 1 ? 'Dein Tank' : 'Deine Tanks'}</h1>`
+      + anlKnopf(null)
       + (Z.log.length === 0 ? '<button class="zeile-knopf doktor" data-act="hilfe">Kurze Anleitung: so läuft der Alltag</button>' : '')
       + (Z.eimer.filter(e => e.aktiv !== false).length > 1 ? '<button class="zeile-knopf doktor" data-act="rundeStart">Messrunde starten<br><span class="leise" style="font-size:14px;font-weight:400">Alle Tanks nacheinander messen</span></button>' : '')
       + Z.eimer.map((e, i) => { if (e.aktiv === false) return ''; const lg = lage(i); const l = letzter(i), ziel = zielEC(e);
@@ -1485,6 +1489,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
       ${UI.regler ? reglerHtml(e, UI.eimer) : ''}
       <div class="ziel"><div class="ec-gross zahl">${fmt(zielEC(e), 2)}</div><div class="leise">Ziel-EC für diesen Tank, inklusive ${esc(wasserWahlFuer(e).b ? 'Wassermischung' : quelleName(wasserWahlFuer(e).a))} ${frage('ziel')}</div></div>
       ${lage(UI.eimer) ? `<div class="kalender" style="padding-top:12px">${lageHtml(lage(UI.eimer))}${lage(UI.eimer).diff ? `<p class="klein" style="margin:8px 0 0">Was heißt das? ${frage('seit')}</p>` : ''}</div>` : ''}
+      ${anlKnopf(UI.eimer)}
       ${vKontrolle(UI.eimer)}
       ${vFotostreifen(UI.eimer)}
       ${vKalender(e)}
@@ -2473,17 +2478,39 @@ details.hilfe .inhalt b { color: var(--akzent); }
     const v = { start: vStart, eimer: vEimer, neu: vNeu, topup: vTopup, anleitung: vAnleitung, verlauf: vVerlauf, einst: vEinst, einstGruppe: vEinstGruppe, doktor: vDoktor, hilfe: vHilfe, hilfeStart: vHilfeStart, anbauEnde: vAnbauEnde, eintragWahl: vEintragWahl, runde: vRunde, problem: vProblem, eintragNeu: vEintragNeu, eintragEdit: vEintragEdit, archiv: vArchiv, archivAnbau: vArchivAnbau, fotos: vFotos, foto: vFoto }[UI.view] || vStart;
     document.getElementById('app').innerHTML = v() + blattHtml();
   }
-  function gehe(v) { if (v !== 'neu' && v !== 'topup') { UI.wasserEinmal = null; UI.wasserPanel = false; } UI.neuSalz = null; UI.erkl = null; UI.view = v; UI.fehler = ''; UI.kalEdit = false; UI.namenEdit = false; UI.info = null; UI.masse = false; render(); window.scrollTo(0, 0); }
+  // Angefangene Mischanleitung: beim Verlassen im Gerät merken (auch bei Reiterwechsel), bis sie gespeichert wird oder eine neue beginnt
+  const LS_ANL = 'hydro-anleitung-v1';
+  function anlParken() {
+    if (!UI.anl) return;
+    try { localStorage.setItem(LS_ANL, JSON.stringify({ eimer: UI.eimer, anl: UI.anl, haken: [...UI.haken], eingabe: UI.eingabe || {}, zeit: Date.now() })); } catch (e) {}
+  }
+  function anlGeparkt() {
+    try { const a = JSON.parse(localStorage.getItem(LS_ANL) || 'null'); return a && Z.eimer[a.eimer] && Date.now() - a.zeit < 24 * 36e5 ? a : null; } catch (e) { return null; }
+  }
+  function anlVergessen() { try { localStorage.removeItem(LS_ANL); } catch (e) {} }
+  const anlKnopf = i => { const a = anlGeparkt(); return a && (i == null || a.eimer === i)
+    ? `<button class="zeile-knopf" data-act="anlFortsetzen" style="background:var(--akzent);color:var(--akzent-text)">Angefangene Anleitung fortsetzen<br><span style="font-size:14px;font-weight:400">${esc(Z.eimer[a.eimer].name)}: ${esc(a.anl.titel)}, ${a.haken.length} von ${(a.anl.schritte || []).length} Schritten erledigt</span></button>` : ''; };
+  function gehe(v) {
+    if (UI.view === 'anleitung' && v !== 'anleitung') anlParken();
+    if (v === 'anleitung') anlVergessen();
+    if (v !== 'neu' && v !== 'topup') { UI.wasserEinmal = null; UI.wasserPanel = false; } UI.neuSalz = null; UI.erkl = null; UI.view = v; UI.fehler = ''; UI.kalEdit = false; UI.namenEdit = false; UI.info = null; UI.masse = false; render(); window.scrollTo(0, 0); }
 
   // ---------- Aktionen ----------
   const A = {
+    anlFortsetzen: () => {
+      const a = anlGeparkt(); if (!a) return;
+      UI.eimer = a.eimer; UI.anl = a.anl; UI.haken = new Set(a.haken); UI.eingabe = a.eingabe || {}; gehe('anleitung');
+    },
     tab: d => { UI.tab = d.v; if (d.v === 'verlauf') UI.tbTank = null; gehe(d.v); },
     einstGruppe: d => { UI.tab = 'einst'; UI.gruppe = d.g; gehe('einstGruppe'); },
     oeffne: d => { UI.eimer = +d.i; UI.eingabe = {}; gehe('eimer'); },
     zurueck: () => {
       if (UI.namenEdit) { UI.namenEdit = false; UI.fehler = ''; return render(); }
-      if (UI.view === 'anleitung' && UI.haken.size > 0 && !confirm('Anleitung verlassen? Die Haken gehen verloren.')) return;
       const v = UI.view;
+      if (v === 'anleitung' && UI.anl) {
+        gehe('eimer');
+        return toast('Anleitung verlassen', () => A.anlFortsetzen());
+      }
       if (v === 'foto' && ['archivAnbau', 'verlauf', 'eimer'].includes(UI.fotoVon)) return gehe(UI.fotoVon);
       if (v === 'verlauf' && UI.tbTank != null) { UI.tbTank = null; return gehe('verlauf'); }
       if (v === 'eintragWahl' || v === 'eintragEdit') return gehe(UI.eVon || 'eimer');
@@ -2581,7 +2608,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
       UI.haken = new Set(); UI.eingabe = {}; gehe('anleitung');
     },
     haken: (d, el) => {
-      const i = +d.i; UI.haken.has(i) ? UI.haken.delete(i) : UI.haken.add(i);
+      const i = +d.i; UI.haken.has(i) ? UI.haken.delete(i) : UI.haken.add(i); anlParken();
       el.setAttribute('aria-pressed', UI.haken.has(i)); el.querySelector('.nr').textContent = UI.haken.has(i) ? '✓' : i + 1;
     },
     eintragen: () => {
@@ -2594,7 +2621,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
         h: a.h, liter: Math.round(a.liter * 10) / 10, ecZiel: Math.round(a.ecZiel * 100) / 100, ecErwartet: Math.round(a.ecErwartet * 100) / 100,
         ec, ph, saeureMl: isNaN(sml) ? null : sml, notiz: document.getElementById('notiz').value.trim() || null, vorher: a.vorher || null,
         wasser: a.wasser && a.wasser !== 'Leitungswasser' ? a.wasser : undefined });
-      speichern(); UI.eingabe = {}; gehe('eimer'); toast('Eintrag gespeichert');
+      speichern(); UI.eingabe = {}; UI.anl = null; gehe('eimer'); anlVergessen(); toast('Eintrag gespeichert');
     },
     filter: d => { UI.filter = +d.i; render(); },
     loesche: d => { const r = schnapp(); Z.log = Z.log.filter(x => x.id !== d.id); speichern(); render(); toast('Eintrag gelöscht', r); },
