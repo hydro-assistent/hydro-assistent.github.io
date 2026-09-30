@@ -50,7 +50,11 @@ Die ersten drei Blöcke enden jeweils mit `if (typeof module !== 'undefined') mo
 - Hauptzustand als JSON in `localStorage` unter `hydro-zustand-v1`; Fotos in IndexedDB `hydro-fotos`. Sicherung = JSON-Export/Import von `Z`.
 - `standard()` liefert den Grundzustand, `pruefe(d)` normalisiert jeden geladenen Stand (auch Importe) und enthält die Migrationen alter Fassungen (`version`, `profil`/`pruefen` für den Umstieg auf 3.10). Neue Felder immer in beiden Funktionen ergänzen, damit alte Stände und Sicherungen weiter laden.
 - Wasserwerte werden wie im Wasserbericht eingetragen (Nitrat, Sulfat, Ammonium als NH₄, Phosphat als PO₄) und beim Speichern in N, S bzw. P umgerechnet; im Rechenkern stehen `NO3`/`NH4` als N, `P`, `S`. `Na`/`Cl` werden nur für Warnungen genutzt (> 50 bzw. > 100 mg/L).
+- Tankmaße: `Z.einst.behaelter` gilt für alle Tanks, ein Tank mit `e.behaelter` hat eigene Maße (seit 3.13.10). Immer über `beh(e)` bzw. `daten(e)` lesen, nie direkt `Z.einst.behaelter`; Eingabefelder eines Tanks tragen `data-feld="b<i>:<feld>"`.
 - Eigene Salze liegen in `Z.einst.eigeneSalze` und werden zur Laufzeit an `DATEN.salze`/`reihenfolge` angehängt; Calcium-Salze werden getrennt vorgelöst und zuletzt zugegeben (`calcium: true` in `rezept().mengen`).
+
+- Angefangene Mischanleitung: `anlParken()` legt `UI.anl` samt Haken unter `hydro-anleitung-v1` ab (bei jedem Haken und beim Verlassen), `anlVergessen()` beim Speichern oder Start einer neuen; kein `confirm()` beim Verlassen (seit 3.13.12).
+- Mess-Erinnerung je Phase: `MESS_TAKT` in Stunden (nie unter 24).
 
 ### Offline / Service Worker
 
