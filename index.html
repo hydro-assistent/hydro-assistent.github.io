@@ -24,6 +24,7 @@
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #13201E; --flaeche: #1C2D2A; --text: #E7EFEB; } }
 :root[data-theme="dark"] { --bg: #13201E; --flaeche: #1C2D2A; --text: #E7EFEB; }
 *, *::before, *::after { box-sizing: inherit; }
+input, select, textarea, button { box-sizing: border-box; } /* in <details> wird box-sizing nicht vererbt, sonst laufen Felder über */
 html { height: 100%; scroll-padding-top: env(safe-area-inset-top, 0px); }
 body {
   margin: 0; min-height: 100%; background: var(--bg); color: var(--text);
@@ -84,6 +85,15 @@ input::placeholder { color: var(--leise); opacity: .6; }
 .feld-zeile3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
 .feld-zeile2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .feld-zeile3 input { font-size: 22px; padding: 8px 10px; }
+.feld-zeile > *, .feld-zeile2 > *, .feld-zeile3 > * { min-width: 0; }
+/* Analysewerte: gleich große Kacheln, Name und Einheit in einer Zeile, auf breiten Schirmen nicht über die ganze Breite */
+.werte-raster { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px 12px; max-width: 560px; }
+.werte-raster > label.feld { margin-bottom: 4px; min-width: 0; }
+.werte-raster > label.feld span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.werte-raster > label.feld span small { font-size: 13px; opacity: .8; margin-left: 4px; }
+.werte-raster input { font-size: 22px; min-height: 52px; padding: 6px 12px; }
+.segment.klein { max-width: 280px; }
+.segment.klein button { min-height: 44px; font-size: 16px; }
 
 .hinweise { border-left: 4px solid var(--akzent); background: var(--flaeche); border-radius: 0 14px 14px 0; padding: 12px 16px; margin: 0 0 18px; }
 .hinweise p { font-size: 16px; margin: 0 0 6px; }
@@ -2280,6 +2290,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
     const E = Z.einst, D = daten(), s = UI.step || 1;
     const kopf = `<p class="setup-kopf">Einrichtung, Schritt ${s} von ${SETUP_SCHRITTE}</p>`;
     const W_ID = { ecGemessen: 'sEC', pH: 'sPH', alkalitaet: 'sKH', Ca: 'sCa', Mg: 'sMg', S: 'sSO4', K: 'sK', NO3: 'sNO3', NH4: 'sNH4', P: 'sPO4', Na: 'sNa', Cl: 'sCl' };
+    const wf = (id, name, einheit, wert) => `<label class="feld"><span>${name}${einheit ? `<small>${einheit}</small>` : ''}</span><input type="text" inputmode="decimal" id="${id}" value="${wert}"></label>`;
     const w = (k, f, d) => UI.setupW && UI.setupW[W_ID[k]] !== undefined ? esc(UI.setupW[W_ID[k]]) : E.wasser[k] === undefined ? '' : fmt(E.wasser[k] / (f || 1), d);
     let inhalt = '';
     if (s === 1) inhalt = `<img class="logo-gross" src="${LOGO}" alt="Hydro-Assistent" width="520" height="348">
@@ -2296,27 +2307,24 @@ details.hilfe .inhalt b { color: var(--akzent); }
     if (s === 2) inhalt = `<h1>Dein Wasser</h1>
       <p class="leise">Damit rechnet die App aus, wie viel Säure nötig ist und was das Wasser schon mitbringt. Ohne diese Werte kann sie nicht richtig rechnen.</p>
       <p class="leise" style="font-size:15px">Hier kommt dein <b>Leitungswasser</b> hin. Mischst du es mit Osmose- oder Regenwasser, stellst du die Mischung nach der Einrichtung unter Einstellungen → Wasser &amp; Säure ein, bevor du zum ersten Mal ansetzt.</p>
-      <div class="feld-zeile">
-        <label class="feld"><span>EC des Wassers</span><input type="text" inputmode="decimal" id="sEC" value="${w('ecGemessen', 1, 2)}"></label>
-        <label class="feld"><span>pH des Wassers</span><input type="text" inputmode="decimal" id="sPH" value="${w('pH', 1, 1)}"></label>
+      <div class="gruppe" style="margin-bottom:10px"><div class="gruppe-titel">Karbonathärte angegeben in</div>${segment('kh', [['mmol', 'mmol/L'], ['dh', '°dH']], UI.kh || 'mmol').replace('class="segment"', 'class="segment klein"').replace(/data-act="setz"/g, 'data-act="khEinheit"')}</div>
+      <div class="werte-raster">
+        ${wf('sEC', 'EC', 'mS/cm', w('ecGemessen', 1, 2))}
+        ${wf('sPH', 'pH', '', w('pH', 1, 1))}
+        ${wf('sKH', 'Karbonathärte', (UI.kh || 'mmol') === 'dh' ? '°dH' : 'mmol/L', w('alkalitaet', (UI.kh || 'mmol') === 'dh' ? 1 / 2.8 : 1, 1))}
+        ${wf('sCa', 'Calcium', 'mg/L', w('Ca', 1, 1))}
+        ${wf('sMg', 'Magnesium', 'mg/L', w('Mg', 1, 1))}
+        ${wf('sSO4', 'Sulfat SO₄', 'mg/L', w('S', SULFAT_S, 1))}
       </div>
-      <div class="gruppe"><div class="gruppe-titel">Karbonathärte, Einheit</div>${segment('kh', [['mmol', 'mmol/L'], ['dh', '°dH']], UI.kh || 'mmol').replace(/data-act="setz"/g, 'data-act="khEinheit"')}</div>
-      <label class="feld"><span>Karbonathärte (${(UI.kh || 'mmol') === 'dh' ? '°dH' : 'mmol/L'})</span>
-        <input type="text" inputmode="decimal" id="sKH" value="${w('alkalitaet', (UI.kh || 'mmol') === 'dh' ? 1 / 2.8 : 1, 1)}"></label>
-      <div class="feld-zeile3">
-        <label class="feld"><span>Calcium mg/L</span><input type="text" inputmode="decimal" id="sCa" value="${w('Ca', 1, 1)}"></label>
-        <label class="feld"><span>Magnesium mg/L</span><input type="text" inputmode="decimal" id="sMg" value="${w('Mg', 1, 1)}"></label>
-        <label class="feld"><span>Sulfat (SO₄) mg/L</span><input type="text" inputmode="decimal" id="sSO4" value="${w('S', SULFAT_S, 1)}"></label>
-      </div>
-      <details class="hilfe" style="margin-bottom:14px"${['K', 'NO3', 'NH4', 'P', 'Na', 'Cl'].some(k => (E.wasser[k] || 0) > 0) || /Ammonium|Phosphat|Kalium|Nitrat|Natrium|Chlorid/.test(UI.fehler || '') ? ' open' : ''}><summary>Weitere Werte (freiwillig)</summary><div class="inhalt">
+      <details class="hilfe" style="margin:14px 0"${['K', 'NO3', 'NH4', 'P', 'Na', 'Cl'].some(k => (E.wasser[k] || 0) > 0) || /Ammonium|Phosphat|Kalium|Nitrat|Natrium|Chlorid/.test(UI.fehler || '') ? ' open' : ''}><summary>Weitere Werte (freiwillig)</summary><div class="inhalt">
       <p class="leise" style="font-size:16px;margin-top:0">Stehen sie in deiner Analyse, trag sie ein. Leere Felder zählen als 0.</p>
-      <div class="feld-zeile">
-        <label class="feld"><span>Kalium mg/L</span><input type="text" inputmode="decimal" id="sK" value="${w('K', 1, 1)}"></label>
-        <label class="feld"><span>Nitrat (NO₃) mg/L</span><input type="text" inputmode="decimal" id="sNO3" value="${w('NO3', NITRAT_N, 1)}"></label>
-        <label class="feld"><span>Ammonium (NH₄) mg/L</span><input type="text" inputmode="decimal" id="sNH4" value="${w('NH4', AMMONIUM_N, 2)}"></label>
-        <label class="feld"><span>Phosphat (PO₄) mg/L</span><input type="text" inputmode="decimal" id="sPO4" value="${w('P', PHOSPHAT_P, 2)}"></label>
-        <label class="feld"><span>Natrium mg/L</span><input type="text" inputmode="decimal" id="sNa" value="${w('Na', 1, 1)}"></label>
-        <label class="feld"><span>Chlorid mg/L</span><input type="text" inputmode="decimal" id="sCl" value="${w('Cl', 1, 1)}"></label>
+      <div class="werte-raster">
+        ${wf('sK', 'Kalium', 'mg/L', w('K', 1, 1))}
+        ${wf('sNO3', 'Nitrat NO₃', 'mg/L', w('NO3', NITRAT_N, 1))}
+        ${wf('sNH4', 'Ammonium NH₄', 'mg/L', w('NH4', AMMONIUM_N, 2))}
+        ${wf('sPO4', 'Phosphat PO₄', 'mg/L', w('P', PHOSPHAT_P, 2))}
+        ${wf('sNa', 'Natrium', 'mg/L', w('Na', 1, 1))}
+        ${wf('sCl', 'Chlorid', 'mg/L', w('Cl', 1, 1))}
       </div></div></details>
       <button class="zeile-knopf" data-act="setupOsmose" style="margin-bottom:10px">Nur Osmosewasser? Werte übernehmen</button>
       <details class="hilfe"><summary>Wo finde ich die Werte?</summary><div class="inhalt"><p class="leise" style="font-size:16px;margin:0">EC und pH misst du selbst. Die übrigen Werte stehen in der Trinkwasseranalyse deines Wasserversorgers, meist auf dessen Website. Die Karbonathärte heißt dort oft „Säurekapazität bis pH 4,3“ (mmol/L) oder „Karbonathärte“ (°dH). Nutzt du Osmose- oder Regenwasser, trag dessen Werte ein, sie liegen meist nahe 0.</p></div></details>`;
@@ -2396,26 +2404,23 @@ details.hilfe .inhalt b { color: var(--akzent); }
       ${wasserWahlHtml(E.wasserWahl, 'std')}
       <p class="leise" style="font-size:15px">Einzelne Tanks können anderes Wasser bekommen: beim Tank unter Phase, Sorte, Stärke.</p>
       <h2>Leitungswasser</h2>
-      <div class="feld-zeile3">
-        <label class="feld"><span>EC</span><input type="text" inputmode="decimal" data-feld="ecGemessen" value="${fmt(E.wasser.ecGemessen, 2)}"></label>
+      <div class="werte-raster">
+        <label class="feld"><span>EC<small>mS/cm</small></span><input type="text" inputmode="decimal" data-feld="ecGemessen" value="${fmt(E.wasser.ecGemessen, 2)}"></label>
         <label class="feld"><span>pH</span><input type="text" inputmode="decimal" data-feld="pH" value="${fmt(E.wasser.pH, 1)}"></label>
-        <label class="feld"><span>Alkalität</span><input type="text" inputmode="decimal" data-feld="alkalitaet" value="${fmt(E.wasser.alkalitaet, 1)}"></label>
+        <label class="feld"><span>Karbonathärte<small>mmol/L</small></span><input type="text" inputmode="decimal" data-feld="alkalitaet" value="${fmt(E.wasser.alkalitaet, 1)}"></label>
+        <label class="feld"><span>Calcium<small>mg/L</small></span><input type="text" inputmode="decimal" data-feld="Ca" value="${fmt(E.wasser.Ca || 0, 1)}"></label>
+        <label class="feld"><span>Magnesium<small>mg/L</small></span><input type="text" inputmode="decimal" data-feld="Mg" value="${fmt(E.wasser.Mg || 0, 1)}"></label>
+        <label class="feld"><span>Sulfat SO₄<small>mg/L</small></span><input type="text" inputmode="decimal" data-feld="sulfat" value="${fmt((E.wasser.S || 0) / SULFAT_S, 1)}"></label>
       </div>
-      <p class="leise" style="font-size:16px">Alkalität in mmol/L laut Wasseranalyse. Sie bestimmt, wie viel Säure nötig ist.</p>
-      <div class="feld-zeile3">
-        <label class="feld"><span>Calcium mg/L</span><input type="text" inputmode="decimal" data-feld="Ca" value="${fmt(E.wasser.Ca || 0, 1)}"></label>
-        <label class="feld"><span>Magnesium mg/L</span><input type="text" inputmode="decimal" data-feld="Mg" value="${fmt(E.wasser.Mg || 0, 1)}"></label>
-        <label class="feld"><span>Sulfat (SO₄) mg/L</span><input type="text" inputmode="decimal" data-feld="sulfat" value="${fmt((E.wasser.S || 0) / SULFAT_S, 1)}"></label>
-      </div>
-      <p class="leise" style="font-size:16px">Calcium, Magnesium und Sulfat stehen in der Analyse deines Wasserversorgers. Sie zählen voll mit: Viel Calcium im Wasser heißt weniger Calcinit im Rezept.</p>
+      <p class="leise" style="font-size:16px">Karbonathärte (Alkalität) in mmol/L laut Wasseranalyse, sie bestimmt die Säuremenge. Calcium, Magnesium und Sulfat zählen voll mit: Viel Calcium im Wasser heißt weniger Calcinit im Rezept.</p>
       <h2>Weitere Werte aus der Wasseranalyse</h2>
-      <div class="feld-zeile">
-        <label class="feld"><span>Kalium mg/L</span><input type="text" inputmode="decimal" data-feld="K" value="${fmt(E.wasser.K || 0, 1)}"></label>
-        <label class="feld"><span>Nitrat (NO₃) mg/L</span><input type="text" inputmode="decimal" data-feld="nitrat" value="${fmt((E.wasser.NO3 || 0) / NITRAT_N, 1)}"></label>
-        <label class="feld"><span>Ammonium (NH₄) mg/L</span><input type="text" inputmode="decimal" data-feld="ammonium" value="${fmt((E.wasser.NH4 || 0) / AMMONIUM_N, 2)}"></label>
-        <label class="feld"><span>Phosphat (PO₄) mg/L</span><input type="text" inputmode="decimal" data-feld="phosphat" value="${fmt((E.wasser.P || 0) / PHOSPHAT_P, 2)}"></label>
-        <label class="feld"><span>Natrium mg/L</span><input type="text" inputmode="decimal" data-feld="Na" value="${fmt(E.wasser.Na || 0, 1)}"></label>
-        <label class="feld"><span>Chlorid mg/L</span><input type="text" inputmode="decimal" data-feld="Cl" value="${fmt(E.wasser.Cl || 0, 1)}"></label>
+      <div class="werte-raster">
+        <label class="feld"><span>Kalium<small>mg/L</small></span><input type="text" inputmode="decimal" data-feld="K" value="${fmt(E.wasser.K || 0, 1)}"></label>
+        <label class="feld"><span>Nitrat NO₃<small>mg/L</small></span><input type="text" inputmode="decimal" data-feld="nitrat" value="${fmt((E.wasser.NO3 || 0) / NITRAT_N, 1)}"></label>
+        <label class="feld"><span>Ammonium NH₄<small>mg/L</small></span><input type="text" inputmode="decimal" data-feld="ammonium" value="${fmt((E.wasser.NH4 || 0) / AMMONIUM_N, 2)}"></label>
+        <label class="feld"><span>Phosphat PO₄<small>mg/L</small></span><input type="text" inputmode="decimal" data-feld="phosphat" value="${fmt((E.wasser.P || 0) / PHOSPHAT_P, 2)}"></label>
+        <label class="feld"><span>Natrium<small>mg/L</small></span><input type="text" inputmode="decimal" data-feld="Na" value="${fmt(E.wasser.Na || 0, 1)}"></label>
+        <label class="feld"><span>Chlorid<small>mg/L</small></span><input type="text" inputmode="decimal" data-feld="Cl" value="${fmt(E.wasser.Cl || 0, 1)}"></label>
       </div>
       <p class="leise" style="font-size:16px">Alle Werte so eintragen, wie sie im Wasserbericht stehen (Nitrat als NO₃, Ammonium als NH₄, Phosphat als PO₄), die App rechnet selbst um. Kalium, Nitrat, Ammonium und Phosphat zählen im Rezept mit. Natrium und Chlorid braucht die Pflanze nicht, sie reichern sich im Tank an. Sind sie hoch, warnt die App.</p>
       ${E.quellen.length ? '<h2>Weitere Wasserquellen</h2>' : ''}
@@ -3047,6 +3052,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
     const r = schnapp();
     if (['dOben', 'dUnten', 'durchmesser', 'laenge', 'breite', 'hoehe', 'maxFuell', 'netztopf', 'luftspalt'].includes(f)) {
       const b = behZiel(bi);
+      if (b[f] === n) return; // nichts geändert (z. B. Weiter in der Einrichtung übernimmt alle Felder)
       if (f === 'maxFuell' && n > b.hoehe) { toast('Höher als der Tank selbst'); setTimeout(render, 0); return; }
       if ((f === 'netztopf' || f === 'luftspalt') && b.hoehe - n - (f === 'netztopf' ? b.luftspalt : b.netztopf) < 1) { toast('Dann bliebe kein Platz für Wasser'); setTimeout(render, 0); return; }
       if (f === 'hoehe' && n < b.maxFuell) b.maxFuell = n;
