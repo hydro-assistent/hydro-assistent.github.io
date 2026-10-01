@@ -311,6 +311,29 @@ details.hilfe .inhalt b { color: var(--akzent); }
       // Harnstoffhaltige Peters-Sorten (Allrounder, Hi-Nitro, Grow-Mix, Foliar Feed, Plant Starter) sind bewusst nicht dabei: Harnstoff wird
       // im Tank zu Ammonium und sprengt die Ammonium-Grenze; der Rechenkern kennt nur Nitrat und Ammonium.
       { id: 'combisol', aktiv: false, gruppe: 'volldünger', name: 'Peters Combi Sol 6-18-36', NO3: 6.0, NH4: 0, P: 7.855, K: 29.884, Ca: 0, Mg: 1.809, S: 0, Fe: 0.25, Mn: 0.06, Zn: 0.015, Cu: 0.015, B: 0.02, Mo: 0.01 },
+      // Weitere harnstofffreie Volldünger (seit 3.13.16). Werte aus der HydroBuddy-Datenbank, Stickstoff-Formen, P2O5/K2O/MgO/SO3 je
+      // Produkt gegen Herstellerangaben (COMPO EXPERT, Yara, ICL, Haifa; deutsche Packung) geprüft. Spurenelemente aus der Datenbank.
+      // Hakaphos Basis 2: 3-6-40(+4+31 SO3), nur Nitrat. Soft Novell 11-11-30(+3): 7,6 Nitrat / 3,4 Ammonium. Soft Plus 14-6-24(+3):
+      // 7,6 / 6,4. Soft Ultra 18-8-18(+3): 10 / 8.
+      { id: 'basis2', aktiv: false, gruppe: 'volldünger', name: 'Hakaphos Basis 2', NO3: 3.0, NH4: 0, P: 2.618, K: 33.204, Ca: 0, Mg: 2.412, S: 12.4, Fe: 0.15, Mn: 0.05, Zn: 0.02, Cu: 0.02, B: 0.01, Mo: 0.001 },
+      { id: 'soft_novell', aktiv: false, gruppe: 'volldünger', name: 'Hakaphos Soft Novell', NO3: 7.6, NH4: 3.4, P: 4.800, K: 24.903, Ca: 0, Mg: 1.809, S: 5.0, Fe: 0.1, Mn: 0.05, Zn: 0.02, Cu: 0.02, B: 0.01, Mo: 0.001 },
+      { id: 'soft_plus', aktiv: false, gruppe: 'volldünger', name: 'Hakaphos Soft Plus', NO3: 7.6, NH4: 6.4, P: 2.618, K: 19.922, Ca: 0, Mg: 1.809, S: 7.5, Fe: 0.075, Mn: 0.05, Zn: 0.015, Cu: 0.02, B: 0.01, Mo: 0.001 },
+      { id: 'soft_ultra', aktiv: false, gruppe: 'volldünger', name: 'Hakaphos Soft Ultra', NO3: 10.0, NH4: 8.0, P: 3.491, K: 14.942, Ca: 0, Mg: 1.809, S: 2.6, Fe: 0.1, Mn: 0.05, Zn: 0.02, Cu: 0.02, B: 0.01, Mo: 0.001 },
+      // YaraTera Kristalon, laut Yara ohne Harnstoff. Rot 12-12-36(+1 MgO, 2,5 SO3): 10,1 Nitrat / 1,9 Ammonium. Orange 6-12-36(+3 MgO,
+      // 20 SO3): 4,5 / 1,5. Braun 3-11-38(+4 MgO, 11 S): nur Nitrat. Weißmarke 15-5-30(+3 MgO, 2 S): 11,3 / 3,7.
+      // Spurenelemente: B 0,025, Cu 0,01, Fe 0,07, Mn 0,04, Mo 0,004, Zn 0,025 %.
+      { id: 'kristalon_rot', aktiv: false, gruppe: 'volldünger', name: 'Kristalon Rot 12-12-36', NO3: 10.1, NH4: 1.9, P: 5.237, K: 29.884, Ca: 0, Mg: 0.603, S: 1.0, Fe: 0.07, Mn: 0.04, Zn: 0.025, Cu: 0.01, B: 0.025, Mo: 0.004 },
+      { id: 'kristalon_orange', aktiv: false, gruppe: 'volldünger', name: 'Kristalon Orange 6-12-36', NO3: 4.5, NH4: 1.5, P: 5.237, K: 29.884, Ca: 0, Mg: 1.809, S: 8.0, Fe: 0.07, Mn: 0.04, Zn: 0.025, Cu: 0.01, B: 0.025, Mo: 0.004 },
+      { id: 'kristalon_braun', aktiv: false, gruppe: 'volldünger', name: 'Kristalon Braun 3-11-38', NO3: 3.0, NH4: 0, P: 4.800, K: 31.544, Ca: 0, Mg: 2.412, S: 11.0, Fe: 0.07, Mn: 0.04, Zn: 0.025, Cu: 0.01, B: 0.025, Mo: 0.004 },
+      { id: 'kristalon_weiss', aktiv: false, gruppe: 'volldünger', name: 'Kristalon Weißmarke 15-5-30', NO3: 11.3, NH4: 3.7, P: 2.182, K: 24.903, Ca: 0, Mg: 1.809, S: 2.0, Fe: 0.07, Mn: 0.04, Zn: 0.025, Cu: 0.01, B: 0.025, Mo: 0.004 },
+      // ICL Universol Basis 4-19-35+4,1 MgO: nur Nitrat, für A/B mit Calciumnitrat. Agrolution pHLow 114 11-10-40: laut ICL 11 % Nitrat,
+      // kein Ammonium, kein Harnstoff (die Datenbank nennt 10 % N, hier der Herstellerwert).
+      { id: 'universol_basis', aktiv: false, gruppe: 'volldünger', name: 'Universol Basis 4-19-35', NO3: 4.0, NH4: 0, P: 8.292, K: 29.054, Ca: 0, Mg: 2.472, S: 6.2, Fe: 0.12, Mn: 0.08, Zn: 0.02, Cu: 0.02, B: 0.02, Mo: 0 },
+      { id: 'phlow114', aktiv: false, gruppe: 'volldünger', name: 'Agrolution pHLow 114 11-10-40', NO3: 11.0, NH4: 0, P: 4.364, K: 33.204, Ca: 0, Mg: 0, S: 0, Fe: 0.16, Mn: 0.06, Zn: 0.01, Cu: 0.01, B: 0.01, Mo: 0.006 },
+      // Haifa Poly-Feed, deutsche Packung: Polka 9-10-38(+3 MgO, 6,3 SO3) nur Nitrat; Sonate 15-5-30(+3 MgO, 5,6 SO3) 11,2 / 3,8.
+      // Poly-Feed bringt kaum Eisen (0,01 %), das Eisen muss dann aus einem anderen Salz kommen.
+      { id: 'polka', aktiv: false, gruppe: 'volldünger', name: 'Poly-Feed Polka 9-10-38', NO3: 9.1, NH4: 0, P: 4.364, K: 31.544, Ca: 0, Mg: 1.809, S: 2.52, Fe: 0.01, Mn: 0.05, Zn: 0.035, Cu: 0.01, B: 0.025, Mo: 0.0035 },
+      { id: 'sonate', aktiv: false, gruppe: 'volldünger', name: 'Poly-Feed Sonate 15-5-30', NO3: 11.2, NH4: 3.8, P: 2.182, K: 24.903, Ca: 0, Mg: 1.809, S: 2.24, Fe: 0.01, Mn: 0.05, Zn: 0.025, Cu: 0.01, B: 0.025, Mo: 0.0025 },
       { id: 'calcinit', aktiv: true,     marken: 'auch Haifa Cal', name: 'Calcinit (Yara)',       NO3: 14.4,  NH4: 1.1,  P: 0,     K: 0,      Ca: 18.59, Mg: 0,     S: 0 },
       { id: 'kno3', aktiv: true,         marken: 'z. B. Yara Krista K, Haifa Multi-K', name: 'Kaliumnitrat',          NO3: 13.86, NH4: 0,    P: 0,     K: 38.67,  Ca: 0,     Mg: 0,     S: 0 },
       { id: 'mkp', aktiv: false,         marken: 'MKP, z. B. Yara Krista MKP, Haifa MKP', name: 'Monokaliumphosphat',    NO3: 0,     NH4: 0,    P: 22.76, K: 28.73,  Ca: 0,     Mg: 0,     S: 0 },
@@ -324,7 +347,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
       { id: 'map', aktiv: false,         marken: 'MAP, z. B. Yara Krista MAP, Haifa MAP', name: 'Monoammoniumphosphat',  NO3: 0,     NH4: 12.0, P: 26.6,  K: 0,      Ca: 0,     Mg: 0,     S: 0 },
     ],
     // Mischreihenfolge im Behälter (nach der ersten Säure)
-    reihenfolge: ['kco', 'bittersalz', 'k2so4', 'nh4so4', 'soft_elite', 'soft_spezial', 'basis3', 'basis5', 'peters51126', 'combisol', 'kno3', 'mgno3', 'mkp', 'map', 'calcinit'],
+    reihenfolge: ['kco', 'bittersalz', 'k2so4', 'nh4so4', 'soft_elite', 'soft_spezial', 'basis3', 'basis5', 'peters51126', 'combisol', 'basis2', 'soft_novell', 'soft_plus', 'soft_ultra', 'kristalon_rot', 'kristalon_orange', 'kristalon_braun', 'kristalon_weiss', 'universol_basis', 'phlow114', 'polka', 'sonate', 'kno3', 'mgno3', 'mkp', 'map', 'calcinit'],
 
     // Beispielwasser, mg/L (mittelhart): nur für die Tests und für Stände vor Fassung 3.10. Neue Installationen tragen eigene Werte ein.
     wasser: { ecGemessen: 0.37, pH: 7.6, alkalitaet: 1.7, NO3: 0.11, NH4: 0.02, P: 0.024, K: 1.33, Ca: 42.5, Mg: 2.72, S: 14.1, Na: 10.8, Cl: 12.8, Fe: 0.121, Mn: 0.017 },
@@ -383,6 +406,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
   const NH4_MAX = 0.15;
   const FE_MAX = 3; // mg/L
   const FE_LOCKERN = [1, 0.5, 0.25, 0]; // Stufen, wenn das Eisen-Minimum nicht erreichbar ist
+  const FE_TEUER = 0.75;                // k mit Eisen-Minimum unter 75 % des k ohne: Eisen-Vorgabe lockern (seit 3.13.16)
   const SPUREN_REF = { B: 0.43 / 1.6, Zn: 0.2 / 1.6 }; // mg/L je 100 mg N/L (Cannabis-Lösung: B 40 µM, Zn 3 µM bei 160 mg N/L), nur für Hinweise
   const GRENZE = { N: 250, P: 100, K: 400, Ca: 250, Mg: 100, S: 999 }; // mg/L, ab hier Hinweis 'hoch'
   const MOLMASSE = { K: 39.098, Ca: 40.078, Mg: 24.305, N: 14.007, P: 30.974, S: 32.06 };
@@ -596,12 +620,12 @@ details.hilfe .inhalt b { color: var(--akzent); }
 
     const saBasis = saeure(w, D.saeure, kal); // nur Hydrogencarbonat, für den EC-Beitrag der Säure
     // Faktor k so suchen, dass die geschätzte EC die Ziel-EC trifft
-    function loese(liste, schnell) {
+    function loese(liste, schnell, fe = feMin) {
       let lo = 0.05, hi = 2.5, x = null, k = 1, ec = null, z = null;
       for (let i = 0; i < (schnell ? 12 : 22); i++) {
         k = (lo + hi) / 2;
         const soll = {}; for (const e of MAKRO) soll[e] = profil[e] * k;
-        x = solver(liste, soll, basis, feMin, x, schnell);
+        x = solver(liste, soll, basis, fe, x, schnell);
         z = zugabe(liste, x);
         ec = ecSchaetzung(Object.assign({}, z, { K: z.K + wg.K * wgDosis }), w.ecGemessen, saBasis.mmol * (saBasis.ecFaktor || 1), kal);
         if (ec.gesamt > opt.ecZiel) hi = k; else lo = k;
@@ -656,7 +680,13 @@ details.hilfe .inhalt b { color: var(--akzent); }
     // Dann drückt die Eisen-Strafe Nitratsalze in den Tank, das EC-Budget ist verbraucht, k bricht ein und der Rest des
     // Profils (etwa Magnesium) fällt weg. Deshalb die Eisen-Vorgabe stufenweise lockern und das beste Ergebnis nach demselben
     // Maßstab nehmen wie bei der Wahl der Volldünger: Form des Profils plus Verstöße bei Ammonium und Eisen (gegen das volle Ziel).
-    if (feMin > 0 && z.Fe + basis.Fe < feMin * 0.8 && opt.feMin === undefined) {
+    // Seit 3.13.16 auch, wenn das Eisen-Minimum zwar erreicht wird, aber nur mit so viel eisenarmem Volldünger mit Ammonium, dass
+    // die Ammonium-Grenze reißt und k deutlich unter dem k ohne Eisen-Vorgabe liegt (z. B. Kristalon Weißmarke als einziger
+    // Volldünger: k 0,22 statt 0,63, Bittersalz fällt weg). Die schnelle Vergleichsrechnung läuft nur, wenn Eisen gerade so erreicht wird.
+    const feKnapp = feMin > 0 && opt.feMin === undefined && z.Fe + basis.Fe < feMin * 0.8;
+    const feTeuer = feMin > 0 && opt.feMin === undefined && !feKnapp && z.Fe + basis.Fe < feMin * 1.05 &&
+      (z.NH4 + basis.NH4) / (z.N + basis.N) > NH4_MAX * 1.05 && k < FE_TEUER * loese(salze, true, 0).k;
+    if (feKnapp || feTeuer) {
       const bewerte = r => {
         let sIst = 0, sSoll = 0, form = 0;
         for (const e of MAKRO) { sIst += r.ist[e]; sSoll += profil[e]; }
@@ -669,8 +699,9 @@ details.hilfe .inhalt b { color: var(--akzent); }
       const kandidaten = FE_LOCKERN.map(f => ({ f, r: rezept(D, Object.assign({}, opt, { feMin: feMin * f })) }));
       const kMax = Math.max(...kandidaten.map(c => c.r.faktorK));
       let beste = null;
+      // Kam das Lockern wegen k (feTeuer), zählt dieselbe Schwelle auch hier, sonst gewinnt wieder die eingebrochene Stufe.
       for (const c of kandidaten) {
-        if (c.r.faktorK < kMax * 0.5) continue;
+        if (c.r.faktorK < kMax * (feTeuer ? FE_TEUER : 0.5)) continue;
         const w = bewerte(c.r);
         if (!beste || w < beste.w - 1e-9) beste = Object.assign({ w }, c);
       }
@@ -2383,7 +2414,8 @@ details.hilfe .inhalt b { color: var(--akzent); }
         <div class="hinweise"><p><b>Noch nichts gekauft?</b> Mit Hakaphos Basis 3, Hakaphos Soft Elite, Calcinit, Kaliumnitrat und Bittersalz rechnet die App am besten. Basis 3 bringt das meiste Eisen mit.</p>
           <button class="zeile-knopf" data-act="grundSatz" style="margin:8px 0 0">Diese fünf einschalten</button></div>
         <p class="leise" style="font-size:15px">Einzelsalze von Yara (Krista) oder Haifa sind dieselben Stoffe wie in der Liste, der Markenname steht jeweils dabei. Dein Dünger fehlt? Unten über „Eigenes Salz hinzufügen“ mit den Werten vom Etikett anlegen.</p>
-        ${D.salze.filter(s2 => !s2.eigen).map(s2 => zeile({ id: s2.id, name: s2.name, marken: s2.marken, std: s2.aktiv !== false, an: gewaehlt(s2, E) })).join('')}
+        ${D.salze.filter(s2 => !s2.eigen && !weitererVD(s2)).map(s2 => zeile({ id: s2.id, name: s2.name, marken: s2.marken, std: s2.aktiv !== false, an: gewaehlt(s2, E) })).join('')}
+        ${weitereVDHtml(D.salze.filter(weitererVD), s2 => zeile({ id: s2.id, name: s2.name, marken: s2.marken, std: false, an: gewaehlt(s2, E) }), D.salze.some(s2 => weitererVD(s2) && gewaehlt(s2, E)))}
         ${eigeneSalzeHtml(E)}
         <p class="leise" style="font-size:16px">Alles lässt sich später in den Einstellungen ändern. Dort kannst du auch das Kaliwasserglas als Zusatz einschalten.</p>`;
     }
@@ -2392,6 +2424,16 @@ details.hilfe .inhalt b { color: var(--akzent); }
         ${s > 1 ? '<button class="gross" data-act="setupZurueck">Zurück</button>' : ''}
         <button class="gross haupt" data-act="setupWeiter">${s === SETUP_SCHRITTE ? 'Fertig' : 'Weiter'}</button>
       </div></div></div>`;
+  }
+
+  // Zuschaltbare Volldünger (seit 3.13.16 zahlreich): aufklappbar, damit die Salzliste kurz bleibt. Offen, solange einer davon
+  // eingeschaltet ist oder der Bereich aufgeklappt wurde (UI.vdOffen, gemerkt über das toggle-Ereignis).
+  const weitererVD = s => s.gruppe === 'volldünger' && s.aktiv === false && !s.eigen;
+  function weitereVDHtml(liste, zeile, irgendwoAn) {
+    if (!liste.length) return '';
+    return `<details class="hilfe" data-merk="vdOffen"${UI.vdOffen || irgendwoAn ? ' open' : ''}><summary>Weitere Volldünger (${liste.length})</summary><div class="inhalt">
+      <p class="leise" style="font-size:15px;margin:0 0 10px">Hakaphos, Kristalon, Peters, Universol, Agrolution und Poly-Feed, alle ohne Harnstoff. Sie werden wie Basis 3 zusammen mit Calcinit gegeben. Viele bringen wenig Eisen mit, dann meldet die App das.</p>
+      ${liste.map(zeile).join('')}</div></details>`;
   }
 
   const GRUPPEN = [['tanks', 'Tanks'], ['wasser', 'Wasser & Säure'], ['salze', 'Salze & Zusatz'], ['rezepte', 'Rezepte'], ['app', 'App & Sicherung']];
@@ -2493,7 +2535,8 @@ details.hilfe .inhalt b { color: var(--akzent); }
       <p class="leise" style="font-size:16px">Schalte ein, was du hast, und aus, was gerade fehlt. Die App rechnet nur mit den eingeschalteten Salzen.</p>
       ${D.salze.filter(s => s.aktiv !== false && !empf.includes(s.id)).map(salzZeile).join('')}
       <p class="leise" style="font-size:16px;margin-top:16px">Weitere Salze:</p>
-      ${D.salze.filter(s => s.aktiv === false && !s.eigen && !empf.includes(s.id)).map(salzZeile).join('')}
+      ${D.salze.filter(s => s.aktiv === false && !s.eigen && !weitererVD(s) && !empf.includes(s.id)).map(salzZeile).join('')}
+      ${weitereVDHtml(D.salze.filter(s => weitererVD(s) && !empf.includes(s.id)), salzZeile, D.salze.some(s => weitererVD(s) && E.auswahl[s.id] === true))}
       ${eigeneSalzeHtml(E)}
 
       <h2>Zusatz</h2>
@@ -3070,6 +3113,9 @@ details.hilfe .inhalt b { color: var(--akzent); }
     if (b.classList.contains('blatt-hg') && ev.target !== b) return;
     const f = A[b.dataset.act]; if (f) f(b.dataset, b);
   });
+  document.getElementById('app').addEventListener('toggle', ev => {
+    const d = ev.target; if (d.dataset && d.dataset.merk) UI[d.dataset.merk] = d.open;
+  }, true);
   document.getElementById('app').addEventListener('change', ev => {
     const el = ev.target;
     if (el.dataset && el.dataset.name) {
