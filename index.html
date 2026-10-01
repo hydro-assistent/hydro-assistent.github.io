@@ -334,6 +334,11 @@ details.hilfe .inhalt b { color: var(--akzent); }
       // Poly-Feed bringt kaum Eisen (0,01 %), das Eisen muss dann aus einem anderen Salz kommen.
       { id: 'polka', aktiv: false, gruppe: 'volldünger', name: 'Poly-Feed Polka 9-10-38', NO3: 9.1, NH4: 0, P: 4.364, K: 31.544, Ca: 0, Mg: 1.809, S: 2.52, Fe: 0.01, Mn: 0.05, Zn: 0.035, Cu: 0.01, B: 0.025, Mo: 0.0035 },
       { id: 'sonate', aktiv: false, gruppe: 'volldünger', name: 'Poly-Feed Sonate 15-5-30', NO3: 11.2, NH4: 3.8, P: 2.182, K: 24.903, Ca: 0, Mg: 1.809, S: 2.24, Fe: 0.01, Mn: 0.05, Zn: 0.025, Cu: 0.01, B: 0.025, Mo: 0.0025 },
+      // Eisen-Lösung (seit 3.13.16): Eisenchelat als Stammlösung, dosiert in ml. Ein voller Tank braucht nur Zehntelgramm Chelat,
+      // das wiegt keine Küchenwaage genau. Vorgabe Fe-DTPA 11 % Fe, 10 g pro Liter Stammlösung; Chelat, Gehalt und g/L stellt man
+      // in der App ein (Z.einst.eisen). DTPA hält das Eisen bis etwa pH 7 gelöst, EDTA bis etwa 6,5 (und zerfällt im Licht),
+      // EDDHA auch bei höherem pH (färbt die Lösung rot).
+      { id: 'eisen', aktiv: false, eisenLsg: true, marken: 'Eisenchelat, dosiert in ml aus einer Stammlösung', name: 'Eisen-Lösung (Fe-DTPA)', loesungGProL: 10, NO3: 0, NH4: 0, P: 0, K: 0, Ca: 0, Mg: 0, S: 0, Fe: 11 },
       { id: 'calcinit', aktiv: true,     marken: 'auch Haifa Cal', name: 'Calcinit (Yara)',       NO3: 14.4,  NH4: 1.1,  P: 0,     K: 0,      Ca: 18.59, Mg: 0,     S: 0 },
       { id: 'kno3', aktiv: true,         marken: 'z. B. Yara Krista K, Haifa Multi-K', name: 'Kaliumnitrat',          NO3: 13.86, NH4: 0,    P: 0,     K: 38.67,  Ca: 0,     Mg: 0,     S: 0 },
       { id: 'mkp', aktiv: false,         marken: 'MKP, z. B. Yara Krista MKP, Haifa MKP', name: 'Monokaliumphosphat',    NO3: 0,     NH4: 0,    P: 22.76, K: 28.73,  Ca: 0,     Mg: 0,     S: 0 },
@@ -347,7 +352,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
       { id: 'map', aktiv: false,         marken: 'MAP, z. B. Yara Krista MAP, Haifa MAP', name: 'Monoammoniumphosphat',  NO3: 0,     NH4: 12.0, P: 26.6,  K: 0,      Ca: 0,     Mg: 0,     S: 0 },
     ],
     // Mischreihenfolge im Behälter (nach der ersten Säure)
-    reihenfolge: ['kco', 'bittersalz', 'k2so4', 'nh4so4', 'soft_elite', 'soft_spezial', 'basis3', 'basis5', 'peters51126', 'combisol', 'basis2', 'soft_novell', 'soft_plus', 'soft_ultra', 'kristalon_rot', 'kristalon_orange', 'kristalon_braun', 'kristalon_weiss', 'universol_basis', 'phlow114', 'polka', 'sonate', 'kno3', 'mgno3', 'mkp', 'map', 'calcinit'],
+    reihenfolge: ['kco', 'bittersalz', 'k2so4', 'nh4so4', 'soft_elite', 'soft_spezial', 'basis3', 'basis5', 'peters51126', 'combisol', 'basis2', 'soft_novell', 'soft_plus', 'soft_ultra', 'kristalon_rot', 'kristalon_orange', 'kristalon_braun', 'kristalon_weiss', 'universol_basis', 'phlow114', 'polka', 'sonate', 'eisen', 'kno3', 'mgno3', 'mkp', 'map', 'calcinit'],
 
     // Beispielwasser, mg/L (mittelhart): nur für die Tests und für Stände vor Fassung 3.10. Neue Installationen tragen eigene Werte ein.
     wasser: { ecGemessen: 0.37, pH: 7.6, alkalitaet: 1.7, NO3: 0.11, NH4: 0.02, P: 0.024, K: 1.33, Ca: 42.5, Mg: 2.72, S: 14.1, Na: 10.8, Cl: 12.8, Fe: 0.121, Mn: 0.017 },
@@ -406,6 +411,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
   const NH4_MAX = 0.15;
   const FE_MAX = 3; // mg/L
   const FE_LOCKERN = [1, 0.5, 0.25, 0]; // Stufen, wenn das Eisen-Minimum nicht erreichbar ist
+  const FE_MIT_LOESUNG = 1;             // mg/L Eisen-Minimum, wenn eine Eisen-Lösung vorrätig ist (seit 3.13.16)
   const FE_TEUER = 0.75;                // k mit Eisen-Minimum unter 75 % des k ohne: Eisen-Vorgabe lockern (seit 3.13.16)
   const SPUREN_REF = { B: 0.43 / 1.6, Zn: 0.2 / 1.6 }; // mg/L je 100 mg N/L (Cannabis-Lösung: B 40 µM, Zn 3 µM bei 160 mg N/L), nur für Hinweise
   const GRENZE = { N: 250, P: 100, K: 400, Ca: 250, Mg: 100, S: 999 }; // mg/L, ab hier Hinweis 'hoch'
@@ -615,7 +621,9 @@ details.hilfe .inhalt b { color: var(--akzent); }
     const sa = saeure(w, D.saeure, kal, wg.hBedarf * wgDosis);
     const basis = { N: w.NO3 + w.NH4 + sa.N, NH4: w.NH4, P: w.P + sa.P, K: w.K + wg.K * wgDosis, Ca: w.Ca, Mg: w.Mg, S: w.S + (sa.S || 0), Fe: 0 };
     // Wassereisen zählt nicht: fällt im Behälter größtenteils aus
-    const feMin = opt.feMin !== undefined ? opt.feMin : Math.min(0.8, Math.max(0.25, 0.5 * (opt.ecZiel - w.ecGemessen)));
+    let feMin = opt.feMin !== undefined ? opt.feMin : Math.min(0.8, Math.max(0.25, 0.5 * (opt.ecZiel - w.ecGemessen)));
+    // Mit Eisen-Lösung kostet Eisen kein EC-Budget mehr: dann auf 1 mg/L, ohne dass Volldünger dafür herhalten müssen
+    if (opt.feMin === undefined && salze.some(s => s.eisenLsg)) feMin = Math.max(feMin, FE_MIT_LOESUNG);
     const hinweise = [];
 
     const saBasis = saeure(w, D.saeure, kal); // nur Hydrogencarbonat, für den EC-Beitrag der Säure
@@ -706,7 +714,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
         const w = bewerte(c.r);
         if (!beste || w < beste.w - 1e-9) beste = Object.assign({ w }, c);
       }
-      if (beste.f < 1) beste.r.hinweise.push('Mit den vorrätigen Salzen reicht das Eisen nicht, ohne zu viel Ammonium oder zu wenig von anderem einzuplanen. Ein Volldünger mit mehr Eisen (z. B. Hakaphos Basis 3) oder ein Eisendünger würde helfen.');
+      if (beste.f < 1) beste.r.hinweise.push('Mit den vorrätigen Salzen reicht das Eisen nicht, ohne zu viel Ammonium oder zu wenig von anderem einzuplanen. Ein Volldünger mit mehr Eisen (z. B. Hakaphos Basis 3) oder die Eisen-Lösung (Einstellungen › Salze) würde helfen.');
       return beste.r;
     }
 
@@ -1109,11 +1117,21 @@ details.hilfe .inhalt b { color: var(--akzent); }
         setup: false,
         saeure: { typ: 'phosphor', konz: 85, zielPH: 5.8, vorrat: {} },
         wasserglas: { an: false, mlProL: 0.1 },
+        eisen: { chelat: 'DTPA', fe: 11, gProL: 10 },
         nachfuellen: 'ec',
         wasser: {},
         quellen: [], wasserWahl: { a: 'leitung' },
       },
     };
+  }
+  // Eisen-Lösung: Chelat mit üblichem Fe-Gehalt; Gehalt und Gramm pro Liter Stammlösung frei (seit 3.13.16)
+  const CHELATE = [['DTPA', 11], ['EDTA', 13], ['EDDHA', 6]];
+  function eisenSauber(x) {
+    x = x && typeof x === 'object' ? x : {};
+    const chelat = CHELATE.some(c => c[0] === x.chelat) ? x.chelat : 'DTPA';
+    const fe = Number(x.fe) >= 1 && Number(x.fe) <= 20 ? Number(x.fe) : CHELATE.find(c => c[0] === chelat)[1];
+    const gProL = Number(x.gProL) >= 1 && Number(x.gProL) <= 100 ? Number(x.gProL) : 10;
+    return { chelat, fe, gProL };
   }
   function pruefe(d) {
     const s = standard();
@@ -1146,7 +1164,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
         vorrat: Object.assign({}, e.vorrat || (d.einst ? {} : s.einst.vorrat)), auswahl: Object.assign({}, e.auswahl || {}),
         behaelter: Object.assign({}, s.einst.behaelter, e.behaelter), setup: !alt && e.setup === true,
         eigeneSalze: Array.isArray(e.eigeneSalze) ? e.eigeneSalze.filter(x => x && x.id && x.name && x.werte) : [], haftung: !alt && e.haftung === true, profil: !alt,
-        saeure, wasserglas: Object.assign({}, s.einst.wasserglas, e.wasserglas), wasser: Object.assign({}, wasserAlt),
+        saeure, wasserglas: Object.assign({}, s.einst.wasserglas, e.wasserglas), eisen: eisenSauber(e.eisen), wasser: Object.assign({}, wasserAlt),
         nachfuellen: e.nachfuellen === 'verbrauch' ? 'verbrauch' : 'ec',
         quellen: Array.isArray(e.quellen) ? e.quellen : [], wasserWahl: e.wasserWahl && e.wasserWahl.a ? e.wasserWahl : { a: 'leitung' },
       },
@@ -1220,6 +1238,8 @@ details.hilfe .inhalt b { color: var(--akzent); }
     D.eimer.anzahl = Z.eimer.length;
     D.wasser = wasserMisch(wasserWahlFuer(e));
     D.saeure = K.saeureWahl(Z.einst.saeure, e ? e.phase : 'wachstum', !!(e && e.rezept === 'sparsam' && e.phase !== 'reife'));
+    const fe = D.salze.find(x => x.eisenLsg), ein = Z.einst.eisen;
+    if (fe) Object.assign(fe, { Fe: ein.fe, loesungGProL: ein.gProL, name: `Eisen-Lösung (Fe-${ein.chelat})` });
     Z.einst.eigeneSalze.forEach(x => {
       D.salze.push(Object.assign({ NO3: 0, NH4: 0, P: 0, K: 0, Ca: 0, Mg: 0, S: 0, Fe: 0, Mn: 0, Zn: 0, Cu: 0, B: 0, Mo: 0 }, x.werte, { id: x.id, name: x.name, aktiv: false, eigen: true }));
       if (x.werte.Ca > 0) D.reihenfolge.push(x.id); else D.reihenfolge.splice(D.reihenfolge.indexOf('calcinit'), 0, x.id);
@@ -1321,7 +1341,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
     const kco = r.mengen.find(m => m.id === 'kco');
     if (kco) s.push({ menge: fmt(kco.ml, 1) + ' ml', was: kco.name + ' zugeben und umrühren.' });
     if (r.saeure.ml > 0) s.push({ menge: fmt(r.saeure.zuerstMl, 1) + ' ml', was: r.saeure.name + ' zugeben und umrühren' + (kco ? ', es sprudelt kurz' : '') + '. Säure immer ins Wasser, mit Schutzbrille.' });
-    r.mengen.filter(m => !m.calcium && m.id !== 'kco').forEach(m => s.push({ menge: fmtG(m.gramm) + ' g', was: m.name + ' einrühren, bis es gelöst ist.' }));
+    r.mengen.filter(m => !m.calcium && m.id !== 'kco').forEach(m => s.push(m.ml != null ? { menge: fmt(m.ml, 1) + ' ml', was: m.name + ' zugeben und umrühren.' } : { menge: fmtG(m.gramm) + ' g', was: m.name + ' einrühren, bis es gelöst ist.' }));
     r.mengen.filter(m => m.calcium).forEach(ca => s.push({ menge: fmtG(ca.gramm) + ' g', was: ca.name + ' in ca. 1 L Wasser vorlösen, dann zugeben.' }));
     s.push({ menge: fmt(h, 1) + ' cm', was: 'Mit Wasser bis zu dieser Höhe auffüllen und gut umrühren.' });
     const anteil = r.saeure.ml > 0 ? r.saeure.zuerstMl / r.saeure.ml : 0;
@@ -1337,7 +1357,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
     const kco = r.mengen.find(m => m.id === 'kco');
     if (kco) s.push({ menge: fmt(kco.ml, 1) + ' ml', was: kco.name + ' in die Kanne geben.' });
     if (r.saeure.ml > 0) s.push({ menge: fmt(r.saeure.ml, 1) + ' ml', was: r.saeure.name + ' in die Kanne geben und umrühren. Säure immer ins Wasser.' });
-    r.mengen.filter(m => !m.calcium && m.id !== 'kco').forEach(m => s.push({ menge: fmtG(m.gramm) + ' g', was: m.name + ' in der Kanne auflösen.' }));
+    r.mengen.filter(m => !m.calcium && m.id !== 'kco').forEach(m => s.push(m.ml != null ? { menge: fmt(m.ml, 1) + ' ml', was: m.name + ' in die Kanne geben.' } : { menge: fmtG(m.gramm) + ' g', was: m.name + ' in der Kanne auflösen.' }));
     r.mengen.filter(m => m.calcium).forEach(ca => s.push({ menge: fmtG(ca.gramm) + ' g', was: ca.name + ' in einem Glas Wasser aus der Kanne vorlösen, dann zurückgießen.' }));
     s.push({ menge: fmt(hZiel, 0) + ' cm', was: 'Die Kanne in den Tank gießen, bis diese Höhe erreicht ist.' });
     s.push({ menge: 'EC ' + fmt(ecDanach, 2), was: 'Im Tank EC messen, dieser Wert wird ungefähr erwartet. Dann pH prüfen und falls nötig auf ' + fmt(Z.einst.saeure.zielPH, 1) + ' bringen.' });
@@ -2437,6 +2457,17 @@ details.hilfe .inhalt b { color: var(--akzent); }
       ${liste.map(zeile).join('')}</div></details>`;
   }
 
+  // Eisen-Lösung einstellen: Chelat, Gehalt laut Etikett, Stärke der Stammlösung
+  function eisenHtml(E) {
+    const ei = E.eisen, mgProMl = ei.gProL * ei.fe / 100; // mg Fe pro ml Stammlösung
+    return `<h2>Eisen-Lösung</h2>
+      <div class="gruppe"><div class="gruppe-titel">Chelat (steht auf der Packung)</div>${segment('chelat', CHELATE.map(c => [c[0], 'Fe-' + c[0]]), ei.chelat).replace(/data-act="setz"/g, 'data-act="chelat"')}</div>
+      <label class="feld"><span>Eisen laut Etikett (% Fe)</span><input type="text" inputmode="decimal" data-feld="eisenFe" value="${fmt(ei.fe, 1)}"></label>
+      <label class="feld"><span>Gramm Chelat pro Liter Stammlösung</span><input type="text" inputmode="decimal" data-feld="eisenG" value="${fmt(ei.gProL, 0)}"></label>
+      <p class="leise" style="font-size:16px">So ansetzen: ${fmt(ei.gProL, 0)} g ${esc('Fe-' + ei.chelat)} in 1 L Wasser lösen, in eine dunkle Flasche füllen und kühl lagern. 1 ml bringt ${fmt(mgProMl, 2)} mg Eisen, für 1 mg/L in 25 L also etwa ${fmt(25 / mgProMl, 0)} ml. Die Mischanleitung nennt die ml.</p>
+      <p class="leise" style="font-size:15px">${ei.chelat === 'EDTA' ? 'Fe-EDTA hält das Eisen nur bis etwa pH 6,5 gelöst und zerfällt im Licht. Für DWC ist Fe-DTPA sicherer.' : ei.chelat === 'EDDHA' ? 'Fe-EDDHA hält auch bei hohem pH, färbt die Lösung aber dunkelrot. Nur nötig, wenn der pH oft über 6,5 steigt.' : 'Fe-DTPA hält das Eisen bis etwa pH 7 gelöst, die übliche Wahl für DWC.'}</p>`;
+  }
+
   const GRUPPEN = [['tanks', 'Tanks'], ['wasser', 'Wasser & Säure'], ['salze', 'Salze & Zusatz'], ['rezepte', 'Rezepte'], ['app', 'App & Sicherung']];
   function gruppeUnter(g, D) {
     const E = Z.einst, akt = Z.eimer.filter(e => e.aktiv !== false);
@@ -2539,6 +2570,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
       ${D.salze.filter(s => s.aktiv === false && !s.eigen && !weitererVD(s) && !empf.includes(s.id)).map(salzZeile).join('')}
       ${weitereVDHtml(D.salze.filter(s => weitererVD(s) && !empf.includes(s.id)), salzZeile, D.salze.some(s => weitererVD(s) && E.auswahl[s.id] === true))}
       ${eigeneSalzeHtml(E)}
+      ${E.auswahl.eisen === true ? eisenHtml(E) : ''}
 
       <h2>Zusatz</h2>
       <button class="schalter" role="switch" aria-checked="${E.wasserglas.an}" data-act="wasserglas">
@@ -3098,6 +3130,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
       e.aktiv = e.aktiv === false; speichern(); render();
     },
     wasserglas: () => { Z.einst.wasserglas.an = !Z.einst.wasserglas.an; speichern(); render(); },
+    chelat: d => { const c = CHELATE.find(x => x[0] === d.wert); if (!c) return; Z.einst.eisen = { chelat: c[0], fe: c[1], gProL: Z.einst.eisen.gProL }; speichern(); render(); },
     konz: d => { Z.einst.saeure.konzPhosphor = +d.wert; speichern(); render(); },
     export: async () => {
       const text = JSON.stringify(Z, null, 1), fn = 'hydro-sicherung-' + new Date().toISOString().slice(0, 10) + '.json';
@@ -3139,7 +3172,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
       const r = schnapp(); if (key === 'sulfat') q.werte.S = n * SULFAT_S; else q.werte[key] = n; speichern(); setTimeout(render, 0); toast('Übernommen', r); return;
     }
     const n = Number(el.value.trim().replace(',', '.'));
-    const grenzen = { K: [0, 100], nitrat: [0, 250], ammonium: [0, 5], phosphat: [0, 20], Na: [0, 500], Cl: [0, 500], Ca: [0, 300], Mg: [0, 150], sulfat: [0, 900], netztopf: [0, 60], luftspalt: [0, 40], dOben: [5, 200], dUnten: [5, 200], durchmesser: [5, 200], laenge: [5, 300], breite: [5, 300], hoehe: [5, 250], maxFuell: [2, 250], wgDosis: [0.02, 0.5], konz: [1, 98], zielPH: [4.5, 7], ecGemessen: [0, 5], pH: [4, 10], alkalitaet: [0, 10] };
+    const grenzen = { eisenFe: [1, 20], eisenG: [1, 100], K: [0, 100], nitrat: [0, 250], ammonium: [0, 5], phosphat: [0, 20], Na: [0, 500], Cl: [0, 500], Ca: [0, 300], Mg: [0, 150], sulfat: [0, 900], netztopf: [0, 60], luftspalt: [0, 40], dOben: [5, 200], dUnten: [5, 200], durchmesser: [5, 200], laenge: [5, 300], breite: [5, 300], hoehe: [5, 250], maxFuell: [2, 250], wgDosis: [0.02, 0.5], konz: [1, 98], zielPH: [4.5, 7], ecGemessen: [0, 5], pH: [4, 10], alkalitaet: [0, 10] };
     merkeEingaben();
     if (isNaN(n) || !grenzen[f] || n < grenzen[f][0] || n > grenzen[f][1]) { toast('Wert außerhalb des sinnvollen Bereichs, bitte prüfen'); setTimeout(render, 0); return; }
     const r = schnapp();
@@ -3153,6 +3186,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
       speichern(); setTimeout(render, 0); toast('Übernommen', r); return;
     }
     if (f === 'wgDosis') Z.einst.wasserglas.mlProL = n; else if (f === 'zielPH') Z.einst.saeure.zielPH = n;
+    else if (f === 'eisenFe') Z.einst.eisen.fe = n; else if (f === 'eisenG') Z.einst.eisen.gProL = n;
     else if (f === 'sulfat') Z.einst.wasser.S = n * SULFAT_S; else if (f === 'nitrat') Z.einst.wasser.NO3 = n * NITRAT_N; else if (f === 'ammonium') Z.einst.wasser.NH4 = n * AMMONIUM_N; else if (f === 'phosphat') Z.einst.wasser.P = n * PHOSPHAT_P; else Z.einst.wasser[f] = n;
     speichern(); setTimeout(render, 0); toast('Übernommen', r);
   });
