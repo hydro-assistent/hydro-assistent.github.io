@@ -16,6 +16,7 @@ node tests/schwefel.test.js    # Schwefelsäure-Zweig, Erwartungswerte unabhäng
 node tests/saeure.test.js      # Wahl der Säure je Phase (saeureWahl)
 node tests/sparsam.test.js     # Rezept „Sparsam“ (DATEN.sparsam) und topUp mit nachfuellen: 'verbrauch'
 node tests/eisen.test.js       # Eisen-Minimum nicht erreichbar: Vorgabe wird gelockert (FE_LOCKERN), Rezept kippt nicht
+node tests/salze.test.js       # eingebaute Salze: Etikett-Umrechnung, Peters 5-11-26 mit Calcinit
 node tests/fassung.test.js     # VERSION in sw.js = neueste „Fassung“ in LIESMICH.md, DATEIEN vorhanden
 node tests/kern.test.js        # Golden-Master: 13 feste Rezepte, topUp, zielEC, liter gegen tests/kern.erwartet.json
 node tests/kern.test.js --neu  # erwartete Werte neu schreiben – nur bei gewollter Rechenänderung, Diff prüfen
@@ -51,6 +52,7 @@ Die ersten drei Blöcke enden jeweils mit `if (typeof module !== 'undefined') mo
 - `standard()` liefert den Grundzustand, `pruefe(d)` normalisiert jeden geladenen Stand (auch Importe) und enthält die Migrationen alter Fassungen (`version`, `profil`/`pruefen` für den Umstieg auf 3.10). Neue Felder immer in beiden Funktionen ergänzen, damit alte Stände und Sicherungen weiter laden.
 - Wasserwerte werden wie im Wasserbericht eingetragen (Nitrat, Sulfat, Ammonium als NH₄, Phosphat als PO₄) und beim Speichern in N, S bzw. P umgerechnet; im Rechenkern stehen `NO3`/`NH4` als N, `P`, `S`. `Na`/`Cl` werden nur für Warnungen genutzt (> 50 bzw. > 100 mg/L).
 - Tankmaße: `Z.einst.behaelter` gilt für alle Tanks, ein Tank mit `e.behaelter` hat eigene Maße (seit 3.13.10). Immer über `beh(e)` bzw. `daten(e)` lesen, nie direkt `Z.einst.behaelter`; Eingabefelder eines Tanks tragen `data-feld="b<i>:<feld>"`.
+- Eingebaute Salze tragen optional `marken` (Markenprodukte desselben Stoffs, nur in den Salzlisten angezeigt). Neue Markenprodukte nur mit belegten Etikettwerten aufnehmen; Mehrnährstoffdünger mit Varianten je Land (Kristalon, Poly-Feed) bleiben „Eigenes Salz“.
 - Eigene Salze liegen in `Z.einst.eigeneSalze` und werden zur Laufzeit an `DATEN.salze`/`reihenfolge` angehängt; Calcium-Salze werden getrennt vorgelöst und zuletzt zugegeben (`calcium: true` in `rezept().mengen`).
 
 - Angefangene Mischanleitung: `anlParken()` legt `UI.anl` samt Haken unter `hydro-anleitung-v1` ab (bei jedem Haken und beim Verlassen), `anlVergessen()` beim Speichern oder Start einer neuen; kein `confirm()` beim Verlassen (seit 3.13.12).

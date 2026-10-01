@@ -93,6 +93,7 @@ input::placeholder { color: var(--leise); opacity: .6; }
 .werte-raster > label.feld span small { font-size: 13px; opacity: .8; margin-left: 4px; }
 .werte-raster input { font-size: 22px; min-height: 52px; padding: 6px 12px; }
 .segment.klein { max-width: 280px; }
+.schalter .marken { font-size: 14px; font-weight: 400; color: var(--leise); }
 .segment.klein button { min-height: 44px; font-size: 16px; }
 
 .hinweise { border-left: 4px solid var(--akzent); background: var(--flaeche); border-radius: 0 14px 14px 0; padding: 12px 16px; margin: 0 0 18px; }
@@ -302,20 +303,23 @@ details.hilfe .inhalt b { color: var(--akzent); }
       { id: 'soft_spezial', aktiv: false, gruppe: 'volldünger', name: 'Hakaphos Soft Spezial', NO3: 9.7,   NH4: 6.3,  P: 3.491, K: 18.262, Ca: 0,     Mg: 1.81,  S: 4.0,  Fe: 0.15, Mn: 0.05, Zn: 0.015, Cu: 0.02, B: 0.02, Mo: 0.0025 },
       { id: 'basis3', aktiv: true,        gruppe: 'volldünger', name: 'Hakaphos Basis 3',      NO3: 3.0,   NH4: 0,    P: 6.546, K: 29.884, Ca: 0,     Mg: 2.41,  S: 9.0,  Fe: 0.2,  Mn: 0.05, Zn: 0.015, Cu: 0.02, B: 0.01, Mo: 0.001 },
       { id: 'basis5', aktiv: false,      gruppe: 'volldünger', name: 'Hakaphos Basis 5',      NO3: 4.0,   NH4: 1.0,  P: 8.728, K: 24.903, Ca: 0,     Mg: 3.0,   S: 6.0,  Fe: 0.2,  Mn: 0.1,  Zn: 0.025, Cu: 0.06, B: 0.03, Mo: 0.003 },
-      { id: 'calcinit', aktiv: true,     name: 'Calcinit (Yara)',       NO3: 14.4,  NH4: 1.1,  P: 0,     K: 0,      Ca: 18.59, Mg: 0,     S: 0 },
-      { id: 'kno3', aktiv: true,         name: 'Kaliumnitrat',          NO3: 13.86, NH4: 0,    P: 0,     K: 38.67,  Ca: 0,     Mg: 0,     S: 0 },
-      { id: 'mkp', aktiv: false,         name: 'Monokaliumphosphat',    NO3: 0,     NH4: 0,    P: 22.76, K: 28.73,  Ca: 0,     Mg: 0,     S: 0 },
+      // Peters Professional Hydro-Sol 5-11-26 (ICL), Etikett: N 5 % (nur Nitrat), P2O5 11 %, K2O 26 %, Mg 6 %, S 8 %, Fe 0,3 % (EDTA),
+      // Mn 0,05 %, Zn 0,015 %, Cu 0,015 %, B 0,05 %, Mo 0,01 %. Ohne Calcium: wird mit Calcinit zusammen gegeben.
+      { id: 'peters51126', aktiv: false, gruppe: 'volldünger', name: 'Peters Hydro-Sol 5-11-26', NO3: 5.0, NH4: 0, P: 4.800, K: 21.583, Ca: 0, Mg: 6.0, S: 8.0, Fe: 0.3, Mn: 0.05, Zn: 0.015, Cu: 0.015, B: 0.05, Mo: 0.01 },
+      { id: 'calcinit', aktiv: true,     marken: 'auch Haifa Cal', name: 'Calcinit (Yara)',       NO3: 14.4,  NH4: 1.1,  P: 0,     K: 0,      Ca: 18.59, Mg: 0,     S: 0 },
+      { id: 'kno3', aktiv: true,         marken: 'z. B. Yara Krista K, Haifa Multi-K', name: 'Kaliumnitrat',          NO3: 13.86, NH4: 0,    P: 0,     K: 38.67,  Ca: 0,     Mg: 0,     S: 0 },
+      { id: 'mkp', aktiv: false,         marken: 'MKP, z. B. Yara Krista MKP, Haifa MKP', name: 'Monokaliumphosphat',    NO3: 0,     NH4: 0,    P: 22.76, K: 28.73,  Ca: 0,     Mg: 0,     S: 0 },
       // Kaliumcarbonat: wird im Eimer von der Säure neutralisiert. Zusammensetzung pro g K2CO3; N kommt nur mit Salpetersäure dazu (kern.js).
       { id: 'kco', aktiv: true, nurMitSalpeter: true, name: 'Kaliumcarbonat-Lösung', loesungGProL: 300, NO3: 0, NH4: 0, P: 0, K: 56.58, Ca: 0, Mg: 0, S: 0, co3: true },
       { id: 'bittersalz', aktiv: true,   name: 'Bittersalz',            NO3: 0,     NH4: 0,    P: 0,     K: 0,      Ca: 0,     Mg: 9.65,  S: 13.0 },
       // Gängige Einzelsalze für andere Wasserhärten (Gehalte als Element, typische Handelsware)
-      { id: 'mgno3', aktiv: false,       name: 'Magnesiumnitrat',       NO3: 10.9,  NH4: 0,    P: 0,     K: 0,      Ca: 0,     Mg: 9.5,   S: 0 },
-      { id: 'k2so4', aktiv: false,       name: 'Kaliumsulfat',          NO3: 0,     NH4: 0,    P: 0,     K: 41.5,   Ca: 0,     Mg: 0,     S: 18.0 },
+      { id: 'mgno3', aktiv: false,       marken: 'z. B. Yara Krista MAG, Haifa Magnisal', name: 'Magnesiumnitrat',       NO3: 10.9,  NH4: 0,    P: 0,     K: 0,      Ca: 0,     Mg: 9.5,   S: 0 },
+      { id: 'k2so4', aktiv: false,       marken: 'z. B. Yara Krista SOP', name: 'Kaliumsulfat',          NO3: 0,     NH4: 0,    P: 0,     K: 41.5,   Ca: 0,     Mg: 0,     S: 18.0 },
       { id: 'nh4so4', aktiv: false,      name: 'Ammoniumsulfat',        NO3: 0,     NH4: 21.0, P: 0,     K: 0,      Ca: 0,     Mg: 0,     S: 24.0 },
-      { id: 'map', aktiv: false,         name: 'Monoammoniumphosphat',  NO3: 0,     NH4: 12.0, P: 26.6,  K: 0,      Ca: 0,     Mg: 0,     S: 0 },
+      { id: 'map', aktiv: false,         marken: 'MAP, z. B. Yara Krista MAP, Haifa MAP', name: 'Monoammoniumphosphat',  NO3: 0,     NH4: 12.0, P: 26.6,  K: 0,      Ca: 0,     Mg: 0,     S: 0 },
     ],
     // Mischreihenfolge im Behälter (nach der ersten Säure)
-    reihenfolge: ['kco', 'bittersalz', 'k2so4', 'nh4so4', 'soft_elite', 'soft_spezial', 'basis3', 'basis5', 'kno3', 'mgno3', 'mkp', 'map', 'calcinit'],
+    reihenfolge: ['kco', 'bittersalz', 'k2so4', 'nh4so4', 'soft_elite', 'soft_spezial', 'basis3', 'basis5', 'peters51126', 'kno3', 'mgno3', 'mkp', 'map', 'calcinit'],
 
     // Beispielwasser, mg/L (mittelhart): nur für die Tests und für Stände vor Fassung 3.10. Neue Installationen tragen eigene Werte ein.
     wasser: { ecGemessen: 0.37, pH: 7.6, alkalitaet: 1.7, NO3: 0.11, NH4: 0.02, P: 0.024, K: 1.33, Ca: 42.5, Mg: 2.72, S: 14.1, Na: 10.8, Cl: 12.8, Fe: 0.121, Mn: 0.017 },
@@ -2367,13 +2371,14 @@ details.hilfe .inhalt b { color: var(--akzent); }
         <span>Gelesen. Ich nutze die App auf eigene Verantwortung.<small>${E.haftung ? 'bestätigt' : 'bitte bestätigen'}</small></span><span class="pille"></span></button>`;
     if (s === 4) {
       const zeile = x => `<button class="schalter" role="switch" aria-checked="${x.an}" data-act="${x.std ? 'vorrat' : 'auswahl'}" data-id="${x.id}">
-        <span>${esc(x.name)}<small>${x.an ? 'habe ich' : 'habe ich nicht'}</small></span><span class="pille"></span></button>`;
+        <span>${esc(x.name)}${x.marken ? ` <span class="marken">${esc(x.marken)}</span>` : ''}<small>${x.an ? 'habe ich' : 'habe ich nicht'}</small></span><span class="pille"></span></button>`;
       inhalt = `<h1>Welche Salze hast du?</h1>
         <p class="leise">Schalte ein, was bei dir im Regal steht. Die App rechnet daraus Gramm für deinen Tank, nur mit diesen Salzen.</p>
         <p class="leise" style="font-size:15px">Fertige Flüssigdünger (Flasche A/B) rechnet die App nicht, sie ist für Salze gebaut. Weiter geht es erst mit mindestens einem Salz mit Stickstoff, damit am Ende ein echtes Rezept steht und kein halbes.</p>
         <div class="hinweise"><p><b>Noch nichts gekauft?</b> Mit Hakaphos Basis 3, Hakaphos Soft Elite, Calcinit, Kaliumnitrat und Bittersalz rechnet die App am besten. Basis 3 bringt das meiste Eisen mit.</p>
           <button class="zeile-knopf" data-act="grundSatz" style="margin:8px 0 0">Diese fünf einschalten</button></div>
-        ${D.salze.filter(s2 => !s2.eigen).map(s2 => zeile({ id: s2.id, name: s2.name, std: s2.aktiv !== false, an: gewaehlt(s2, E) })).join('')}
+        <p class="leise" style="font-size:15px">Einzelsalze von Yara (Krista) oder Haifa sind dieselben Stoffe wie in der Liste, der Markenname steht jeweils dabei. Dein Dünger fehlt? Unten über „Eigenes Salz hinzufügen“ mit den Werten vom Etikett anlegen.</p>
+        ${D.salze.filter(s2 => !s2.eigen).map(s2 => zeile({ id: s2.id, name: s2.name, marken: s2.marken, std: s2.aktiv !== false, an: gewaehlt(s2, E) })).join('')}
         ${eigeneSalzeHtml(E)}
         <p class="leise" style="font-size:16px">Alles lässt sich später in den Einstellungen ändern. Dort kannst du auch das Kaliwasserglas als Zusatz einschalten.</p>`;
     }
@@ -2415,7 +2420,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
       const an = std ? E.vorrat[s.id] !== false : E.auswahl[s.id] === true;
       const wartet = s.nurMitSalpeter && !K.saeurenDa(E.saeure).includes('salpeter');
       return `<button class="schalter" role="switch" aria-checked="${an}" data-act="${std ? 'vorrat' : 'auswahl'}" data-id="${s.id}">
-        <span>${esc(s.name)}<small>${wartet ? (an ? 'vorrätig, wird nur mit Salpetersäure eingeplant' : 'nicht vorrätig') : std ? (an ? 'vorrätig, wird eingeplant' : 'nicht vorrätig') : (an ? 'wird zusätzlich eingeplant' : 'nicht eingeplant')}</small></span><span class="pille"></span></button>`;
+        <span>${esc(s.name)}${s.marken ? ` <span class="marken">${esc(s.marken)}</span>` : ''}<small>${wartet ? (an ? 'vorrätig, wird nur mit Salpetersäure eingeplant' : 'nicht vorrätig') : std ? (an ? 'vorrätig, wird eingeplant' : 'nicht vorrätig') : (an ? 'wird zusätzlich eingeplant' : 'nicht eingeplant')}</small></span><span class="pille"></span></button>`;
     };
     const status = ['', 'Daten liegen nur auf diesem Gerät. Speichere ab und zu eine Sicherung.'];
     let inhalt = '';
@@ -3068,6 +3073,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
       const r = schnapp(); q.name = n; speichern(); setTimeout(render, 0); toast('Übernommen', r); return;
     }
     let f = el.dataset && el.dataset.feld; if (!f) return;
+    if (el.value === el.defaultValue) return; // seit dem Anzeigen nicht geändert (z. B. Weiter übernimmt alle Felder): kein „Übernommen“
     let bi = null; const bm = /^b(\d+):(.+)$/.exec(f); if (bm) { bi = bm[1]; f = bm[2]; }
     if (f.startsWith('konz:')) {
       const t = f.slice(5), n = Number(el.value.trim().replace(',', '.')), max = t === 'salpeter' ? 65 : t === 'phosphor' ? 90 : 98;
