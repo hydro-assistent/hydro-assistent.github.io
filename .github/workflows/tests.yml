@@ -1,4 +1,4 @@
-# Führt die Rechen-Tests bei jedem Pull Request und jedem Push auf main aus.
+# Führt die Rechen-Tests und den Oberflächen-Rundgang bei jedem Pull Request und jedem Push auf main aus.
 name: Tests
 
 on:
@@ -38,3 +38,16 @@ jobs:
       - run: pip install numpy scipy
       - name: App gegen unabhängige Optimierung
         run: python3 tests/vergleich_optimum.py
+
+  # Rundgang durch die Oberfläche im echten Browser. Playwright nur hier in CI, die App bleibt ohne Abhängigkeiten.
+  oberflaeche:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install --no-save --no-package-lock playwright@1.56.1
+      - run: npx playwright install --with-deps chromium
+      - name: Oberfläche
+        run: node tests/oberflaeche.ui.js

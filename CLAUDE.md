@@ -21,11 +21,12 @@ node tests/fassung.test.js     # VERSION in sw.js = neueste „Fassung“ in LIE
 node tests/kern.test.js        # Golden-Master: 13 feste Rezepte, topUp, zielEC, liter gegen tests/kern.erwartet.json
 node tests/kern.test.js --neu  # erwartete Werte neu schreiben – nur bei gewollter Rechenänderung, Diff prüfen
 python3 tests/vergleich_optimum.py   # App gegen unabhängige scipy-Optimierung (braucht numpy, scipy, node)
+HYDRO_CHROMIUM=/opt/pw-browsers/chromium-1194/chrome-linux/chrome node tests/oberflaeche.ui.js   # Rundgang im Browser (Playwright): Einrichtung, Mischanleitung, Eisen-Lösung, Escaping, Import
 ```
 
 Kein Test-Framework und keine Abhängigkeiten: jede Datei ist ein eigenständiges Skript, gibt „N Fälle/Prüfungen, M Fehler.“ aus und endet bei Fehlern mit Exit-Code 1. Ausnahme `kern.test.js`, das das eingebaute `node:test` nutzt (`node --test-name-pattern "Blüte" tests/kern.test.js` für einzelne Fälle). Die übrigen Tests prüfen Eigenschaften (EC getroffen, Ammonium-Grenze …) und merken verschobene Gramm-Mengen nicht; das tut nur `kern.test.js`. Ändert sich eine Rechnung gewollt, `--neu` laufen lassen und die Änderung in `kern.erwartet.json` im Commit begründen. Einen einzelnen Fall prüft man, indem man die jeweilige Datei ausführt oder in einem Einzeiler `require('./tests/laden')` nutzt und `K.rezept(D, {...})` direkt aufruft.
 
-GitHub Actions (`.github/workflows/tests.yml`) läuft bei jedem Pull Request und Push auf `main`: Job `tests` führt jede Datei `tests/*.test.js` aus (neue Tests laufen automatisch mit), Job `vergleich` den Python-Vergleich.
+GitHub Actions (`.github/workflows/tests.yml`) läuft bei jedem Pull Request und Push auf `main`: Job `tests` führt jede Datei `tests/*.test.js` aus (neue Tests laufen automatisch mit), Job `vergleich` den Python-Vergleich, Job `oberflaeche` den Browser-Rundgang `tests/oberflaeche.ui.js` (Playwright nur in CI installiert; die Datei heißt bewusst nicht `*.test.js`, damit der Node-Job sie nicht ohne Browser startet). Ohne lokales Playwright-Paket nimmt der Rundgang das globale; `HYDRO_CHROMIUM` setzt den Browser-Pfad.
 
 Lokal ansehen: irgendein statischer Server im Wurzelverzeichnis (z. B. `python3 -m http.server`). Der Service Worker wird nur unter `https:` registriert, lokal läuft die App also ohne Cache.
 
