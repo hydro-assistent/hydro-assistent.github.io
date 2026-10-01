@@ -52,5 +52,32 @@ for (const phase of ['wachstum', 'bluete']) {
   pruefe(r.mengen.some(m => m.id === 'bittersalz') && r.ist.Mg >= 15, `Sparsam ${phase}: Mg ${r.ist.Mg.toFixed(0)}, Bittersalz fehlt`);
 }
 
+// Eisen-Lösung (seit 3.13.16): Chelat als Stammlösung in ml. Wird nicht als „winzige Menge“ gestrichen, hebt Eisen auf 1 mg/L
+// und rettet Rezepte mit eisenarmen Volldüngern (k bricht nicht ein, Ammonium bleibt an der Grenze).
+{
+  const fe = D.salze.find(s => s.id === 'eisen');
+  pruefe(!!fe && fe.aktiv === false && fe.eisenLsg && fe.loesungGProL === 10 && fe.Fe === 11, 'Eisen-Lösung: Fe-DTPA 11 %, 10 g/L, zum Einschalten');
+  pruefe(D.reihenfolge.indexOf('eisen') >= 0 && D.reihenfolge.indexOf('eisen') < D.reihenfolge.indexOf('calcinit'), 'Eisen-Lösung vor Calcinit');
+  for (const vd of ['kristalon_weiss', 'soft_ultra', 'polka', 'basis3'])
+    for (const [phase, typ] of [['wachstum', 'salpeter'], ['bluete', 'phosphor']]) {
+      const d4 = JSON.parse(JSON.stringify(D));
+      d4.saeure = typ === 'salpeter' ? { typ, konz: 38, zielPH: 5.8 } : { typ, konz: 85, zielPH: 5.8 };
+      const ids4 = [vd, 'calcinit', 'bittersalz', 'kno3', 'eisen'], v4 = {}, a4 = {};
+      for (const s of d4.salze) { v4[s.id] = ids4.includes(s.id); a4[s.id] = ids4.includes(s.id); }
+      const ec = K.zielEC(d4, phase, 'photo', 'normal');
+      const r = K.rezept(d4, { phase, liter: 25, ecZiel: ec, vorrat: v4, auswahl: a4 });
+      const m = r.mengen.find(x => x.id === 'eisen');
+      pruefe(r.ist.Fe >= 0.98 && r.ist.Fe <= 3, `${vd} ${phase}: Eisen ${r.ist.Fe.toFixed(2)} mit Eisen-Lösung`);
+      pruefe(!m || (m.ml > 0 && Math.abs(m.ml - m.gramm / 10 * 1000) < 2), `${vd} ${phase}: ml aus g/L`);
+      pruefe(r.faktorK > 0.55, `${vd} ${phase}: k ${r.faktorK.toFixed(2)} mit Eisen-Lösung`);
+      pruefe(r.ist.NH4anteil <= 0.155, `${vd} ${phase}: Ammonium ${(r.ist.NH4anteil * 100).toFixed(0)} %`);
+      pruefe(Math.abs(r.ec.gesamt - ec) <= 0.15, `${vd} ${phase}: EC ${r.ec.gesamt.toFixed(2)}`);
+      pruefe(!r.hinweise.some(h => /reicht das Eisen nicht|Eisen nur|kleine Menge/.test(h)), `${vd} ${phase}: kein Eisen-Hinweis mehr`);
+    }
+  // Ohne Eisen-Lösung im Vorrat bleibt das Eisen-Minimum wie bisher (Golden-Master prüft die Gramm)
+  const ohne = K.rezept(JSON.parse(JSON.stringify(D)), { phase: 'wachstum', liter: 20, ecZiel: 1.4 });
+  pruefe(!ohne.mengen.some(x => x.id === 'eisen'), 'Standard-Satz ohne Eisen-Lösung');
+}
+
 console.log(`${n} Prüfungen, ${fehler} Fehler.`);
 if (fehler) process.exit(1);

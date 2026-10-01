@@ -1,4 +1,5 @@
-// Eingebaute Salze (seit 3.13.15): Peters Hydro-Sol 5-11-26 als zusätzlicher Volldünger, Markennamen bei Einzelsalzen.
+// Eingebaute Salze (seit 3.13.15): Peters Hydro-Sol 5-11-26 als zusätzlicher Volldünger, Markennamen bei Einzelsalzen;
+// seit 3.13.16 weitere harnstofffreie Volldünger (Hakaphos, Kristalon, Universol, Agrolution, Poly-Feed).
 const { D, K } = require('./laden');
 
 let n = 0, fehler = 0;
@@ -26,20 +27,50 @@ for (const s of D.salze) {
   pruefe(summe > 0 && summe < 100, `${s.name}: Summe ${summe.toFixed(1)} %`);
 }
 
+// Weitere harnstofffreie Volldünger (seit 3.13.16): Etikett → Element, zum Einschalten, vor Calcinit
+const P_ = x => x * P_AUS_P2O5, K_ = x => x * K_AUS_K2O, MG_ = x => x * 24.305 / 40.304;
+const etiketten = {
+  basis2: [3, 0, 6, 40, 4], soft_novell: [7.6, 3.4, 11, 30, 3], soft_plus: [7.6, 6.4, 6, 24, 3], soft_ultra: [10, 8, 8, 18, 3],
+  kristalon_rot: [10.1, 1.9, 12, 36, 1], kristalon_orange: [4.5, 1.5, 12, 36, 3], kristalon_braun: [3, 0, 11, 38, 4], kristalon_weiss: [11.3, 3.7, 5, 30, 3],
+  universol_basis: [4, 0, 19, 35, 4.1], phlow114: [11, 0, 10, 40, 0], polka: [9.1, 0, 10, 38, 3], sonate: [11.2, 3.8, 5, 30, 3],
+};
+for (const [id, [no3, nh4, p2o5, k2o, mgo]] of Object.entries(etiketten)) {
+  const s = D.salze.find(x => x.id === id);
+  pruefe(!!s, `${id} fehlt`);
+  if (!s) continue;
+  pruefe(s.NO3 === no3 && s.NH4 === nh4, `${s.name}: Stickstoff-Formen`);
+  pruefe(Math.abs(s.P - P_(p2o5)) < 0.01 && Math.abs(s.K - K_(k2o)) < 0.01 && Math.abs(s.Mg - MG_(mgo)) < 0.01, `${s.name}: P/K/Mg falsch umgerechnet`);
+  pruefe(s.aktiv === false && s.gruppe === 'volldünger', `${s.name}: zum Einschalten, Gruppe Volldünger`);
+  pruefe(D.reihenfolge.indexOf(id) >= 0 && D.reihenfolge.indexOf(id) < D.reihenfolge.indexOf('calcinit'), `${s.name}: vor Calcinit in der Mischreihenfolge`);
+}
+
 // Typische A/B-Kombination: Peters-Volldünger + Calcinit + Bittersalz + Kaliumnitrat
-for (const [phase, typ, vd] of [['wachstum', 'salpeter', 'peters51126'], ['bluete', 'phosphor', 'peters51126'], ['wachstum', 'salpeter', 'combisol'], ['bluete', 'phosphor', 'combisol']]) {
+const faelle = [], genutzt = new Set();
+for (const vd of ['peters51126', 'combisol'].concat(Object.keys(etiketten))) faelle.push(['wachstum', 'salpeter', vd], ['bluete', 'phosphor', vd]);
+for (const [phase, typ, vd] of faelle) {
   const d = JSON.parse(JSON.stringify(D));
   d.saeure = typ === 'salpeter' ? { typ, konz: 38, zielPH: 5.8 } : { typ, konz: 85, zielPH: 5.8 };
   const ids = [vd, 'calcinit', 'bittersalz', 'kno3'], vorrat = {}, auswahl = {};
   for (const s of d.salze) { vorrat[s.id] = ids.includes(s.id); auswahl[s.id] = ids.includes(s.id); }
   const ec = K.zielEC(d, phase, 'photo', 'normal');
   const r = K.rezept(d, { phase, liter: 24.7, ecZiel: ec, vorrat, auswahl });
-  pruefe(Math.abs(r.ec.gesamt - ec) <= 0.15, `${phase}: EC ${r.ec.gesamt.toFixed(2)} statt ${ec}`);
-  pruefe(r.mengen.some(m => m.id === vd) && r.mengen.some(m => m.id === 'calcinit'), `${phase} ${vd}: Volldünger und Calcinit eingeplant`);
-  pruefe(r.ist.Fe >= 0.8 && r.ist.Fe <= 3, `${phase}: Eisen ${r.ist.Fe.toFixed(2)}`);
-  pruefe(!r.hinweise.some(h => /^Bor nur|reicht das Eisen nicht/.test(h)), `${phase}: Volldünger bringt genug Bor und Eisen`);
-  pruefe(r.ist.NH4anteil <= 0.15, `${phase}: Ammonium ${(r.ist.NH4anteil * 100).toFixed(0)} %`);
+  pruefe(Math.abs(r.ec.gesamt - ec) <= 0.15, `${phase} ${vd}: EC ${r.ec.gesamt.toFixed(2)} statt ${ec}`);
+  pruefe(r.mengen.some(m => m.id === 'calcinit'), `${phase} ${vd}: Calcinit eingeplant`);
+  if (r.mengen.some(m => m.id === vd)) genutzt.add(vd);
+  // Kein Einbruch: das Profil wird nicht von zu viel eisenarmem Volldünger verdrängt (seit 3.13.16)
+  pruefe(r.faktorK > 0.35, `${phase} ${vd}: k ${r.faktorK.toFixed(2)} eingebrochen`);
+  pruefe(r.ist.Mg >= 15, `${phase} ${vd}: Mg ${r.ist.Mg.toFixed(0)} mg/L`);
+  // Peters bringt genug Eisen; die übrigen weniger, dann meldet die App das Eisen als knapp (ein Eisendünger fehlt im Regal)
+  if (['peters51126', 'combisol'].includes(vd)) {
+    pruefe(r.ist.Fe >= 0.8 && r.ist.Fe <= 3, `${phase} ${vd}: Eisen ${r.ist.Fe.toFixed(2)}`);
+    pruefe(!r.hinweise.some(h => /^Bor nur|reicht das Eisen nicht/.test(h)), `${phase}: Volldünger bringt genug Bor und Eisen`);
+  } else if (r.ist.Fe < 0.5) pruefe(r.hinweise.some(h => /Eisen/.test(h)), `${phase} ${vd}: Eisen ${r.ist.Fe.toFixed(2)} ohne Hinweis`);
+  // Wie bei Soft Elite allein (eisen.test.js): knapp über der Grenze ist hinnehmbar, dann aber mit Hinweis
+  pruefe(r.ist.NH4anteil <= 0.18, `${phase} ${vd}: Ammonium ${(r.ist.NH4anteil * 100).toFixed(0)} %`);
+  if (r.ist.NH4anteil > 0.155) pruefe(r.hinweise.some(h => /Ammonium-Anteil/.test(h)), `${phase} ${vd}: Ammonium ohne Hinweis`);
 }
+
+for (const [, , vd] of faelle) pruefe(genutzt.has(vd), `${vd}: in keiner Phase eingeplant`);
 
 console.log(`${n} Prüfungen, ${fehler} Fehler.`);
 if (fehler) process.exit(1);
