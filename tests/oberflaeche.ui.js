@@ -80,6 +80,18 @@ const BOESE = '<img src=x onerror="alert(1)">"\'&';
   t = await neuAnsetzen();
   pruefe(/[\d,]+ ml\s+Eisen-Lösung \(Fe-DTPA\) zugeben/.test(t), 'Eisen-Lösung: Schritt in ml fehlt');
 
+  // ---------- Fokus nach dem Neuzeichnen ----------
+  await p.reload(); await p.waitForTimeout(300);
+  await p.click('[data-act="tab"][data-v="einst"]'); await p.waitForTimeout(200);
+  await p.click('[data-act="einstGruppe"][data-g="salze"]'); await p.waitForTimeout(250);
+  await p.focus('[data-act="vorrat"][data-id="bittersalz"]'); await p.keyboard.press('Space'); await p.waitForTimeout(250);
+  pruefe(await p.evaluate(() => document.activeElement && document.activeElement.dataset.id === 'bittersalz' && document.activeElement.getAttribute('aria-checked') === 'false'),
+    'Fokus: Schalter nach dem Umschalten nicht mehr fokussiert');
+  await p.keyboard.press('Space'); await p.waitForTimeout(250);
+  pruefe(await p.evaluate(() => document.activeElement.getAttribute('aria-checked') === 'true'), 'Fokus: zweimal Leertaste schaltet nicht zurück');
+  await p.focus('[data-act="tab"][data-v="verlauf"]'); await p.keyboard.press('Enter'); await p.waitForTimeout(250);
+  pruefe(await p.evaluate(() => document.activeElement && document.activeElement.tagName === 'H1'), 'Fokus: nach Seitenwechsel nicht auf der Überschrift');
+
   // ---------- Escaping: bösartige Namen überall ----------
   await einrichten();
   await p.evaluate(B => {

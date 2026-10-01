@@ -269,6 +269,7 @@ input[type="date"] { width: 100%; min-height: 60px; border-radius: 14px; border:
 .fotogross { width: 100%; border-radius: 16px; display: block; margin-bottom: 12px; background: var(--flaeche); }
 .fotozeile { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; color: var(--leise); font-size: 15px; margin-bottom: 10px; }
 .knoepfe-innen, .nav-innen { padding-right: var(--ecke, 0px); }
+h1[tabindex="-1"]:focus { outline: none; }
 details.hilfe { background: var(--flaeche); border-radius: 16px; margin-bottom: 10px; overflow: hidden; }
 details.hilfe > summary { list-style: none; cursor: pointer; padding: 16px 18px; font-size: 18px; font-weight: 700; display: flex; justify-content: space-between; gap: 12px; min-height: 60px; align-items: center; }
 details.hilfe > summary::-webkit-details-marker { display: none; }
@@ -614,6 +615,19 @@ details.hilfe .inhalt b { color: var(--akzent); }
   }
 
   // ---------- 7. Rezept für ein Volumen und eine Ziel-EC ----------
+  // Maßstab für die Wahl zwischen Rezepten (Volldünger-Wahl und Eisen-Lockern, seit 3.13.17 an einer Stelle):
+  // Formgüte vergleicht die Anteile statt der Absolutwerte, nur so sind Lösungen mit unterschiedlichem k vergleichbar.
+  // Verstöße gegen Ammonium-Grenze und Eisen-Minimum zählen mit, sonst gewinnt eine Mischung mit schöner Form, die aber
+  // zu viel Ammonium oder zu wenig Eisen hat. ist: mg/L je MAKRO-Element (Wasser + Säure + Salze).
+  function wahlWert(ist, anteilNH4, fe, profil, feMin) {
+    let sIst = 0, sSoll = 0, form = 0;
+    for (const e of MAKRO) { sIst += ist[e]; sSoll += profil[e]; }
+    for (const e of MAKRO) { const p = ist[e] / sIst, q = profil[e] / sSoll; form += GEWICHT[e] * (p - q) * (p - q) / q; }
+    const nh4Zuviel = Math.max(0, anteilNH4 - NH4_MAX) / NH4_MAX;
+    const feZuwenig = feMin > 0 ? Math.max(0, feMin - fe) / feMin : 0;
+    return form + nh4Zuviel * nh4Zuviel + feZuwenig * feZuwenig;
+  }
+
   // opt: { phase, liter, ecZiel, vorrat: {salzId: false}, feMin }
   function rezept(D, opt) {
     const kal = D.kalibrierung, w = D.wasser;
@@ -657,21 +671,9 @@ details.hilfe .inhalt b { color: var(--akzent); }
       }
       const soll = {}; for (const e of MAKRO) soll[e] = profil[e] * k;
       let f = 0; for (const e of MAKRO) { let d = ((basis[e] + z[e]) - soll[e]) / soll[e]; if (d > 0 && UEBERSCHUSS_MILD[e]) d *= 0.5; f += GEWICHT[e] * d * d; }
-      // Formgüte: Vergleich der Anteile statt der Absolutwerte. Nur so sind Kandidaten
-      // vergleichbar, deren Lösung bei unterschiedlichem k landet.
-      let sIst = 0, sSoll = 0;
-      for (const e of MAKRO) { sIst += basis[e] + z[e]; sSoll += profil[e]; }
-      let form = 0;
-      for (const e of MAKRO) {
-        const p = (basis[e] + z[e]) / sIst, q = profil[e] / sSoll;
-        form += GEWICHT[e] * (p - q) * (p - q) / q;
-      }
-      // Für die Auswahl der Volldünger: Verstöße gegen Ammonium-Grenze und Eisen-Minimum zählen mit,
-      // sonst gewinnt eine Mischung mit schöner Form, die aber zu viel Ammonium oder zu wenig Eisen hat
-      const nh4Zuviel = Math.max(0, nh4Anteil(z.NH4 + basis.NH4, z.N + basis.N) - NH4_MAX) / NH4_MAX;
-      const feZuwenig = feMin > 0 ? Math.max(0, feMin - z.Fe - basis.Fe) / feMin : 0;
-      const wahl = form + nh4Zuviel * nh4Zuviel + feZuwenig * feZuwenig;
-      return { x, k, ec, z, soll, guete: f, form, wahl };
+      const ist = {}; for (const e of MAKRO) ist[e] = basis[e] + z[e];
+      const wahl = wahlWert(ist, nh4Anteil(z.NH4 + basis.NH4, z.N + basis.N), z.Fe + basis.Fe, profil, feMin);
+      return { x, k, ec, z, soll, guete: f, wahl };
     }
 
     // Aus mehreren Volldüngern derselben Gruppe den für diese Phase passenden wählen
@@ -713,13 +715,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
     const feTeuer = feMin > 0 && opt.feMin === undefined && !feKnapp && k > 0.1 && z.Fe + basis.Fe < feMin * 1.05 &&
       nh4Anteil(z.NH4 + basis.NH4, z.N + basis.N) > NH4_MAX * 1.05 && k < FE_TEUER * loese(salze, true, 0).k;
     if (feKnapp || feTeuer) {
-      const bewerte = r => {
-        let sIst = 0, sSoll = 0, form = 0;
-        for (const e of MAKRO) { sIst += r.ist[e]; sSoll += profil[e]; }
-        for (const e of MAKRO) { const p = r.ist[e] / sIst, q = profil[e] / sSoll; form += GEWICHT[e] * (p - q) * (p - q) / q; }
-        const nh4 = Math.max(0, r.ist.NH4anteil - NH4_MAX) / NH4_MAX, fe = Math.max(0, feMin - r.ist.Fe) / feMin;
-        return form + nh4 * nh4 + fe * fe;
-      };
+      const bewerte = r => wahlWert(r.ist, r.ist.NH4anteil, r.ist.Fe, profil, feMin);
       // Stufen, bei denen k auf unter die Hälfte des besten k einbricht, scheiden aus: Dort beschreibt das Soll die Mischung
       // nicht mehr (die Anteile allein sehen das nicht, z. B. bei „Sparsam“ mit Soft Elite als einzigem Volldünger).
       const kandidaten = FE_LOCKERN.map(f => ({ f, r: rezept(D, Object.assign({}, opt, { feMin: feMin * f })) }));
@@ -2670,10 +2666,38 @@ details.hilfe .inhalt b { color: var(--akzent); }
     return kopf(name(GRUPPEN, g)) + inhalt + nav();
   }
 
+  // Fokus über das Neuzeichnen retten (seit 3.13.17): render() ersetzt die ganze Seite, ohne das hier landeten Tastatur und
+  // Screenreader nach jedem Knopfdruck wieder am Seitenanfang. Gleiche Seite: dasselbe Element (über id oder data-Merkmale)
+  // wieder fokussieren. Neue Seite: Fokus auf die Überschrift, damit der Seitenwechsel angesagt wird.
+  const FOKUS_MERKMALE = ['act', 'feld', 'id', 'i', 'v', 'wert', 't', 'g'];
+  function fokusMerken(app) {
+    const a = document.activeElement;
+    if (!a || a === document.body || !app.contains(a)) return null;
+    if (a.id) return '#' + CSS.escape(a.id);
+    const teile = FOKUS_MERKMALE.filter(k => a.dataset[k] !== undefined).map(k => `[data-${k}="${CSS.escape(a.dataset[k])}"]`);
+    return teile.length ? a.tagName.toLowerCase() + teile.join('') : null;
+  }
+  function fokusZurueck(app, sel, neueSeite) {
+    if (neueSeite) {
+      const h = app.querySelector('h1'); if (!h) return;
+      h.setAttribute('tabindex', '-1'); h.focus({ preventScroll: true }); return;
+    }
+    const el = sel && app.querySelector(sel); if (!el) return;
+    el.focus({ preventScroll: true });
+    if (el.tagName === 'INPUT' && el.type === 'text') { try { el.setSelectionRange(el.value.length, el.value.length); } catch (e) {} }
+  }
+  let seiteZuletzt = '';
   function render() {
-    if (!Z.einst.setup) { document.getElementById('app').innerHTML = vSetup(); return; }
+    const app = document.getElementById('app'), sel = fokusMerken(app);
+    const seite = Z.einst.setup ? [UI.view, UI.gruppe, UI.eimer].join('|') : 'setup' + (UI.step || 1);
+    const neueSeite = !!sel && seiteZuletzt !== '' && seite !== seiteZuletzt;
+    seiteZuletzt = seite;
+    app.innerHTML = Z.einst.setup ? seiteHtml() : vSetup();
+    fokusZurueck(app, sel, neueSeite);
+  }
+  function seiteHtml() {
     const v = { start: vStart, eimer: vEimer, neu: vNeu, topup: vTopup, anleitung: vAnleitung, verlauf: vVerlauf, einst: vEinst, einstGruppe: vEinstGruppe, doktor: vDoktor, hilfe: vHilfe, hilfeStart: vHilfeStart, anbauEnde: vAnbauEnde, eintragWahl: vEintragWahl, runde: vRunde, problem: vProblem, eintragNeu: vEintragNeu, eintragEdit: vEintragEdit, archiv: vArchiv, archivAnbau: vArchivAnbau, fotos: vFotos, foto: vFoto }[UI.view] || vStart;
-    document.getElementById('app').innerHTML = v() + blattHtml();
+    return v() + blattHtml();
   }
   // Angefangene Mischanleitung: beim Verlassen im Gerät merken (auch bei Reiterwechsel), bis sie gespeichert wird oder eine neue beginnt
   const LS_ANL = 'hydro-anleitung-v1';
