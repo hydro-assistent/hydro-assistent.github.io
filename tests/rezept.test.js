@@ -65,5 +65,18 @@ for (const phase of Object.keys(D.phasen)) for (const typ of ['photo', 'auto']) 
   pruefe(Math.abs(r.ist.P - (1.5 + sa.P + pSalze)) < 1e-6, 'Phosphor aus dem Wasser zählt mit');
 }
 
+// Ohne jedes Salz mit Stickstoff und ohne Nitrat im Wasser (seit 3.13.17): Ammonium-Anteil 0 statt NaN, keine NaN im Ergebnis
+{
+  faelle++;
+  const d = JSON.parse(JSON.stringify(D));
+  d.saeure = { typ: 'phosphor', konz: 85, zielPH: 5.8 };
+  d.wasser = Object.assign({}, d.wasser, { NO3: 0, NH4: 0 });
+  const ids = ['bittersalz', 'k2so4'], vorrat = {}, auswahl = {};
+  for (const s of d.salze) { vorrat[s.id] = ids.includes(s.id); auswahl[s.id] = ids.includes(s.id); }
+  const r = K.rezept(d, { phase: 'wachstum', liter: 20, ecZiel: 1.2, vorrat, auswahl });
+  pruefe(r.ist.N === 0 && r.ist.NH4anteil === 0, `ohne Stickstoff: N ${r.ist.N}, Ammonium-Anteil ${r.ist.NH4anteil}`);
+  pruefe(!/NaN|Infinity/.test(JSON.stringify(r)) && !r.hinweise.some(h => /NaN/.test(h)), 'ohne Stickstoff: NaN im Ergebnis');
+}
+
 console.log(`${faelle} Fälle geprüft, ${fehler} Fehler.`);
 process.exit(fehler ? 1 : 0);

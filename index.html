@@ -411,6 +411,8 @@ details.hilfe .inhalt b { color: var(--akzent); }
   const NH4_MAX = 0.15;
   const FE_MAX = 3; // mg/L
   const FE_LOCKERN = [1, 0.5, 0.25, 0]; // Stufen, wenn das Eisen-Minimum nicht erreichbar ist
+  // Ohne jeden Stickstoff (Wasser und Säure lassen kein EC übrig) wäre der Anteil 0/0: dann 0 statt NaN (seit 3.13.17)
+  const nh4Anteil = (nh4, n) => n > 0 ? nh4 / n : 0;
   const FE_MIT_LOESUNG = 1;             // mg/L Eisen-Minimum, wenn eine Eisen-Lösung vorrätig ist (seit 3.13.16)
   const FE_TEUER = 0.75;                // k mit Eisen-Minimum unter 75 % des k ohne: Eisen-Vorgabe lockern (seit 3.13.16)
   const SPUREN_REF = { B: 0.43 / 1.6, Zn: 0.2 / 1.6 }; // mg/L je 100 mg N/L (Cannabis-Lösung: B 40 µM, Zn 3 µM bei 160 mg N/L), nur für Hinweise
@@ -538,31 +540,46 @@ details.hilfe .inhalt b { color: var(--akzent); }
   function solver(salze, soll, basis, feMin, start, schnell) {
     const n = salze.length;
     const x = start ? start.slice() : new Array(n).fill(0.1);
-    function ziel(xx) {
-      const z = zugabe(salze, xx);
+    // Beitrag je Gramm pro Liter zu den Größen, die die Zielfunktion braucht (mg/L). Beim Suchen entlang einer Koordinate
+    // ändert sich nur ein Salz: Rest einmal summieren, dann kostet jeder Probeschritt nur noch acht Additionen statt
+    // alle Salze neu (seit 3.13.17; vorher wuchs die Rechenzeit quadratisch mit der Zahl der Salze). Gleiche Zielfunktion.
+    const GR = ['N', 'NH4', 'P', 'K', 'Ca', 'Mg', 'S', 'Fe'], iN = 0, iNH4 = 1, iFe = 7;
+    const beitrag = salze.map(s => GR.map(e => 10 * (e === 'N' ? (s.NO3 || 0) + (s.NH4 || 0) : (s[e] || 0))));
+    const makroI = MAKRO.map(e => GR.indexOf(e));
+    function ziel(z, quadrate) {
       let f = 0;
-      for (const e of MAKRO) {
+      for (let m = 0; m < MAKRO.length; m++) {
+        const e = MAKRO[m];
         if (soll[e] <= 0) continue;
-        const ist = basis[e] + z[e];
+        const ist = basis[e] + z[makroI[m]];
         let d = (ist - soll[e]) / soll[e];
         if (d > 0 && UEBERSCHUSS_MILD[e]) d *= 0.5;
         f += GEWICHT[e] * d * d;
       }
       // Sparsamkeit: unter sonst gleichen Ergebnissen die kleinere Menge, sonst laufen Salze ohne Makro-Wirkung (z. B. Spurenmix) davon
-      for (let j = 0; j < xx.length; j++) f += 1e-3 * xx[j] * xx[j];
-      const nGes = z.N + basis.N;
-      const nh4Zuviel = Math.max(0, z.NH4 + basis.NH4 - NH4_MAX * nGes);
+      f += 1e-3 * quadrate;
+      const nGes = z[iN] + basis.N;
+      const nh4Zuviel = Math.max(0, z[iNH4] + basis.NH4 - NH4_MAX * nGes);
       f += 1000 * (nh4Zuviel / Math.max(soll.N, 1)) ** 2;
-      if (feMin > 0) f += 1000 * (Math.max(0, feMin - z.Fe - basis.Fe) / feMin) ** 2;
-      f += 100 * (Math.max(0, z.Fe + basis.Fe - FE_MAX) / FE_MAX) ** 2; // zu viel Eisen ist auch nicht gut
+      if (feMin > 0) f += 1000 * (Math.max(0, feMin - z[iFe] - basis.Fe) / feMin) ** 2;
+      f += 100 * (Math.max(0, z[iFe] + basis.Fe - FE_MAX) / FE_MAX) ** 2; // zu viel Eisen ist auch nicht gut
       return f;
     }
     const GOLD = (Math.sqrt(5) - 1) / 2;
+    const rest = new Array(GR.length), probe = new Array(GR.length);
     for (let runde = 0; runde < (schnell ? 40 : 140); runde++) {
       let maxSchritt = 0;
       for (let j = 0; j < n; j++) {
+        rest.fill(0); let quadRest = 0;
+        for (let k = 0; k < n; k++) {
+          if (k === j) continue;
+          const bk = beitrag[k], xk = x[k];
+          for (let i = 0; i < GR.length; i++) rest[i] += bk[i] * xk;
+          quadRest += xk * xk;
+        }
+        const bj = beitrag[j];
+        const f = t => { for (let i = 0; i < GR.length; i++) probe[i] = rest[i] + bj[i] * t; return ziel(probe, quadRest + t * t); };
         let a = 0, b = Math.min(60, Math.max(3, (x[j] || 0) * 2));
-        const f = t => { const alt = x[j]; x[j] = t; const v = ziel(x); x[j] = alt; return v; };
         let c = b - GOLD * (b - a), d = a + GOLD * (b - a), fc = f(c), fd = f(d);
         for (let i = 0; i < (schnell ? 25 : 40); i++) {
           if (fc < fd) { b = d; d = c; fd = fc; c = b - GOLD * (b - a); fc = f(c); }
@@ -651,7 +668,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
       }
       // Für die Auswahl der Volldünger: Verstöße gegen Ammonium-Grenze und Eisen-Minimum zählen mit,
       // sonst gewinnt eine Mischung mit schöner Form, die aber zu viel Ammonium oder zu wenig Eisen hat
-      const nh4Zuviel = Math.max(0, (z.NH4 + basis.NH4) / (z.N + basis.N) - NH4_MAX) / NH4_MAX;
+      const nh4Zuviel = Math.max(0, nh4Anteil(z.NH4 + basis.NH4, z.N + basis.N) - NH4_MAX) / NH4_MAX;
       const feZuwenig = feMin > 0 ? Math.max(0, feMin - z.Fe - basis.Fe) / feMin : 0;
       const wahl = form + nh4Zuviel * nh4Zuviel + feZuwenig * feZuwenig;
       return { x, k, ec, z, soll, guete: f, form, wahl };
@@ -694,7 +711,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
     const feKnapp = feMin > 0 && opt.feMin === undefined && z.Fe + basis.Fe < feMin * 0.8;
     // k > 0,1: liegt k schon am Boden (Wasser und Säure lassen kaum EC übrig), gibt es nichts zu retten
     const feTeuer = feMin > 0 && opt.feMin === undefined && !feKnapp && k > 0.1 && z.Fe + basis.Fe < feMin * 1.05 &&
-      (z.NH4 + basis.NH4) / (z.N + basis.N) > NH4_MAX * 1.05 && k < FE_TEUER * loese(salze, true, 0).k;
+      nh4Anteil(z.NH4 + basis.NH4, z.N + basis.N) > NH4_MAX * 1.05 && k < FE_TEUER * loese(salze, true, 0).k;
     if (feKnapp || feTeuer) {
       const bewerte = r => {
         let sIst = 0, sSoll = 0, form = 0;
@@ -725,7 +742,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
 
     const ist = {};
     for (const e of MAKRO) ist[e] = basis[e] + z[e];
-    ist.NH4anteil = (z.NH4 + basis.NH4) / ist.N;
+    ist.NH4anteil = nh4Anteil(z.NH4 + basis.NH4, ist.N);
     for (const e of SPUREN) ist[e] = z[e];
     ist.Si = wg.Si * wgDosis;
 
@@ -1124,6 +1141,60 @@ details.hilfe .inhalt b { color: var(--akzent); }
       },
     };
   }
+  const SULFAT_S = 32.06 / 96.06, NITRAT_N = 14.007 / 62.004, AMMONIUM_N = 14.007 / 18.038, PHOSPHAT_P = 30.974 / 94.971;
+  // Zahlen aus Sicherungen prüfen (seit 3.13.17). Die Oberfläche lässt nur sinnvolle Werte zu, eine importierte Sicherung kann
+  // aber beschädigt oder von Hand bearbeitet sein. Grenzen wie bei der Eingabe (Wasser in den Einheiten des Rechenkerns).
+  // Ungültige Wasserwerte und Säuren fallen weg und müssen neu eingetragen werden, ungültige eigene Salze werden verworfen,
+  // ungültige Maße fallen auf den Grundwert zurück.
+  const zahlOk = (v, g) => typeof v === 'number' && isFinite(v) && v >= g[0] && v <= g[1] * 1.0001;
+  const WASSER_GRENZEN = { ecGemessen: [0, 5], pH: [4, 10], alkalitaet: [0, 10], NO3: [0, 250 * NITRAT_N], NH4: [0, 5 * AMMONIUM_N], P: [0, 20 * PHOSPHAT_P],
+    K: [0, 100], Ca: [0, 300], Mg: [0, 150], S: [0, 900 * SULFAT_S], Na: [0, 500], Cl: [0, 500], Fe: [0, 50], Mn: [0, 50] };
+  const MASS_GRENZEN = { netztopf: [0, 60], luftspalt: [0, 40], dOben: [5, 200], dUnten: [5, 200], durchmesser: [5, 200], laenge: [5, 300], breite: [5, 300], hoehe: [5, 250], maxFuell: [2, 250] };
+  const KONZ_GRENZEN = { konzPhosphor: [1, 90], konzSalpeter: [1, 65], konzSchwefel: [1, 98] };
+  function wasserSauber(w) {
+    const o = {};
+    if (w && typeof w === 'object') for (const k in WASSER_GRENZEN) if (zahlOk(w[k], WASSER_GRENZEN[k])) o[k] = w[k];
+    return o;
+  }
+  function behSauber(b, grund) {
+    const o = Object.assign({}, grund, b && typeof b === 'object' ? b : {});
+    for (const k in MASS_GRENZEN) if (!zahlOk(o[k], MASS_GRENZEN[k])) o[k] = grund[k];
+    if (!['konisch', 'rund', 'rechteck'].includes(o.form)) o.form = grund.form;
+    if (!['direkt', 'netztopf'].includes(o.modus)) o.modus = grund.modus;
+    if (o.maxFuell > o.hoehe) o.maxFuell = o.hoehe;
+    return o;
+  }
+  function saeureSauber(sa, grund) {
+    const o = Object.assign({}, grund, sa);
+    if (!['phosphor', 'salpeter', 'schwefel'].includes(o.typ)) o.typ = grund.typ;
+    if (!zahlOk(o.zielPH, [4.5, 7])) o.zielPH = grund.zielPH;
+    if (o.konz !== undefined && !zahlOk(o.konz, [1, 98])) delete o.konz;
+    o.vorrat = Object.assign({}, o.vorrat && typeof o.vorrat === 'object' ? o.vorrat : {});
+    for (const [kk, g] of Object.entries(KONZ_GRENZEN)) {
+      if (o[kk] === undefined) continue;
+      if (!zahlOk(o[kk], g)) { delete o[kk]; delete o.vorrat[{ konzPhosphor: 'phosphor', konzSalpeter: 'salpeter', konzSchwefel: 'schwefel' }[kk]]; }
+    }
+    return o;
+  }
+  function salzSauber(x) {
+    if (!x || typeof x !== 'object' || typeof x.id !== 'string' || !x.id || typeof x.name !== 'string' || !x.name.trim() || !x.werte || typeof x.werte !== 'object') return null;
+    const werte = {}; let summe = 0;
+    for (const k of ['NO3', 'NH4', 'P', 'K', 'Ca', 'Mg', 'S', 'Fe']) {
+      const v = x.werte[k];
+      if (v === undefined || v === 0) continue;
+      if (!zahlOk(v, [0, 100])) return null;
+      werte[k] = v; summe += v;
+    }
+    if (summe <= 0 || summe > 110 || !['NO3', 'NH4', 'P', 'K', 'Ca', 'Mg', 'S'].some(k => werte[k] > 0)) return null;
+    return { id: x.id, name: x.name, werte };
+  }
+  function wgSauber(w, grund) {
+    const o = Object.assign({}, grund, w && typeof w === 'object' ? w : {});
+    o.an = o.an === true; if (!zahlOk(o.mlProL, [0.02, 0.5])) o.mlProL = grund.mlProL;
+    return o;
+  }
+  const auswahlWert = (liste, v, grund) => liste.some(x => x[0] === v) ? v : grund;
+
   // Eisen-Lösung: Chelat mit üblichem Fe-Gehalt; Gehalt und Gramm pro Liter Stammlösung frei (seit 3.13.16)
   const CHELATE = [['DTPA', 11], ['EDTA', 13], ['EDDHA', 6]];
   function eisenSauber(x) {
@@ -1147,26 +1218,33 @@ details.hilfe .inhalt b { color: var(--akzent); }
     const alt = !e.profil;
     const WASSER_FELDER = ['ecGemessen', 'pH', 'alkalitaet', 'NO3', 'NH4', 'P', 'K', 'Ca', 'Mg', 'S', 'Na', 'Cl'];
     // Umstellung auf Fassung 3.12: mehrere Säuren. Die bisherige eine Säure bleibt eingeschaltet.
-    const saeure = Object.assign({}, s.einst.saeure, e.saeure);
+    const saeureRoh = Object.assign({}, s.einst.saeure, e.saeure && typeof e.saeure === 'object' ? e.saeure : {});
     if (e.saeure && !e.saeure.vorrat) {
-      saeure.vorrat = { [saeure.typ]: true };
-      const kk = { phosphor: 'konzPhosphor', salpeter: 'konzSalpeter', schwefel: 'konzSchwefel' }[saeure.typ];
-      if (kk && !saeure[kk]) saeure[kk] = saeure.konz;
+      saeureRoh.vorrat = { [saeureRoh.typ]: true };
+      const kk = { phosphor: 'konzPhosphor', salpeter: 'konzSalpeter', schwefel: 'konzSchwefel' }[saeureRoh.typ];
+      if (kk && !saeureRoh[kk]) saeureRoh[kk] = saeureRoh.konz;
     }
-    const wasserAlt = alt ? Object.assign(Object.fromEntries(WASSER_FELDER.map(k => [k, BASIS.wasser[k]])), e.wasser) : e.wasser;
+    const saeure = saeureSauber(saeureRoh, s.einst.saeure);
+    // Fehlen nach der Prüfung Pflichtwerte des Wassers oder ging eine Säure verloren, muss die Einrichtung noch einmal durchlaufen
+    // werden: Die App rechnet nie mit erfundenen Wasserwerten.
+    const vorher = Object.values(saeureRoh.vorrat || {}).filter(v => v === true).length;
+    const saeureVerloren = Object.values(saeure.vorrat).filter(v => v === true).length < vorher;
+    const wasserAlt = wasserSauber(alt ? Object.assign(Object.fromEntries(WASSER_FELDER.map(k => [k, BASIS.wasser[k]])), e.wasser) : e.wasser);
+    const kaputt = !alt && e.setup === true && (['ecGemessen', 'pH', 'alkalitaet', 'Ca', 'Mg', 'S'].some(k => !(k in wasserAlt)) || saeureVerloren);
     return {
-      version: 3, geaendert: d.geaendert || 0, pruefen: alt && !!d.einst,
+      version: 3, geaendert: d.geaendert || 0, pruefen: alt && !!d.einst ? true : kaputt ? 'werte' : false,
       eimer: Array.isArray(d.eimer) && d.eimer.length >= 1 && d.eimer.length <= 6
-        ? d.eimer.map((x, i) => { const e = Object.assign({ name: 'Tank ' + (i + 1), phase: 'wachstum', typ: 'photo', staerke: 'normal' }, x); e.name = String(e.name).replace(/^(Behälter|Eimer) (\d+)$/, 'Tank $2');
-            if (e.behaelter && typeof e.behaelter === 'object') e.behaelter = Object.assign({}, s.einst.behaelter, e.behaelter); else delete e.behaelter; return e; }) : s.eimer,
-      log: Array.isArray(d.log) ? d.log : [],
+        ? d.eimer.map((x, i) => { const e = Object.assign({ name: 'Tank ' + (i + 1), phase: 'wachstum', typ: 'photo', staerke: 'normal' }, x && typeof x === 'object' ? x : {}); e.name = String(e.name).replace(/^(Behälter|Eimer) (\d+)$/, 'Tank $2');
+            e.phase = auswahlWert(PHASEN, e.phase, 'wachstum'); e.typ = auswahlWert(TYPEN, e.typ, 'photo'); e.staerke = auswahlWert(STAERKEN, e.staerke, 'normal');
+            if (e.behaelter && typeof e.behaelter === 'object') e.behaelter = behSauber(e.behaelter, s.einst.behaelter); else delete e.behaelter; return e; }) : s.eimer,
+      log: Array.isArray(d.log) ? d.log.filter(x => x && typeof x === 'object') : [],
       einst: {
         vorrat: Object.assign({}, e.vorrat || (d.einst ? {} : s.einst.vorrat)), auswahl: Object.assign({}, e.auswahl || {}),
-        behaelter: Object.assign({}, s.einst.behaelter, e.behaelter), setup: !alt && e.setup === true,
-        eigeneSalze: Array.isArray(e.eigeneSalze) ? e.eigeneSalze.filter(x => x && x.id && x.name && x.werte) : [], haftung: !alt && e.haftung === true, profil: !alt,
-        saeure, wasserglas: Object.assign({}, s.einst.wasserglas, e.wasserglas), eisen: eisenSauber(e.eisen), wasser: Object.assign({}, wasserAlt),
+        behaelter: behSauber(e.behaelter, s.einst.behaelter), setup: !alt && e.setup === true && !kaputt,
+        eigeneSalze: Array.isArray(e.eigeneSalze) ? e.eigeneSalze.map(salzSauber).filter(Boolean) : [], haftung: !alt && e.haftung === true, profil: !alt,
+        saeure, wasserglas: wgSauber(e.wasserglas, s.einst.wasserglas), eisen: eisenSauber(e.eisen), wasser: Object.assign({}, wasserAlt),
         nachfuellen: e.nachfuellen === 'verbrauch' ? 'verbrauch' : 'ec',
-        quellen: Array.isArray(e.quellen) ? e.quellen : [], wasserWahl: e.wasserWahl && e.wasserWahl.a ? e.wasserWahl : { a: 'leitung' },
+        quellen: Array.isArray(e.quellen) ? e.quellen.filter(q => q && typeof q.id === 'string' && typeof q.name === 'string').map(q => Object.assign({}, q, { werte: wasserSauber(q.werte) })) : [], wasserWahl: e.wasserWahl && e.wasserWahl.a ? e.wasserWahl : { a: 'leitung' },
       },
     };
   }
@@ -1196,7 +1274,6 @@ details.hilfe .inhalt b { color: var(--akzent); }
     eigen: { name: 'Eigene Quelle', werte: {} },
   };
   // Wasserberichte nennen Sulfat und Nitrat, die App rechnet mit Schwefel und Stickstoff
-  const SULFAT_S = 32.06 / 96.06, NITRAT_N = 14.007 / 62.004, AMMONIUM_N = 14.007 / 18.038, PHOSPHAT_P = 30.974 / 94.971;
   // Etiketten nennen Oxide, die App rechnet mit Elementen (Faktor: Element pro Oxid)
   const OXID = { P: 2 * 30.974 / 141.945, K: 2 * 39.098 / 94.196, Ca: 40.078 / 56.077, Mg: 24.305 / 40.304, S: 32.06 / 80.06 };
   const ETIKETT = [['NO3', 'N als Nitrat'], ['NH4', 'N als Ammonium'], ['P', 'P₂O₅'], ['K', 'K₂O'], ['Ca', 'CaO'], ['Mg', 'MgO'], ['S', 'SO₃'], ['Fe', 'Eisen (Fe)']];
@@ -2384,7 +2461,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
     const w = (k, f, d) => UI.setupW && UI.setupW[W_ID[k]] !== undefined ? esc(UI.setupW[W_ID[k]]) : E.wasser[k] === undefined ? '' : fmt(E.wasser[k] / (f || 1), d);
     let inhalt = '';
     if (s === 1) inhalt = `<img class="logo-gross" src="${LOGO}" alt="Hydro-Assistent" width="520" height="348">
-      ${Z.pruefen ? '<div class="hinweise"><p><b>Neu in dieser Fassung:</b> Die App rechnet nur noch mit deinen eigenen Wasserwerten. Bitte geh die Einrichtung einmal durch und prüfe Wasser, Säure und Salze. Deine bisherigen Werte sind schon eingetragen.</p></div>' : ''}
+      ${Z.pruefen === 'werte' ? '<div class="hinweise"><p><b>Bitte prüfen:</b> Die Sicherung enthielt Werte außerhalb des sinnvollen Bereichs. Sie wurden weggelassen, damit die App nicht mit falschen Zahlen rechnet. Bitte geh die Einrichtung einmal durch und trag die fehlenden Werte (Wasser oder Säure) neu ein.</p></div>' : Z.pruefen ? '<div class="hinweise"><p><b>Neu in dieser Fassung:</b> Die App rechnet nur noch mit deinen eigenen Wasserwerten. Bitte geh die Einrichtung einmal durch und prüfe Wasser, Säure und Salze. Deine bisherigen Werte sind schon eingetragen.</p></div>' : ''}
       <p class="leise" style="font-size:17px;text-align:center;margin:-6px 0 18px">Willkommen! In vier kurzen Schritten ist alles eingerichtet.</p>
       <h1>Deine Tanks</h1>
       <p class="leise">Miss einmal nach, dann rechnet die App aus jeder Füllhöhe die Liter aus. Bei einem Tank, der nach unten schmaler wird, nimm „Konisch“.</p>
