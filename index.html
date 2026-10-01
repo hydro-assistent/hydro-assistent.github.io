@@ -684,7 +684,8 @@ details.hilfe .inhalt b { color: var(--akzent); }
     // die Ammonium-Grenze reißt und k deutlich unter dem k ohne Eisen-Vorgabe liegt (z. B. Kristalon Weißmarke als einziger
     // Volldünger: k 0,22 statt 0,63, Bittersalz fällt weg). Die schnelle Vergleichsrechnung läuft nur, wenn Eisen gerade so erreicht wird.
     const feKnapp = feMin > 0 && opt.feMin === undefined && z.Fe + basis.Fe < feMin * 0.8;
-    const feTeuer = feMin > 0 && opt.feMin === undefined && !feKnapp && z.Fe + basis.Fe < feMin * 1.05 &&
+    // k > 0,1: liegt k schon am Boden (Wasser und Säure lassen kaum EC übrig), gibt es nichts zu retten
+    const feTeuer = feMin > 0 && opt.feMin === undefined && !feKnapp && k > 0.1 && z.Fe + basis.Fe < feMin * 1.05 &&
       (z.NH4 + basis.NH4) / (z.N + basis.N) > NH4_MAX * 1.05 && k < FE_TEUER * loese(salze, true, 0).k;
     if (feKnapp || feTeuer) {
       const bewerte = r => {
