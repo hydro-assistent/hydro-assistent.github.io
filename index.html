@@ -306,6 +306,11 @@ details.hilfe .inhalt b { color: var(--akzent); }
       // Peters Professional Hydro-Sol 5-11-26 (ICL), Etikett: N 5 % (nur Nitrat), P2O5 11 %, K2O 26 %, Mg 6 %, S 8 %, Fe 0,3 % (EDTA),
       // Mn 0,05 %, Zn 0,015 %, Cu 0,015 %, B 0,05 %, Mo 0,01 %. Ohne Calcium: wird mit Calcinit zusammen gegeben.
       { id: 'peters51126', aktiv: false, gruppe: 'volldünger', name: 'Peters Hydro-Sol 5-11-26', NO3: 5.0, NH4: 0, P: 4.800, K: 21.583, Ca: 0, Mg: 6.0, S: 8.0, Fe: 0.3, Mn: 0.05, Zn: 0.015, Cu: 0.015, B: 0.05, Mo: 0.01 },
+      // Peters Professional Combi Sol 6-18-36 + 3 MgO + TE (ICL), Produktblatt: N 6 % (nur Nitrat), P2O5 18 %, K2O 36 %, MgO 3 %,
+      // Fe 0,25 % (DTPA), Mn 0,06 %, B 0,02 %, Cu 0,015 %, Mo 0,01 %, Zn 0,015 %; Schwefel nicht deklariert. Für A/B mit Calciumnitrat gedacht.
+      // Harnstoffhaltige Peters-Sorten (Allrounder, Hi-Nitro, Grow-Mix, Foliar Feed, Plant Starter) sind bewusst nicht dabei: Harnstoff wird
+      // im Tank zu Ammonium und sprengt die Ammonium-Grenze; der Rechenkern kennt nur Nitrat und Ammonium.
+      { id: 'combisol', aktiv: false, gruppe: 'volldünger', name: 'Peters Combi Sol 6-18-36', NO3: 6.0, NH4: 0, P: 7.855, K: 29.884, Ca: 0, Mg: 1.809, S: 0, Fe: 0.25, Mn: 0.06, Zn: 0.015, Cu: 0.015, B: 0.02, Mo: 0.01 },
       { id: 'calcinit', aktiv: true,     marken: 'auch Haifa Cal', name: 'Calcinit (Yara)',       NO3: 14.4,  NH4: 1.1,  P: 0,     K: 0,      Ca: 18.59, Mg: 0,     S: 0 },
       { id: 'kno3', aktiv: true,         marken: 'z. B. Yara Krista K, Haifa Multi-K', name: 'Kaliumnitrat',          NO3: 13.86, NH4: 0,    P: 0,     K: 38.67,  Ca: 0,     Mg: 0,     S: 0 },
       { id: 'mkp', aktiv: false,         marken: 'MKP, z. B. Yara Krista MKP, Haifa MKP', name: 'Monokaliumphosphat',    NO3: 0,     NH4: 0,    P: 22.76, K: 28.73,  Ca: 0,     Mg: 0,     S: 0 },
@@ -319,7 +324,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
       { id: 'map', aktiv: false,         marken: 'MAP, z. B. Yara Krista MAP, Haifa MAP', name: 'Monoammoniumphosphat',  NO3: 0,     NH4: 12.0, P: 26.6,  K: 0,      Ca: 0,     Mg: 0,     S: 0 },
     ],
     // Mischreihenfolge im Behälter (nach der ersten Säure)
-    reihenfolge: ['kco', 'bittersalz', 'k2so4', 'nh4so4', 'soft_elite', 'soft_spezial', 'basis3', 'basis5', 'peters51126', 'kno3', 'mgno3', 'mkp', 'map', 'calcinit'],
+    reihenfolge: ['kco', 'bittersalz', 'k2so4', 'nh4so4', 'soft_elite', 'soft_spezial', 'basis3', 'basis5', 'peters51126', 'combisol', 'kno3', 'mgno3', 'mkp', 'map', 'calcinit'],
 
     // Beispielwasser, mg/L (mittelhart): nur für die Tests und für Stände vor Fassung 3.10. Neue Installationen tragen eigene Werte ein.
     wasser: { ecGemessen: 0.37, pH: 7.6, alkalitaet: 1.7, NO3: 0.11, NH4: 0.02, P: 0.024, K: 1.33, Ca: 42.5, Mg: 2.72, S: 14.1, Na: 10.8, Cl: 12.8, Fe: 0.121, Mn: 0.017 },
