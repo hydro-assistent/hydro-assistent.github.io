@@ -270,6 +270,9 @@ input[type="date"] { width: 100%; min-height: 60px; border-radius: 14px; border:
 .fotozeile { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; color: var(--leise); font-size: 15px; margin-bottom: 10px; }
 .knoepfe-innen, .nav-innen { padding-right: var(--ecke, 0px); }
 h1[tabindex="-1"]:focus { outline: none; }
+.salzgruppe > summary > span { min-width: 0; }
+.salzgruppe > summary .zahl { font-size: 15px; font-weight: 400; margin-left: 6px; }
+.salzgruppe > summary small { display: block; font-size: 15px; font-weight: 400; color: var(--leise); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
 details.hilfe { background: var(--flaeche); border-radius: 16px; margin-bottom: 10px; overflow: hidden; }
 details.hilfe > summary { list-style: none; cursor: pointer; padding: 16px 18px; font-size: 18px; font-weight: 700; display: flex; justify-content: space-between; gap: 12px; min-height: 60px; align-items: center; }
 details.hilfe > summary::-webkit-details-marker { display: none; }
@@ -2508,8 +2511,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
         <div class="hinweise"><p><b>Noch nichts gekauft?</b> Mit Hakaphos Basis 3, Hakaphos Soft Elite, Calcinit, Kaliumnitrat und Bittersalz rechnet die App am besten. Basis 3 bringt das meiste Eisen mit.</p>
           <button class="zeile-knopf" data-act="grundSatz" style="margin:8px 0 0">Diese fünf einschalten</button></div>
         <p class="leise" style="font-size:15px">Einzelsalze von Yara (Krista) oder Haifa sind dieselben Stoffe wie in der Liste, der Markenname steht jeweils dabei. Dein Dünger fehlt? Unten über „Eigenes Salz hinzufügen“ mit den Werten vom Etikett anlegen.</p>
-        ${D.salze.filter(s2 => !s2.eigen && !weitererVD(s2)).map(s2 => zeile({ id: s2.id, name: s2.name, marken: s2.marken, std: s2.aktiv !== false, an: gewaehlt(s2, E) })).join('')}
-        ${weitereVDHtml(D.salze.filter(weitererVD), s2 => zeile({ id: s2.id, name: s2.name, marken: s2.marken, std: false, an: gewaehlt(s2, E) }), D.salze.some(s2 => weitererVD(s2) && gewaehlt(s2, E)))}
+        ${salzGruppenHtml(D.salze, s2 => zeile({ id: s2.id, name: s2.name, marken: s2.marken, std: s2.aktiv !== false, an: gewaehlt(s2, E) }), s2 => gewaehlt(s2, E))}
         ${eigeneSalzeHtml(E)}
         <p class="leise" style="font-size:16px">Alles lässt sich später in den Einstellungen ändern. Dort kannst du auch das Kaliwasserglas als Zusatz einschalten.</p>`;
     }
@@ -2520,14 +2522,25 @@ details.hilfe .inhalt b { color: var(--akzent); }
       </div></div></div>`;
   }
 
-  // Zuschaltbare Volldünger (seit 3.13.16 zahlreich): aufklappbar, damit die Salzliste kurz bleibt. Offen, solange einer davon
-  // eingeschaltet ist oder der Bereich aufgeklappt wurde (UI.vdOffen, gemerkt über das toggle-Ereignis).
-  const weitererVD = s => s.gruppe === 'volldünger' && s.aktiv === false && !s.eigen;
-  function weitereVDHtml(liste, zeile, irgendwoAn) {
-    if (!liste.length) return '';
-    return `<details class="hilfe" data-merk="vdOffen"${UI.vdOffen || irgendwoAn ? ' open' : ''}><summary>Weitere Volldünger (${liste.length})</summary><div class="inhalt">
-      <p class="leise" style="font-size:15px;margin:0 0 10px">Hakaphos, Kristalon, Peters, Universol, Agrolution und Poly-Feed, alle ohne Harnstoff. Sie werden wie Basis 3 zusammen mit Calcinit gegeben. Viele bringen wenig Eisen mit, dann meldet die App das.</p>
-      ${liste.map(zeile).join('')}</div></details>`;
+  // Salzlisten nach Art gruppiert und einklappbar (seit 3.13.18). Im Kopf jeder Gruppe steht, was eingeschaltet ist, damit
+  // man die Auswahl auch zugeklappt sieht. Aufgeklappt bleibt, was man selbst aufgeklappt hat (UI.salzOffen_<art>, gemerkt über
+  // das toggle-Ereignis). Innerhalb einer Gruppe alphabetisch, so stehen die Marken beieinander. Eigene Salze stehen darunter.
+  const SALZ_ARTEN = [
+    ['volldünger', 'Volldünger', 'Mehrnährstoffdünger ohne Calcium, alle ohne Harnstoff. Sie werden zusammen mit Calcinit gegeben (A/B). Viele bringen wenig Eisen mit, dann meldet die App das.'],
+    ['calcium', 'Calcium', 'Wird getrennt in etwas Wasser vorgelöst und als Letztes zugegeben.'],
+    ['einzel', 'Einzelsalze', 'Ein oder zwei Nährstoffe, zum Ergänzen und Feinabstimmen.'],
+    ['loesung', 'Stammlösungen', 'Setzt du selbst als Lösung an, die Mischanleitung nennt dafür ml.'],
+  ];
+  const salzArt = s => s.gruppe === 'volldünger' ? 'volldünger' : s.loesungGProL ? 'loesung' : (s.Ca || 0) > 0 ? 'calcium' : 'einzel';
+  function salzGruppenHtml(salze, zeile, an) {
+    return SALZ_ARTEN.map(([art, titel, text]) => {
+      const liste = salze.filter(s => !s.eigen && salzArt(s) === art).sort((a, b) => a.name.localeCompare(b.name, 'de'));
+      if (!liste.length) return '';
+      const ein = liste.filter(an);
+      return `<details class="hilfe salzgruppe" data-merk="salzOffen_${art}"${UI['salzOffen_' + art] ? ' open' : ''}>
+        <summary><span>${titel} <span class="zahl leise">${ein.length} von ${liste.length}</span><small>${ein.length ? esc(ein.map(s => s.name).join(', ')) : 'nichts eingeschaltet'}</small></span></summary>
+        <div class="inhalt"><p class="leise" style="font-size:15px;margin:0 0 10px">${text}</p>${liste.map(zeile).join('')}</div></details>`;
+    }).join('');
   }
 
   // Eisen-Lösung einstellen: Chelat, Gehalt laut Etikett, Stärke der Stammlösung
@@ -2638,10 +2651,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
         ${hw.salze.map(([id, warum]) => { const sz = D.salze.find(x => x.id === id); return sz ? salzZeile(sz).replace('</small>', ' · ' + esc(warum) + '</small>') : ''; }).join('')}
         <h2>Alle Salze</h2>` : ''}
       <p class="leise" style="font-size:16px">Schalte ein, was du hast, und aus, was gerade fehlt. Die App rechnet nur mit den eingeschalteten Salzen.</p>
-      ${D.salze.filter(s => s.aktiv !== false && !empf.includes(s.id)).map(salzZeile).join('')}
-      <p class="leise" style="font-size:16px;margin-top:16px">Weitere Salze:</p>
-      ${D.salze.filter(s => s.aktiv === false && !s.eigen && !weitererVD(s) && !empf.includes(s.id)).map(salzZeile).join('')}
-      ${weitereVDHtml(D.salze.filter(s => weitererVD(s) && !empf.includes(s.id)), salzZeile, D.salze.some(s => weitererVD(s) && E.auswahl[s.id] === true))}
+      ${salzGruppenHtml(D.salze, salzZeile, s => gewaehlt(s, E))}
       ${eigeneSalzeHtml(E)}
       ${E.auswahl.eisen === true ? eisenHtml(E) : ''}
 

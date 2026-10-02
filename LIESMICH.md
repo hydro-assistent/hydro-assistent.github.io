@@ -66,6 +66,8 @@ Fassung 3.13.16: Noch mehr Volldünger. Neu zum Einschalten: Hakaphos Basis 2, S
 
 Fassung 3.13.17: Schneller und robuster. Das Rezept ist drei- bis siebenmal so schnell fertig, mit vielen eingeschalteten Volldüngern spürbar: mit sechs Volldüngern unter einer Sekunde statt drei. Die Rechnung selbst ist dieselbe, die Gramm-Mengen bleiben gleich. Beim Laden einer Sicherung prüft die App jetzt alle Zahlen. Werte außerhalb des sinnvollen Bereichs (etwa aus einer beschädigten oder von Hand bearbeiteten Datei) werden weggelassen statt mitgerechnet. Fehlen danach Wasserwerte oder eine Säure, führt die App einmal durch die Einrichtung, damit du sie neu einträgst – sie rechnet nie mit erfundenen Werten. Wer die App mit Tastatur oder Screenreader bedient, bleibt nach einem Schalter oder Knopf jetzt an derselben Stelle, statt wieder am Seitenanfang zu landen; bei einem Seitenwechsel steht der Fokus auf der neuen Überschrift.
 
+Fassung 3.13.18: Übersichtlichere Salzliste. Die Salze stehen jetzt in vier Gruppen zum Aufklappen: Volldünger, Calcium, Einzelsalze und Stammlösungen (Kaliumcarbonat- und Eisen-Lösung). Innerhalb einer Gruppe sind sie alphabetisch sortiert, so stehen die Sorten einer Marke beieinander. Auch zugeklappt zeigt jede Gruppe, was eingeschaltet ist, etwa „Volldünger 2 von 18 · Hakaphos Basis 3, Hakaphos Soft Elite“. Das gilt in der Einrichtung und in den Einstellungen; eigene Salze stehen wie bisher darunter.
+
 ## Vorgemerkt
 
 - Spurenelement-Mischungen (zum Beispiel Fetrilon Combi 1, Micromax, Microfol Combi, Excello Basis) als eigene Salze, damit die App Eisen, Bor und Zink gezielt einplanen kann, statt nur zu melden, dass sie knapp sind. Das braucht eigene Ziele für Spurenelemente im Rechenkern.

@@ -50,13 +50,15 @@ const BOESE = '<img src=x onerror="alert(1)">"\'&';
     }
     pruefe((await p.innerText('h1')).includes('Welche Salze'), 'Einrichtung: Schritt 4 nicht erreicht');
     await p.click('[data-act="grundSatz"]'); await p.waitForTimeout(150);
-    for (const id of salze || []) {
-      const vd = await p.$(`details[data-merk="vdOffen"] [data-id="${id}"]`);
-      if (vd && !(await p.$eval('details[data-merk="vdOffen"]', d => d.open))) await p.click('details[data-merk="vdOffen"] > summary');
-      await p.click(`[data-id="${id}"]`); await p.waitForTimeout(150);
-    }
+    // Salze stehen in einklappbaren Gruppen (seit 3.13.18): Gruppe öffnen, dann schalten
+    for (const id of salze || []) await schalteSalz(id);
     await p.click('[data-act="setupWeiter"]'); await p.waitForTimeout(400);
     pruefe((await zustand()).einst.setup === true, 'Einrichtung nicht abgeschlossen');
+  }
+  async function schalteSalz(id) {
+    const gruppe = await p.$eval(`[data-id="${id}"]`, el => { const d = el.closest('details'); return d && !d.open ? d.dataset.merk : null; });
+    if (gruppe) { await p.click(`details[data-merk="${gruppe}"] > summary`); await p.waitForTimeout(150); }
+    await p.click(`[data-id="${id}"]`); await p.waitForTimeout(150);
   }
   async function neuAnsetzen() {
     // Über die Tankseite, dort gibt es „Neu ansetzen“ immer (der Hauptknopf der Karte wechselt je nach Tagebuch)
@@ -70,6 +72,17 @@ const BOESE = '<img src=x onerror="alert(1)">"\'&';
   }
 
   await einrichten();
+  // Salzgruppen in den Einstellungen: zugeklappt, Kopf zeigt die Auswahl, Aufklappen übersteht das Umschalten
+  await p.click('[data-act="tab"][data-v="einst"]'); await p.waitForTimeout(200);
+  await p.click('[data-act="einstGruppe"][data-g="salze"]'); await p.waitForTimeout(250);
+  const gruppen = await p.$$eval('details.salzgruppe', l => l.map(d => [d.dataset.merk, d.open, d.querySelector('summary').innerText.replace(/\s+/g, ' ')]));
+  pruefe(gruppen.length === 4 && gruppen.every(g => !g[1]), 'Salzgruppen: vier, alle zugeklappt');
+  pruefe(/Volldünger 2 von \d+ .*Basis 3.*Soft Elite/.test(gruppen[0][2]), 'Salzgruppen: Kopf Volldünger ohne Auswahl: ' + gruppen[0][2]);
+  pruefe(/Calcium 1 von 1/.test(gruppen[1][2]) && /Einzelsalze 2 von 7/.test(gruppen[2][2]), 'Salzgruppen: Zählung Calcium/Einzelsalze');
+  await schalteSalz('kristalon_rot');
+  pruefe(await p.$eval('details[data-merk="salzOffen_volldünger"]', d => d.open && /3 von/.test(d.querySelector('summary').innerText)), 'Salzgruppen: nach dem Umschalten zu oder Zählung alt');
+  await schalteSalz('kristalon_rot');
+  await p.reload(); await p.waitForTimeout(300);
   let t = await neuAnsetzen();
   pruefe(/Calcinit/.test(t) && /\d,\d+ g/.test(t), 'Mischanleitung: Gramm-Mengen fehlen');
   pruefe(!/NaN|undefined|Infinity/.test(t), 'Mischanleitung: NaN/undefined sichtbar');
@@ -84,7 +97,8 @@ const BOESE = '<img src=x onerror="alert(1)">"\'&';
   await p.reload(); await p.waitForTimeout(300);
   await p.click('[data-act="tab"][data-v="einst"]'); await p.waitForTimeout(200);
   await p.click('[data-act="einstGruppe"][data-g="salze"]'); await p.waitForTimeout(250);
-  await p.focus('[data-act="vorrat"][data-id="bittersalz"]'); await p.keyboard.press('Space'); await p.waitForTimeout(250);
+  await p.click('details[data-merk="salzOffen_einzel"] > summary'); await p.waitForTimeout(150);
+  await p.focus('details[data-merk="salzOffen_einzel"] [data-act="vorrat"][data-id="bittersalz"]'); await p.keyboard.press('Space'); await p.waitForTimeout(250);
   pruefe(await p.evaluate(() => document.activeElement && document.activeElement.dataset.id === 'bittersalz' && document.activeElement.getAttribute('aria-checked') === 'false'),
     'Fokus: Schalter nach dem Umschalten nicht mehr fokussiert');
   await p.keyboard.press('Space'); await p.waitForTimeout(250);
