@@ -63,7 +63,9 @@ for (const [phase, typ, vd] of faelle) {
   // Peters bringt genug Eisen; die übrigen weniger, dann meldet die App das Eisen als knapp (ein Eisendünger fehlt im Regal)
   if (['peters51126', 'combisol'].includes(vd)) {
     pruefe(r.ist.Fe >= 0.8 && r.ist.Fe <= 3, `${phase} ${vd}: Eisen ${r.ist.Fe.toFixed(2)}`);
-    pruefe(!r.hinweise.some(h => /^Bor nur|reicht das Eisen nicht/.test(h)), `${phase}: Volldünger bringt genug Bor und Eisen`);
+    pruefe(!r.hinweise.some(h => /reicht das Eisen nicht/.test(h)), `${phase} ${vd}: Volldünger bringt genug Eisen`);
+    // Bor nur bei Hydro-Sol (0,05 % B); Combi Sol hat 0,02 % B und liegt an der Hinweisschwelle – „Bor knapp“ ist dort richtig
+    if (vd === 'peters51126') pruefe(!r.hinweise.some(h => /^Bor nur/.test(h)), `${phase}: Hydro-Sol bringt genug Bor`);
   } else if (r.ist.Fe < 0.5) pruefe(r.hinweise.some(h => /Eisen/.test(h)), `${phase} ${vd}: Eisen ${r.ist.Fe.toFixed(2)} ohne Hinweis`);
   // Wie bei Soft Elite allein (eisen.test.js): knapp über der Grenze ist hinnehmbar, dann aber mit Hinweis
   pruefe(r.ist.NH4anteil <= 0.18, `${phase} ${vd}: Ammonium ${(r.ist.NH4anteil * 100).toFixed(0)} %`);
