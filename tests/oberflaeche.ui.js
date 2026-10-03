@@ -87,6 +87,51 @@ const BOESE = '<img src=x onerror="alert(1)">"\'&';
   pruefe(/Calcinit/.test(t) && /\d,\d+ g/.test(t), 'Mischanleitung: Gramm-Mengen fehlen');
   pruefe(!/NaN|undefined|Infinity/.test(t), 'Mischanleitung: NaN/undefined sichtbar');
   pruefe(/Säure immer ins Wasser/.test(t), 'Mischanleitung: Säure-Hinweis fehlt');
+  // Ampel mit Eisen-Zeile, Reihenfolge-Hinweis, Calcium als Letztes (seit 3.13.19)
+  pruefe(await p.$$eval('.naehr-zeile .el', l => l.map(x => x.textContent).join(',')) === 'N,P,K,Ca,Mg,Fe', 'Ampel: Eisen-Zeile fehlt');
+  pruefe(/Die Reihenfolge ist wichtig/.test(t) && /vorlösen, dann als Letztes zugeben/.test(t), 'Mischanleitung: Hinweis zur Reihenfolge fehlt');
+
+  // ---------- Tippfehler-Schutz (seit 3.13.19) ----------
+  // Gemessene Werte in der Mischanleitung: EC mit verrutschtem Komma hält einmal an, zweites Tippen speichert
+  const erwartet = await p.evaluate(() => { const m = document.body.innerText.match(/EC ([\d,]+)\s+EC messen/); return m ? m[1] : '1,3'; });
+  await p.fill('#ec', '0,13'); await p.fill('#ph', '5,8');
+  await p.click('[data-act="eintragen"]'); await p.waitForTimeout(250);
+  pruefe(/weicht stark ab/.test(await text()) && (await zustand()).log.length === 0, 'Tippfehler: EC 0,13 ohne Rückfrage gespeichert');
+  await p.click('[data-act="eintragen"]'); await p.waitForTimeout(300);
+  pruefe((await zustand()).log.length === 1 && (await zustand()).log[0].ec === 0.13, 'Tippfehler: bestätigter Wert nicht gespeichert');
+  // Messung im Tagebuch gegen die letzte Messung: EC 13-fach kleiner hält an, normaler Wert geht ohne Rückfrage durch
+  async function messen(ec) {
+    if (!(await p.$('[data-act="tab"][data-v="start"]'))) { await p.reload(); await p.waitForTimeout(300); }
+    await p.click('[data-act="tab"][data-v="start"]'); await p.waitForTimeout(200);
+    await p.click('[data-act="oeffne"][data-i="0"]'); await p.waitForTimeout(200);
+    await p.click('[data-act="eintragWahl"]'); await p.waitForTimeout(200);
+    await p.click('[data-act="eintragTyp"][data-t="mess"]'); await p.waitForTimeout(200);
+    await p.fill('#e_ec', ec); await p.click('[data-act="eintragSpeichern"]'); await p.waitForTimeout(300);
+  }
+  await messen('0,012');
+  pruefe(/weicht stark ab/.test(await text()) && (await zustand()).log.length === 1, 'Tippfehler: Messung 0,012 ohne Rückfrage gespeichert');
+  await messen('0,15');
+  pruefe((await zustand()).log.length === 2 && !/weicht stark ab/.test(await text()), 'Tippfehler: normale Messung blockiert');
+  // Tankmaße: Volumen mehr als verdreifacht – wird übernommen, aber mit deutlichem Hinweis und Rückgängig
+  await p.reload(); await p.waitForTimeout(300);
+  await p.click('[data-act="tab"][data-v="einst"]'); await p.waitForTimeout(200);
+  await p.click('[data-act="einstGruppe"][data-g="tanks"]'); await p.waitForTimeout(250);
+  const feld = await p.$('input[data-feld="dOben"]');
+  if (feld) {
+    await feld.fill('180'); await feld.press('Tab'); await p.waitForTimeout(400);
+    pruefe(/vertippt\?/.test(await p.innerText('#toast')) && /Rückgängig/.test(await p.innerText('#toast')), 'Tippfehler: Tankmaß ohne Warnung übernommen');
+  } else pruefe(false, 'Tippfehler: Feld dOben nicht gefunden');
+  // Wasserwerte: Calcium 45 -> 4,5 (Komma verrutscht) wird übernommen, aber mit Warnung
+  await p.reload(); await p.waitForTimeout(300);
+  await p.click('[data-act="tab"][data-v="einst"]'); await p.waitForTimeout(200);
+  await p.click('[data-act="einstGruppe"][data-g="wasser"]'); await p.waitForTimeout(250);
+  const ca = await p.$('input[data-feld="Ca"]');
+  if (ca) {
+    await ca.fill('4,5'); await ca.press('Tab'); await p.waitForTimeout(400);
+    pruefe(/vertippt\?/.test(await p.innerText('#toast')), 'Tippfehler: Calcium 45 -> 4,5 ohne Warnung');
+    const ca2 = await p.$('input[data-feld="Ca"]'); await ca2.fill('5'); await ca2.press('Tab'); await p.waitForTimeout(400);
+    pruefe(!/vertippt/.test(await p.innerText('#toast')), 'Tippfehler: kleine Änderung 4,5 -> 5 warnt');
+  } else pruefe(false, 'Tippfehler: Feld Ca nicht gefunden');
 
   // ---------- Eisen-Lösung: Schritt in ml ----------
   await einrichten(['eisen', 'kristalon_weiss']);
