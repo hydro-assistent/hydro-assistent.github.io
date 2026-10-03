@@ -305,9 +305,11 @@ details.hilfe .inhalt b { color: var(--akzent); }
   const DATEN = {
     salze: [
       { id: 'soft_elite', aktiv: true,   gruppe: 'volldünger', name: 'Hakaphos Soft Elite',   NO3: 13.2,  NH4: 10.8, P: 2.618, K: 9.961,  Ca: 0,     Mg: 1.206, S: 1.6,  Fe: 0.08, Mn: 0.05, Zn: 0.02,  Cu: 0.02, B: 0.01, Mo: 0.001 },
-      { id: 'soft_spezial', aktiv: false, gruppe: 'volldünger', name: 'Hakaphos Soft Spezial', NO3: 9.7,   NH4: 6.3,  P: 3.491, K: 18.262, Ca: 0,     Mg: 1.81,  S: 4.0,  Fe: 0.15, Mn: 0.05, Zn: 0.015, Cu: 0.02, B: 0.02, Mo: 0.0025 },
+      // Soft Spezial und Basis 5: S und Spuren seit 3.13.20 nach COMPO-EXPERT-Produktseite (Soft Spezial 12,5 % SO3, B 0,03 %;
+      // Basis 5 16,3 % SO3, Fe 0,15 %, Mn 0,15 %, Mo 0,004 %). Zink ist dort für Basis 5 nicht genannt und bleibt.
+      { id: 'soft_spezial', aktiv: false, gruppe: 'volldünger', name: 'Hakaphos Soft Spezial', NO3: 9.7,   NH4: 6.3,  P: 3.491, K: 18.262, Ca: 0,     Mg: 1.81,  S: 5.01, Fe: 0.15, Mn: 0.05, Zn: 0.015, Cu: 0.02, B: 0.03, Mo: 0.0025 },
       { id: 'basis3', aktiv: true,        gruppe: 'volldünger', name: 'Hakaphos Basis 3',      NO3: 3.0,   NH4: 0,    P: 6.546, K: 29.884, Ca: 0,     Mg: 2.41,  S: 9.0,  Fe: 0.2,  Mn: 0.05, Zn: 0.015, Cu: 0.02, B: 0.01, Mo: 0.001 },
-      { id: 'basis5', aktiv: false,      gruppe: 'volldünger', name: 'Hakaphos Basis 5',      NO3: 4.0,   NH4: 1.0,  P: 8.728, K: 24.903, Ca: 0,     Mg: 3.0,   S: 6.0,  Fe: 0.2,  Mn: 0.1,  Zn: 0.025, Cu: 0.06, B: 0.03, Mo: 0.003 },
+      { id: 'basis5', aktiv: false,      gruppe: 'volldünger', name: 'Hakaphos Basis 5',      NO3: 4.0,   NH4: 1.0,  P: 8.728, K: 24.903, Ca: 0,     Mg: 3.0,   S: 6.53, Fe: 0.15, Mn: 0.15, Zn: 0.025, Cu: 0.06, B: 0.03, Mo: 0.004 },
       // Peters Professional Hydro-Sol 5-11-26 (ICL), Etikett: N 5 % (nur Nitrat), P2O5 11 %, K2O 26 %, Mg 6 %, S 8 %, Fe 0,3 % (EDTA),
       // Mn 0,05 %, Zn 0,015 %, Cu 0,015 %, B 0,05 %, Mo 0,01 %. Ohne Calcium: wird mit Calcinit zusammen gegeben.
       { id: 'peters51126', aktiv: false, gruppe: 'volldünger', name: 'Peters Hydro-Sol 5-11-26', NO3: 5.0, NH4: 0, P: 4.800, K: 21.583, Ca: 0, Mg: 6.0, S: 8.0, Fe: 0.3, Mn: 0.05, Zn: 0.015, Cu: 0.015, B: 0.05, Mo: 0.01 },
@@ -344,7 +346,8 @@ details.hilfe .inhalt b { color: var(--akzent); }
       // in der App ein (Z.einst.eisen). DTPA hält das Eisen bis etwa pH 7 gelöst, EDTA bis etwa 6,5 (und zerfällt im Licht),
       // EDDHA auch bei höherem pH (färbt die Lösung rot).
       { id: 'eisen', aktiv: false, eisenLsg: true, marken: 'Eisenchelat, dosiert in ml aus einer Stammlösung', name: 'Eisen-Lösung (Fe-DTPA)', loesungGProL: 10, NO3: 0, NH4: 0, P: 0, K: 0, Ca: 0, Mg: 0, S: 0, Fe: 11 },
-      { id: 'calcinit', aktiv: true,     marken: 'auch Haifa Cal', name: 'Calcinit (Yara)',       NO3: 14.4,  NH4: 1.1,  P: 0,     K: 0,      Ca: 18.59, Mg: 0,     S: 0 },
+      // Calcinit: Yara-Angabe 15,5 % N (14,4 Nitrat, 1,1 Ammonium) und 26,3 % CaO = 18,80 % Ca (seit 3.13.20; vorher 18,59)
+      { id: 'calcinit', aktiv: true,     marken: 'auch Haifa Cal', name: 'Calcinit (Yara)',       NO3: 14.4,  NH4: 1.1,  P: 0,     K: 0,      Ca: 18.80, Mg: 0,     S: 0 },
       { id: 'kno3', aktiv: true,         marken: 'z. B. Yara Krista K, Haifa Multi-K', name: 'Kaliumnitrat',          NO3: 13.86, NH4: 0,    P: 0,     K: 38.67,  Ca: 0,     Mg: 0,     S: 0 },
       { id: 'mkp', aktiv: false,         marken: 'MKP, z. B. Yara Krista MKP, Haifa MKP', name: 'Monokaliumphosphat',    NO3: 0,     NH4: 0,    P: 22.76, K: 28.73,  Ca: 0,     Mg: 0,     S: 0 },
       // Kaliumcarbonat: wird im Eimer von der Säure neutralisiert. Zusammensetzung pro g K2CO3; N kommt nur mit Salpetersäure dazu (kern.js).
