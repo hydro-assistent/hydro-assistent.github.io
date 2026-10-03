@@ -59,6 +59,8 @@ Die ersten drei Blöcke enden jeweils mit `if (typeof module !== 'undefined') mo
 
 - Angefangene Mischanleitung: `anlParken()` legt `UI.anl` samt Haken unter `hydro-anleitung-v1` ab (bei jedem Haken und beim Verlassen), `anlVergessen()` beim Speichern oder Start einer neuen; kein `confirm()` beim Verlassen (seit 3.13.12).
 - Mess-Erinnerung je Phase: `MESS_TAKT` in Stunden (nie unter 24).
+- Tippfehler-Schutz (seit 3.13.19): `messZweifel()`/`zweifel()` halten EC (unter ½ oder über 2× des Vergleichswerts) und pH (mehr als 1,5 daneben) einmal an; derselbe Wert erneut abgeschickt gilt als bestätigt (`UI.bestaetigt`, wird von `gehe()` zurückgesetzt). Vergleich: letzte Messung bzw. Ziel (`messRef`), in der Mischanleitung die erwartete EC. Tankmaße (`tankLiter`) und Wasserwerte mit mehr als Faktor 3 werden übernommen, aber mit „vertippt?“-Toast und Rückgängig (10 s).
+- Ampel in der Mischanleitung (`naehrBalken`): Grün im Band (−25 % / +40 %), Gelb daneben, Rot unter ½ oder über 2× des Ziels; Eisen-Zeile (`eisenBalken`) mit festem Band 0,5–3 mg/L, rot unter 0,2 oder über 4.
 - `render()` ersetzt die ganze Seite und stellt danach den Fokus wieder her (`fokusMerken`/`fokusZurueck`, seit 3.13.17): gleiches Element über `id` oder `data-act`/`data-id`/… , bei Seitenwechsel die `h1`. Neue Bedienelemente brauchen deshalb eindeutige `data-*`-Merkmale oder eine `id`.
 
 ### Offline / Service Worker

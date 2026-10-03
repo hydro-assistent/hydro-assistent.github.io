@@ -154,6 +154,7 @@ button.eintrag:active { border-color: var(--linie); }
 .balken2 .band { position: absolute; top: 0; bottom: 0; border-radius: 5px; background: var(--gut); opacity: .45; }
 .balken2 .punkt { position: absolute; top: 50%; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 8px; background: var(--gut); border: 2px solid var(--bg); }
 .balken2 .punkt.daneben { background: var(--akzent); }
+.balken2 .punkt.stark { background: var(--fehler); width: 20px; height: 20px; margin: -10px 0 0 -10px; border-radius: 10px; }
 .naehr .fuss { font-size: 14px; color: var(--leise); margin: 6px 0 8px; }
 .dazu { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; margin: 4px 0 8px; }
 .dazu div { background: var(--flaeche2); border-radius: 10px; padding: 6px 2px; text-align: center; }
@@ -1335,6 +1336,8 @@ details.hilfe .inhalt b { color: var(--akzent); }
     if (b.modus !== 'netztopf') return b.maxFuell;
     return Math.max(1, Math.round((b.hoehe - b.netztopf - b.luftspalt) * 10) / 10);
   }
+  // Liter bis zur Füllmarke direkt aus Maßen (für den Tippfehler-Schutz bei Tankmaßen)
+  function tankLiter(b) { try { const l = K.liter(b, maxFuell(b)); return isFinite(l) ? l : 0; } catch (e) { return 0; } }
   function behaelterText(D) {
     const b = D.eimer, l = fmt(K.liter(b, b.maxFuell), 1);
     const masse = b.form === 'rund' ? `rund, ${fmt(b.durchmesser, 0)} cm Durchmesser`
@@ -1362,12 +1365,12 @@ details.hilfe .inhalt b { color: var(--akzent); }
   const ctx = e => ({ vorrat: Z.einst.vorrat, auswahl: Z.einst.auswahl, nachfuellen: Z.einst.nachfuellen, wasserglas: Z.einst.wasserglas.an && !(e && e.phase === 'reife') ? Z.einst.wasserglas.mlProL : 0 });
   const WG = 'Kaliwasserglas';
   // Kurze Meldung unten. Mit rueck erscheint „Rückgängig“ und macht die letzte Änderung ungeschehen.
-  function toast(t, rueck) {
+  function toast(t, rueck, dauer) {
     const el = document.getElementById('toast');
     el.innerHTML = `<span>${esc(t)}</span>` + (rueck ? '<button type="button" data-rueck>Rückgängig</button>' : '');
     toast.rueck = rueck || null;
     el.classList.toggle('mit', !!rueck); el.classList.add('an'); clearTimeout(toast.t);
-    toast.t = setTimeout(() => { el.classList.remove('an', 'mit'); toast.rueck = null; }, rueck ? 6000 : 2200);
+    toast.t = setTimeout(() => { el.classList.remove('an', 'mit'); toast.rueck = null; }, dauer || (rueck ? 6000 : 2200));
   }
   // Wurde gerade eben gemessen, stehen Füllstand und EC beim Nachfüllen schon drin
   function topupVorbereiten() {
@@ -1418,7 +1421,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
     if (kco) s.push({ menge: fmt(kco.ml, 1) + ' ml', was: kco.name + ' zugeben und umrühren.' });
     if (r.saeure.ml > 0) s.push({ menge: fmt(r.saeure.zuerstMl, 1) + ' ml', was: r.saeure.name + ' zugeben und umrühren' + (kco ? ', es sprudelt kurz' : '') + '. Säure immer ins Wasser, mit Schutzbrille.' });
     r.mengen.filter(m => !m.calcium && m.id !== 'kco').forEach(m => s.push(m.ml != null ? { menge: fmt(m.ml, 1) + ' ml', was: m.name + ' zugeben und umrühren.' } : { menge: fmtG(m.gramm) + ' g', was: m.name + ' einrühren, bis es gelöst ist.' }));
-    r.mengen.filter(m => m.calcium).forEach(ca => s.push({ menge: fmtG(ca.gramm) + ' g', was: ca.name + ' in ca. 1 L Wasser vorlösen, dann zugeben.' }));
+    r.mengen.filter(m => m.calcium).forEach(ca => s.push({ menge: fmtG(ca.gramm) + ' g', was: ca.name + ' in ca. 1 L Wasser vorlösen, dann als Letztes zugeben, erst wenn alles andere gelöst ist. Nie im selben Gefäß mit anderen Salzen.' }));
     s.push({ menge: fmt(h, 1) + ' cm', was: 'Mit Wasser bis zu dieser Höhe auffüllen und gut umrühren.' });
     const anteil = r.saeure.ml > 0 ? r.saeure.zuerstMl / r.saeure.ml : 0;
     const ecMesspunkt = r.ec.vorSaeure + anteil * (r.ec.saeure || 0); // die erste Säure ist schon drin
@@ -1434,7 +1437,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
     if (kco) s.push({ menge: fmt(kco.ml, 1) + ' ml', was: kco.name + ' in die Kanne geben.' });
     if (r.saeure.ml > 0) s.push({ menge: fmt(r.saeure.ml, 1) + ' ml', was: r.saeure.name + ' in die Kanne geben und umrühren. Säure immer ins Wasser.' });
     r.mengen.filter(m => !m.calcium && m.id !== 'kco').forEach(m => s.push(m.ml != null ? { menge: fmt(m.ml, 1) + ' ml', was: m.name + ' in die Kanne geben.' } : { menge: fmtG(m.gramm) + ' g', was: m.name + ' in der Kanne auflösen.' }));
-    r.mengen.filter(m => m.calcium).forEach(ca => s.push({ menge: fmtG(ca.gramm) + ' g', was: ca.name + ' in einem Glas Wasser aus der Kanne vorlösen, dann zurückgießen.' }));
+    r.mengen.filter(m => m.calcium).forEach(ca => s.push({ menge: fmtG(ca.gramm) + ' g', was: ca.name + ' in einem eigenen Glas Wasser aus der Kanne vorlösen, dann als Letztes zurückgießen, erst wenn alles andere gelöst ist.' }));
     s.push({ menge: fmt(hZiel, 0) + ' cm', was: 'Die Kanne in den Tank gießen, bis diese Höhe erreicht ist.' });
     s.push({ menge: 'EC ' + fmt(ecDanach, 2), was: 'Im Tank EC messen, dieser Wert wird ungefähr erwartet. Dann pH prüfen und falls nötig auf ' + fmt(Z.einst.saeure.zielPH, 1) + ' bringen.' });
     return s;
@@ -1707,14 +1710,23 @@ details.hilfe .inhalt b { color: var(--akzent); }
       const ww = a.wasserWerte ? a.wasserWerte[x] || 0 : 0;
       // Calcium und Magnesium aus hartem Wasser: kommt ohne Zutun, die App plant dafür nichts ein – kein Grund zur Sorge
       const vomWasser = (x === 'Ca' || x === 'Mg') && ist > hi && ww >= lo;
-      const lage = vomWasser ? 'vom Wasser gedeckt' : ist < lo ? 'etwas wenig' : ist > hi ? 'etwas viel' : 'gut';
+      // Rot (seit 3.13.19): unter der Hälfte oder über dem Doppelten des Ziels – das ist kein Rundungsfehler der Salze mehr
+      const lage = vomWasser ? 'vom Wasser gedeckt' : ist < soll * 0.5 ? 'zu wenig' : ist > soll * 2 ? 'zu viel' : ist < lo ? 'etwas wenig' : ist > hi ? 'etwas viel' : 'gut';
       const wa = ww >= 1 && ww >= ist * 0.1 ? `davon ${fmt(ww, 0)} aus dem Wasser` : lage;
       return `<div class="naehr-zeile"><span class="el">${x}</span>
-        <div class="balken2" role="img" aria-label="${x}: ${fmt(ist, 0)} mg/L, guter Bereich ${fmt(lo, 0)} bis ${fmt(hi, 0)}, ${lage}"><span class="band" style="left:${pz(lo)}%;width:${pz(hi) - pz(lo)}%"></span><span class="punkt${lage === 'gut' || vomWasser ? '' : ' daneben'}" style="left:${pz(ist)}%"></span></div>
+        <div class="balken2" role="img" aria-label="${x}: ${fmt(ist, 0)} mg/L, guter Bereich ${fmt(lo, 0)} bis ${fmt(hi, 0)}, ${lage}"><span class="band" style="left:${pz(lo)}%;width:${pz(hi) - pz(lo)}%"></span><span class="punkt${lage === 'gut' || vomWasser ? '' : lage === 'zu wenig' || lage === 'zu viel' ? ' stark' : ' daneben'}" style="left:${pz(ist)}%"></span></div>
         <span class="wert zahl">${fmt(ist, 0)}<small>${esc(wa)}</small></span></div>`;
-    }).join('');
+    }).join('') + (a.werte.Fe != null ? eisenBalken(a.werte.Fe) : '');
     return `<div class="naehr"><div class="klein leise" style="font-size:15px;margin-bottom:4px">Nährstoffe im Tank, in mg/L</div>${zeilen}
-      <p class="fuss">Grün ist der gute Bereich für diese Phase. Mit den vorhandenen Salzen trifft kein Rezept jeden Wert genau; Gelb heißt: deutlich daneben, meist trotzdem kein Problem. Bringt dein Wasser schon viel Calcium oder Magnesium mit, plant die App dafür nichts mehr ein.</p></div>`;
+      <p class="fuss">Grün ist der gute Bereich für diese Phase. Mit den vorhandenen Salzen trifft kein Rezept jeden Wert genau; Gelb heißt: deutlich daneben, meist trotzdem kein Problem. Rot heißt: weniger als die Hälfte oder mehr als das Doppelte; woran das liegt und was hilft, steht in den Hinweisen darunter. Bringt dein Wasser schon viel Calcium oder Magnesium mit, plant die App dafür nichts mehr ein.</p></div>`;
+  }
+  // Eisen (seit 3.13.19): fester guter Bereich 0,5 bis 3 mg/L statt Rezeptverhältnis; rot unter 0,2 (die App peilt in der Anzucht selbst 0,25 an) oder über 4
+  function eisenBalken(fe) {
+    const lo = 0.5, hi = 3, max = Math.max(4, fe * 1.1), pz = v => Math.max(0, Math.min(100, v / max * 100));
+    const lage = fe < 0.2 ? 'zu wenig' : fe < lo ? 'etwas wenig' : fe > 4 ? 'zu viel' : fe > hi ? 'etwas viel' : 'gut';
+    return `<div class="naehr-zeile"><span class="el">Fe</span>
+        <div class="balken2" role="img" aria-label="Eisen: ${fmt(fe, 2)} mg/L, guter Bereich 0,5 bis 3, ${lage}"><span class="band" style="left:${pz(lo)}%;width:${pz(hi) - pz(lo)}%"></span><span class="punkt${lage === 'gut' ? '' : /^zu /.test(lage) ? ' stark' : ' daneben'}" style="left:${pz(fe)}%"></span></div>
+        <span class="wert zahl">${fmt(fe, 2)}<small>${esc(lage)}</small></span></div>`;
   }
   function dazuKarte(a) {
     if (a.dazu) return `<div class="naehr"><div class="klein leise" style="font-size:15px">Im ganzen Tank kommt dazu, in mg/L ${frage('dazu')}</div>
@@ -1739,7 +1751,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
       ${hinweisBox(a.hinweise)}
       ${a.schritte.some(x => /säure/i.test(x.was)) ? `<div class="hinweise"><p><b>Sicherheit:</b> Schutzbrille und Handschuhe tragen. Säure immer ins Wasser, nie mit anderen Säuren oder Chlorreinigern mischen. Die Säuremenge ist eine Schätzung, darum in Schritten zugeben und den pH messen. Mehr unter Hilfe → Anleitung → Sicherheit und Haftung.</p></div>` : ''}
       <h2>Schritte</h2>
-      <p class="leise">Tippe einen Schritt an, wenn er erledigt ist.</p>
+      <p class="leise">Tippe einen Schritt an, wenn er erledigt ist.${a.schritte.some(x => /vorlösen/.test(x.was)) ? ' <b>Die Reihenfolge ist wichtig:</b> Die Säure zuerst baut die Härte des Wassers ab, Calcium kommt vorgelöst als Letztes. Kommt Calcium zu früh oder im selben Gefäß mit Bittersalz oder Phosphat zusammen, flockt es aus und fehlt den Pflanzen.' : ''}</p>
       <ol class="schritte">${a.schritte.map((s, i) => `<li><button class="schritt" data-act="haken" data-i="${i}" aria-pressed="${UI.haken.has(i)}">
         <span class="nr">${UI.haken.has(i) ? '✓' : i + 1}</span><span><span class="menge zahl">${esc(s.menge)}</span><span class="was">${esc(s.was)}</span></span></button></li>`).join('')}</ol>
       <h2>Gemessene Werte</h2>
@@ -2336,6 +2348,27 @@ details.hilfe .inhalt b { color: var(--akzent); }
       <button class="zeile-knopf leise-knopf" data-act="eintragLoeschen">Eintrag löschen</button>
       <div class="knoepfe"><div class="knoepfe-innen"><button class="gross haupt" data-act="eintragAendern">Speichern</button></div></div>`;
   }
+  // Tippfehler-Schutz (seit 3.13.19): Ein Komma an der falschen Stelle bleibt oft innerhalb der harten Grenzen (EC 0,16 statt
+  // 1,6) und würde still weitergerechnet. Weicht ein Wert stark vom Vergleichswert ab, hält die App einmal an und fragt nach;
+  // derselbe Wert ein zweites Mal abgeschickt gilt als bestätigt. Kein confirm()-Fenster.
+  function zweifel(schluessel, text) {
+    if (UI.bestaetigt === schluessel) { UI.bestaetigt = null; return false; }
+    UI.bestaetigt = schluessel; UI.fehler = text + ' Stimmt der Wert, tippe einfach noch einmal auf den Knopf.'; return true;
+  }
+  // EC und pH gegen einen Vergleichswert (letzte Messung oder Ziel): EC unter der Hälfte oder über dem Doppelten, pH mehr als 1,5 daneben
+  function messZweifel(ec, ph, ref, wo) {
+    if (ec != null && ref.ec > 0 && (ec < ref.ec / 2 || ec > ref.ec * 2) &&
+      zweifel(`${wo}:ec:${ec}`, `EC ${fmt(ec, 2)} weicht stark ab (${ref.ecText} ${fmt(ref.ec, 2)}). Komma richtig gesetzt?`)) return true;
+    if (ph != null && ref.ph > 0 && Math.abs(ph - ref.ph) > 1.5 &&
+      zweifel(`${wo}:ph:${ph}`, `pH ${fmt(ph, 1)} weicht stark ab (${ref.phText} ${fmt(ref.ph, 1)}).`)) return true;
+    return false;
+  }
+  // Vergleichswerte eines Tanks: letzte Messung, sonst Ziel-EC und Ziel-pH
+  function messRef(i) {
+    const l = letzter(i), e = Z.eimer[i], ph = (() => { for (let j = Z.log.length - 1; j >= 0; j--) if (Z.log[j].eimer === i && Z.log[j].ph != null && imAnbau(Z.log[j], i)) return Z.log[j].ph; return null; })();
+    return { ec: l ? l.ec : zielEC(e), ecText: l ? 'zuletzt gemessen' : 'Ziel', ph: ph != null ? ph : Z.einst.saeure.zielPH, phText: ph != null ? 'zuletzt gemessen' : 'Ziel' };
+  }
+
   // Werte aus dem Formular lesen und prüfen. Gibt Objekt zurück oder setzt UI.fehler.
   function eintragLesen(typ) {
     const n = id => { const el = document.getElementById('e_' + id); if (!el) return undefined; UI.eingabe[id] = el.value; const t = el.value.trim().replace(',', '.'); return t === '' ? null : Number(t); };
@@ -2352,6 +2385,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
     if (typ === 'ph' && o.saeureMl == null && o.ph == null) return (UI.fehler = 'Bitte die Säuremenge oder den pH danach eintragen.'), null;
     if (typ === 'zusatz' && !o.zusatz) return (UI.fehler = 'Bitte eintragen, was du zugegeben hast.'), null;
     if (typ === 'notiz' && !o.notiz) return (UI.fehler = 'Bitte eine Notiz schreiben.'), null;
+    if ((typ === 'mess' || typ === 'ph') && messZweifel(o.ec, o.ph, messRef(UI.eimer), 'eintrag')) return null;
     UI.fehler = '';
     return o;
   }
@@ -2724,7 +2758,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
   function gehe(v) {
     if (UI.view === 'anleitung' && v !== 'anleitung') anlParken();
     if (v === 'anleitung') anlVergessen();
-    if (v !== 'neu' && v !== 'topup') { UI.wasserEinmal = null; UI.wasserPanel = false; } UI.neuSalz = null; UI.erkl = null; UI.view = v; UI.fehler = ''; UI.kalEdit = false; UI.namenEdit = false; UI.info = null; UI.masse = false; render(); window.scrollTo(0, 0); }
+    if (v !== 'neu' && v !== 'topup') { UI.wasserEinmal = null; UI.wasserPanel = false; } UI.neuSalz = null; UI.erkl = null; UI.view = v; UI.fehler = ''; UI.bestaetigt = null; UI.kalEdit = false; UI.namenEdit = false; UI.info = null; UI.masse = false; render(); window.scrollTo(0, 0); }
 
   // ---------- Aktionen ----------
   const A = {
@@ -2782,7 +2816,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
       if (ueber) r.hinweise.unshift(`${fmt(h, 1)} cm liegen über deiner normalen Marke von ${fmt(maxFuell(beh(e)), 1)} cm. In der Anzucht ist das richtig, damit das Wasser den Netztopf berührt. Später brauchen die Wurzeln den Luftspalt.`);
       UI.anl = { art: 'Neuansatz', titel: 'Neu ansetzen', text: `${e.name} auf ${fmt(r.fuellhoehe, 1)} cm, Ziel-EC ${fmt(r.ecZiel, 2)}.`,
         h: r.fuellhoehe, liter: r.liter, ecZiel: r.ecZiel, ecErwartet: r.ec.gesamt, ecVorSaeure: r.saeure.ml > 0 ? r.ec.vorSaeure + (r.saeure.zuerstMl / r.saeure.ml) * (r.ec.saeure || 0) : null, hinweise: r.hinweise, schritte: schritteEimer(r, r.fuellhoehe),
-        werte: { N: r.ist.N, P: r.ist.P, K: r.ist.K, Ca: r.ist.Ca, Mg: r.ist.Mg },
+        werte: { N: r.ist.N, P: r.ist.P, K: r.ist.K, Ca: r.ist.Ca, Mg: r.ist.Mg, Fe: r.ist.Fe },
         werteSoll: sollAnzeige(r),
         wasserWerte: { N: (D.wasser.NO3 || 0) + (D.wasser.NH4 || 0), P: D.wasser.P || 0, K: D.wasser.K || 0, Ca: D.wasser.Ca || 0, Mg: D.wasser.Mg || 0 } };
       UI.anl.wasser = wahlText(wasserWahlFuer(e)); UI.haken = new Set(); UI.eingabe = {}; gehe('anleitung');
@@ -2796,6 +2830,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
       UI.info = null;
       if (!(hj > 0 && hj <= D.eimer.hoehe)) { UI.fehler = 'Bitte die aktuelle Füllhöhe in cm eingeben.'; return render(); }
       if (!(ecj > 0 && ecj < 5)) { UI.fehler = 'Bitte die gemessene EC eingeben, zum Beispiel 1,40.'; return render(); }
+      if (!sofort && messZweifel(ecj, null, messRef(UI.eimer), 'topup')) return render();
       UI.fehler = '';
       const e = Z.eimer[UI.eimer];
       if (!sofort) { UI.rechnet = true; render(); setTimeout(() => A.rechneTopup(null, null, true), 30); return; }
@@ -2848,6 +2883,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
       if (isNaN(ec) || isNaN(ph)) { UI.fehler = 'Bitte mindestens EC und pH eintragen.'; return render(); }
       if (!(ec > 0 && ec < 5) || !(ph > 2 && ph < 12)) { UI.fehler = 'EC oder pH sieht nicht plausibel aus. Bitte prüfen.'; return render(); }
       const a = UI.anl;
+      if (messZweifel(ec, ph, { ec: a.ecErwartet, ecText: 'erwartet', ph: Z.einst.saeure.zielPH, phText: 'Ziel' }, 'anl')) return render();
       Z.log.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), eimer: UI.eimer, datum: new Date().toISOString(), art: a.art,
         h: a.h, liter: Math.round(a.liter * 10) / 10, ecZiel: Math.round(a.ecZiel * 100) / 100, ecErwartet: Math.round(a.ecErwartet * 100) / 100,
         ec, ph, saeureMl: isNaN(sml) ? null : sml, notiz: document.getElementById('notiz').value.trim() || null, vorher: a.vorher || null,
@@ -3293,13 +3329,25 @@ details.hilfe .inhalt b { color: var(--akzent); }
       if (f === 'maxFuell' && n > b.hoehe) { toast('Höher als der Tank selbst'); setTimeout(render, 0); return; }
       if ((f === 'netztopf' || f === 'luftspalt') && b.hoehe - n - (f === 'netztopf' ? b.luftspalt : b.netztopf) < 1) { toast('Dann bliebe kein Platz für Wasser'); setTimeout(render, 0); return; }
       if (f === 'hoehe' && n < b.maxFuell) b.maxFuell = n;
+      const lVor = tankLiter(b);
       b[f] = n;
-      speichern(); setTimeout(render, 0); toast('Übernommen', r); return;
+      const lNach = tankLiter(b);
+      speichern(); setTimeout(render, 0);
+      // Tippfehler-Schutz: Volumen springt um mehr als das Dreifache – übernehmen, aber deutlich mit Rückgängig melden
+      if (lVor > 0 && lNach > 0 && (lNach > lVor * 3 || lNach < lVor / 3)) toast(`Übernommen. Der Tank fasst jetzt ${fmt(lNach, 1)} L statt ${fmt(lVor, 1)} L – vertippt?`, r, 10000);
+      else toast('Übernommen', r);
+      return;
     }
+    const wKey = { sulfat: 'S', nitrat: 'NO3', ammonium: 'NH4', phosphat: 'P' }[f] || f, wVor = Z.einst.wasser[wKey];
     if (f === 'wgDosis') Z.einst.wasserglas.mlProL = n; else if (f === 'zielPH') Z.einst.saeure.zielPH = n;
     else if (f === 'eisenFe') Z.einst.eisen.fe = n; else if (f === 'eisenG') Z.einst.eisen.gProL = n;
     else if (f === 'sulfat') Z.einst.wasser.S = n * SULFAT_S; else if (f === 'nitrat') Z.einst.wasser.NO3 = n * NITRAT_N; else if (f === 'ammonium') Z.einst.wasser.NH4 = n * AMMONIUM_N; else if (f === 'phosphat') Z.einst.wasser.P = n * PHOSPHAT_P; else Z.einst.wasser[f] = n;
-    speichern(); setTimeout(render, 0); toast('Übernommen', r);
+    speichern(); setTimeout(render, 0);
+    // Tippfehler-Schutz für Wasserwerte: mehr als das Dreifache oder weniger als ein Drittel des alten Werts (ab merklichen Werten)
+    const wNach = Z.einst.wasser[wKey], merklich = { ecGemessen: 0.1, alkalitaet: 0.3 }[wKey] || 3;
+    if (WASSER_GRENZEN[wKey] && wKey !== 'pH' && wVor > merklich && wNach !== wVor && (wNach > wVor * 3 || wNach < wVor / 3))
+      toast(`Übernommen. ${el.closest('label') ? el.closest('label').querySelector('span').textContent : 'Der Wert'} hat sich stark verändert – vertippt?`, r, 10000);
+    else toast('Übernommen', r);
   });
   document.getElementById('toast').addEventListener('click', ev => {
     if (!ev.target.closest('[data-rueck]') || !toast.rueck) return;
