@@ -74,6 +74,8 @@ Fassung 3.13.20: Salzwerte nach Herstellerangaben korrigiert. Calcinit bringt la
 
 Fassung 3.13.21: Wasserhärte und Ballast-Zähler. Nach der Eingabe der Wasserwerte zeigt die App, ob dein Wasser weich, mittel oder hart ist, eingestuft wie beim Wasserwerk nach der Gesamthärte (unter 8,4 °dH weich, bis 14 °dH mittel, darüber hart). Dazu kommt die Karbonathärte mit der Säuremenge pro 10 Liter und was das fürs Mischen heißt, etwa dass Phosphorsäure bei hoher Karbonathärte zu viel Phosphor bringt. Neu ist außerdem der Ballast-Zähler: Seit dem letzten Neuansatz zählt die App, wie viel Wasser du über die App nachgefüllt hast, und schätzt daraus Natrium und Chlorid im Tank, die die Pflanze kaum aufnimmt. Ab etwa zwei nachgefüllten Tankfüllungen oder 50 mg/L Natrium rät sie zu einem baldigen Neuansatz, ab drei Füllungen oder 100 mg/L Natrium zu einem Neuansatz jetzt. Natrium und Chlorid trägst du aus dem Wasserbericht unter Wasser & Säure ein.
 
+Fassung 3.13.22: Pflanzendoktor bei Calciummangel genauer. Calcium kommt nur mit dem Wasserstrom in die jungen Blätter. Ein Mangel entsteht deshalb oft trotz genug Calcium in der Lösung, wenn die Pflanze zu wenig verdunstet. Der Doktor nennt jetzt neben pH und Luftfeuchte auch stehende Luft und empfiehlt einen Ventilator, der die Blätter leicht bewegt. Er weist außerdem darauf hin, dass es in der Blüte oft die jungen Blättchen an den Blütenspitzen trifft.
+
 ## Vorgemerkt
 
 - Spurenelement-Mischungen (zum Beispiel Fetrilon Combi 1, Micromax, Microfol Combi, Excello Basis) als eigene Salze, damit die App Eisen, Bor und Zink gezielt einplanen kann, statt nur zu melden, dass sie knapp sind. Das braucht eigene Ziele für Spurenelemente im Rechenkern.

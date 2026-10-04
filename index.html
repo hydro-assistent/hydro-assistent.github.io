@@ -969,8 +969,11 @@ details.hilfe .inhalt b { color: var(--akzent); }
       erkennen: 'Zwischen den Adern der mittleren und unteren Blätter wird es gelb, die Adern bleiben grün. Später braune Flecken.',
       tun: ['pH prüfen: Unter 5,5 wird Magnesium schlecht aufgenommen.', 'Bittersalz ist im Rezept. Wenn pH und EC stimmen, Stärke eine Stufe höher.'] },
     { id: 'ca_mangel', titel: 'Calciummangel', w: { oben: 2, ueberall: 1 }, s: { flecken: 2, verformt: 1, braun_rand: 1 },
-      erkennen: 'Braune, rostige Flecken auf jüngeren Blättern, neue Triebe können verkrüppelt wachsen.',
-      tun: ['pH prüfen: Unter 5,5 wird Calcium schlecht aufgenommen.', 'Hartes Leitungswasser bringt schon viel Calcium mit, dann ist ein echter Mangel selten. Meist ist es der pH oder zu hohe Luftfeuchte.'] },
+      erkennen: 'Braune, rostige Flecken auf jüngeren Blättern, braune Ränder und Spitzen, neue Triebe können verkrüppelt wachsen. In der Blüte trifft es oft die jungen Blättchen an den Blütenspitzen.',
+      // Calcium wandert nur mit dem Transpirationsstrom und lässt sich nicht aus alten Blättern umlagern: Mangel entsteht oft trotz
+      // genug Calcium in der Lösung, wenn die Pflanze wenig verdunstet (hohe Luftfeuchte, niedriges VPD, stehende Luft)
+      // (Cannabis Business Times, „The Dangers of Calcium Deficiency in Cannabis Crops“).
+      tun: ['pH prüfen: Unter 5,5 wird Calcium schlecht aufgenommen.', 'Für Luftbewegung sorgen: Ein Ventilator, der die Blätter leicht bewegt, und nicht zu feuchte Luft helfen der Pflanze, Calcium bis in die jungen Triebe zu bringen.', 'Hartes Leitungswasser bringt schon viel Calcium mit, dann ist ein echter Mangel selten. Meist ist es der pH, zu hohe Luftfeuchte oder stehende Luft.'] },
     { id: 'fe_mangel', titel: 'Eisenmangel', w: { oben: 3 }, s: { gelb_adern: 3, gelb_ganz: 1 },
       erkennen: 'Die jüngsten Blätter werden zwischen den Adern hellgelb bis fast weiß, die Adern bleiben grün.',
       tun: ['pH prüfen: Schon ab 6,3 wird Eisen deutlich schlechter aufgenommen. Das ist die häufigste Ursache.', 'Eisen kommt nur aus dem Hakaphos. In vielen Volldüngern ist es mit EDTA gebunden, das nur bis etwa pH 7 hält. Steigt der pH im Tank darüber, fällt Eisen aus.', 'Hilft das nicht: einen Eisendünger mit DTPA-Chelat dazugeben, der hält bis etwa pH 8.'] },
@@ -2203,7 +2206,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
     p_mangel: 'Zu wenig Phosphor in der Lösung, oder es ist an den Wurzeln zu kalt. Dann nimmt die Pflanze ihn schlecht auf.',
     k_mangel: 'Zu wenig Kalium in der Lösung. In der Blüte steigt der Bedarf stark, dann fällt ein Mangel zuerst auf.',
     mg_mangel: 'Zu wenig Magnesium, oder zu viel Kalium und Calcium, die es verdrängen. Weiches Wasser bringt selbst kaum Magnesium mit.',
-    ca_mangel: 'Zu wenig Calcium, ein falscher pH oder sehr feuchte Luft. Calcium wandert nur mit dem Wasserstrom in die Blätter, und bei hoher Luftfeuchte verdunstet die Pflanze zu wenig.',
+    ca_mangel: 'Zu wenig Calcium, ein falscher pH, sehr feuchte oder stehende Luft. Calcium wandert nur mit dem Wasserstrom in die Blätter und kann nicht aus alten Blättern nachgeliefert werden. Verdunstet die Pflanze zu wenig, fehlt es an den jungen Trieben und Blütenspitzen, auch wenn genug in der Lösung ist.',
     fe_mangel: 'Meist ein zu hoher pH. Das Eisen ist dann in der Lösung, aber die Pflanze kommt nicht dran.',
     spuren: 'Meist ein zu hoher pH, seltener fehlen die Spurenelemente im Dünger.',
     ph: 'Liegt der pH zu hoch oder zu tief, sperrt die Pflanze einzelne Nährstoffe aus, obwohl genug davon im Tank ist.',
