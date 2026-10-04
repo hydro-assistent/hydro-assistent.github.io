@@ -381,6 +381,10 @@ details.hilfe .inhalt b { color: var(--akzent); }
     // Ziel-EC (brutto, inkl. Wasser) Normal: [von, bis]
     phasen: {
       anzucht:  { name: 'Anzucht',  ecPhoto: [0.6, 0.8], ecAuto: [0.5, 0.7], profil: { N: 80,  P: 30, K: 80,  Ca: 80,  Mg: 30, S: 30 }, deckel: 0.9 },
+      // Gegenprobe Wachstum (Powell & Bauerle 2026, Front. Plant Sci. 16:1753553, Cannabis vegetativ, Perlite, 38 Tage): Aufnahme
+      // pro Liter verdunstetem Wasser N 127, P 39, K 164, Ca 68, Mg 40, Fe 1,5 mg/L; auf N 160 skaliert P 49, K 207, Ca 86, Mg 51.
+      // P und Mg passen zum Profil, K etwas höher, Ca deutlich niedriger. Nicht übernommen: Angebot lag bewusst weit über
+      // Bedarf (Luxuskonsum), 8 Pflanzen, kein DWC. Ca im Wachstum ist vorgemerkt, bis eine zweite Quelle dazukommt.
       wachstum: { name: 'Wachstum', ecPhoto: [1.2, 1.5], ecAuto: [1.0, 1.3], profil: { N: 160, P: 50, K: 180, Ca: 140, Mg: 50, S: 50 }, deckel: 1.7 },
       bluete:   { name: 'Blüte',    ecPhoto: [1.6, 1.9], ecAuto: [1.4, 1.7], profil: { N: 120, P: 60, K: 240, Ca: 140, Mg: 50, S: 60 }, deckel: 2.2, deckelAuto: 1.8,
         // Blüte-Rezept „Studie“ (Bevan, Jones, Zheng 2021, Front. Plant Sci. 12:764103): Ertragsoptimum bei N 194, P 59; K ohne Wirkung zwischen 60 und 340
@@ -844,6 +848,9 @@ details.hilfe .inhalt b { color: var(--akzent); }
 
   // ---------- 9. TOP-UP (Fall A und B) ----------
   // opt: { phase, typ, staerke, hJetzt, ecJetzt, hZiel?, vorrat }
+  // Nachfüllen nach Verbrauch: Aufnahme ist proportional zum verdunsteten Wasser (Powell & Bauerle 2026). Eine Lösung mit der
+  // dort gemessenen Aufnahme hätte grob EC 1,1–1,2; wer mit Ziel-EC nachfüllt, gibt etwas mehr nach, die EC steigt langsam –
+  // darum der Hinweis ab 1,25 × Ziel-EC und der Ballast-Zähler in der Oberfläche.
   const VERBRAUCH_EC_HOCH = 1.25, VERBRAUCH_EC_NIEDRIG = 0.6; // Nachfüllen nach Verbrauch: ab hier Hinweis bzw. nur Wasser
   function topUp(D, opt) {
     const hZielRoh = opt.hZiel !== undefined ? opt.hZiel : D.eimer.zielFuell;
