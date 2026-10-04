@@ -271,6 +271,12 @@ input[type="date"] { width: 100%; min-height: 60px; border-radius: 14px; border:
 .fotozeile { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; color: var(--leise); font-size: 15px; margin-bottom: 10px; }
 .knoepfe-innen, .nav-innen { padding-right: var(--ecke, 0px); }
 h1[tabindex="-1"]:focus { outline: none; }
+.ballast { background: var(--flaeche); border-radius: 16px; padding: 14px 16px; margin: 0 0 12px; font-size: 16px; border-left: 5px solid var(--gut); }
+.ballast.stufe1 { border-left-color: var(--akzent); }
+.ballast.stufe2 { border-left-color: var(--fehler); }
+.ballast small { display: block; color: var(--leise); font-size: 15px; margin-top: 6px; }
+.ballast-kurz.stufe1 { color: var(--akzent); }
+.ballast-kurz.stufe2 { color: var(--fehler); }
 .salzgruppe > summary > span { min-width: 0; }
 .salzgruppe > summary .zahl { font-size: 15px; font-weight: 400; margin-left: 6px; }
 .salzgruppe > summary small { display: block; font-size: 15px; font-weight: 400; color: var(--leise); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
@@ -1548,6 +1554,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
             : ''}
         ${lg ? lageHtml(lg) : leerTank(i) ? '<p class="empf">Noch leer: Nährlösung frisch ansetzen.</p>' : ''}
         ${offeneKontrolle(i) ? '<span class="badge">Nachkontrolle fällig</span>' : ''}
+        ${(() => { const b = ballast(i); return b && b.stufe ? `<div class="karte-zeile2 ballast-kurz stufe${b.stufe}">${b.stufe === 2 ? 'Viel Ballast im Tank: besser neu ansetzen' : 'Ballast sammelt sich: bald neu ansetzen'}</div>` : ''; })()}
         ${hauptphase(e, kal) && (!l || Date.now() - new Date(l.datum).getTime() > 2 * 864e5) ? '<div class="ernte-wichtig">Blütewoche ' + kal.woche + ': Bitte EC messen</div><br>' : ''}
         ${!kal && vegi(e) && vegi(e).tag >= 1 ? `<div class="karte-zeile2 zahl">Wachstum, Tag ${vegi(e).tag} seit Keimung</div>` : ''}
         ${kal ? `<div class="${eilig ? 'ernte-wichtig' : 'karte-zeile2'} zahl">${kal.tag >= 1 ? (kal.auto ? 'Tag ' : 'Blütetag ') + kal.tag + ', ' : ''}Ernte ${kal.spanne ? 'ab ' + tagDatumKurz(kal.ernteVon) : tagDatumKurz(kal.ernteVon)} (${restText(kal)})</div>` : ''}
@@ -1628,6 +1635,34 @@ details.hilfe .inhalt b { color: var(--akzent); }
         <p class="leise" style="font-size:15px;margin:8px 0 0">${eigen ? 'Gilt nur für diesen Tank' : Z.eimer.length > 1 ? 'Gilt für alle Tanks ohne eigene Maße' : 'Gilt sofort'}. Du bleibst auf dieser Seite.</p></div>` : ''}`;
   }
 
+  // Ballast-Zähler (seit 3.13.21): Seit dem letzten Neuansatz oder Spülen kommt mit jedem Nachfüllen Wasser dazu, aber
+  // Natrium und Chlorid nimmt die Pflanze kaum auf. Konzentration im Tank ≈ Wasserwert × (Start + Nachgefülltes) / Tankvolumen.
+  // Sulfat und Calcium bleiben bewusst draußen: die nimmt die Pflanze teilweise auf, da wäre eine Zahl Scheingenauigkeit.
+  // Schwellen sind Faustwerte: Umsatz 2/3 Tankfüllungen, Natrium 50/100 mg/L, Chlorid 100/200 mg/L.
+  const BALLAST = { umsatz: [2, 3], Na: [50, 100], Cl: [100, 200] };
+  function ballast(i) {
+    const e = Z.eimer[i]; let start = -1;
+    for (let j = Z.log.length - 1; j >= 0; j--) { const x = Z.log[j]; if (x.eimer === i && imAnbau(x, i) && (x.art === 'Neuansatz' || x.art === 'Spülen')) { start = j; break; } }
+    if (start < 0) return null;
+    const s0 = Z.log[start], D = daten(e), V = K.liter(D.eimer, D.eimer.maxFuell) || s0.liter;
+    if (!(V > 0)) return null;
+    let dazu = 0;
+    for (let j = start + 1; j < Z.log.length; j++) { const x = Z.log[j]; if (x.eimer === i && /^TOP-UP/.test(x.art) && x.liter > 0) dazu += x.liter; }
+    const umsatz = dazu / V, faktor = ((s0.liter > 0 ? s0.liter : V) + dazu) / V, w = D.wasser;
+    const na = w.Na > 0 ? w.Na * faktor : null, cl = w.Cl > 0 ? w.Cl * faktor : null;
+    const stufeVon = (v, g) => v == null ? 0 : v >= g[1] ? 2 : v >= g[0] ? 1 : 0;
+    const stufe = Math.max(stufeVon(umsatz, BALLAST.umsatz), stufeVon(na, BALLAST.Na), stufeVon(cl, BALLAST.Cl));
+    return { umsatz, dazu, V, na, cl, naW: w.Na || 0, clW: w.Cl || 0, stufe, seit: s0.datum };
+  }
+  const BALLAST_TEXT = ['Kaum Ballast im Tank.', 'Im Tank sammelt sich Ballast. Beim nächsten Mal lieber neu ansetzen statt nachfüllen.', 'Viel Ballast im Tank. Besser jetzt neu ansetzen.'];
+  function ballastHtml(i) {
+    const b = ballast(i); if (!b) return '';
+    const teile = [`seit dem Neuansatz ${fmt(b.dazu, 1)} L nachgefüllt, das sind ${fmt(b.umsatz, 1)} Tankfüllungen`];
+    if (b.na != null) teile.push(`Natrium ca. ${fmt(b.na, 0)} mg/L (Wasser ${fmt(b.naW, 0)})`);
+    if (b.cl != null) teile.push(`Chlorid ca. ${fmt(b.cl, 0)} mg/L (Wasser ${fmt(b.clW, 0)})`);
+    return `<div class="ballast stufe${b.stufe}"><b>Ballast:</b> ${teile.join(' · ')}. ${BALLAST_TEXT[b.stufe]} ${frage('ballast')}
+      ${b.na == null && b.cl == null ? '<small>Natrium und Chlorid aus dem Wasserbericht eintragen, dann schätzt die App sie mit (Einstellungen › Wasser &amp; Säure).</small>' : ''}</div>`;
+  }
   function vEimer() {
     const e = Z.eimer[UI.eimer];
     const eintraege = Z.log.filter(x => x.eimer === UI.eimer && imAnbau(x, UI.eimer)).slice(-3).reverse();
@@ -1642,6 +1677,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
       ${UI.regler ? reglerHtml(e, UI.eimer) : ''}
       <div class="ziel"><div class="ec-gross zahl">${fmt(zielEC(e), 2)}</div><div class="leise">Ziel-EC für diesen Tank, inklusive ${esc(wasserWahlFuer(e).b ? 'Wassermischung' : quelleName(wasserWahlFuer(e).a))} ${frage('ziel')}</div></div>
       ${lage(UI.eimer) ? `<div class="kalender" style="padding-top:12px">${lageHtml(lage(UI.eimer))}${lage(UI.eimer).diff ? `<p class="klein" style="margin:8px 0 0">Was heißt das? ${frage('seit')}</p>` : ''}</div>` : ''}
+      ${ballastHtml(UI.eimer)}
       ${anlKnopf(UI.eimer)}
       ${vKontrolle(UI.eimer)}
       ${vFotostreifen(UI.eimer)}
@@ -2130,6 +2166,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
     ec: ['Was ist EC?', 'EC zeigt, wie viel Dünger im Wasser gelöst ist. Steigt sie, hat die Pflanze mehr Wasser getrunken als Nährstoffe genommen. Sinkt sie, hat sie Hunger.'],
     ph: ['Was ist pH?', 'pH zeigt, ob das Wasser eher sauer oder basisch ist. Zwischen etwa 5,6 und 6,2 kann die Pflanze die Nährstoffe am besten aufnehmen. Liegt er daneben, kommt sie an manche nicht mehr dran, obwohl sie im Wasser sind.'],
     ziel: ['Was ist die Ziel-EC?', 'So stark soll die Lösung im Tank sein, passend zu Phase, Sorte und Stärke. Das Wasser (auch eine Mischung) ist schon mit eingerechnet. Liegt deine Messung mehr als 0,3 darüber oder darunter, färbt die App die Zahl ein.'],
+    ballast: ['Was ist der Ballast-Zähler?', 'Im Tank wird nur nachgefüllt, nie ausgetauscht. Was die Pflanze kaum aufnimmt, vor allem Natrium und Chlorid aus dem Leitungswasser, bleibt im Tank und wird mit jedem Liter Nachfüllwasser mehr. Die App zählt seit dem letzten Neuansatz, wie viel Wasser nachgekommen ist (nur was du über die App nachfüllst), und schätzt daraus Natrium und Chlorid im Tank. Ab etwa zwei nachgefüllten Tankfüllungen oder 50 mg/L Natrium ist ein Neuansatz bald sinnvoll, ab drei Füllungen oder 100 mg/L Natrium besser jetzt. Das sind Faustwerte aus der Praxis. Natrium und Chlorid aus dem Wasserbericht trägst du unter Einstellungen › Wasser & Säure ein.'],
     nachfuellen: ['Wasser oder Nährlösung?', 'Nach EC: Die App rechnet aus, wo die EC landet, wenn du nur Wasser nachfüllst. Bleibt sie dann am Ziel, reicht Wasser. Fällt sie darunter, kommt stärkere Nährlösung nach. Deshalb vorher immer frisch messen. Nach Verbrauch: Es kommt immer dieselbe Nährlösung in Ziel-Stärke nach. Die Pflanze nimmt Stickstoff, Phosphor und Kalium schnell auf, Calcium, Sulfat und Natrium bleiben eher liegen. Eine sinkende EC heißt deshalb meist nur, dass die Pflanzen gut fressen – kein Mangel. Steigt die EC über mehrere Nachfüllungen, reichern sich Salze an: dann einen Teil der Lösung wechseln.'],
     seit: ['Seit dem letzten Mal', 'Der Unterschied zwischen deiner letzten Messung und dem Stand davor. Minus-Liter heißt: So viel hat die Pflanze getrunken. Steigt die EC, hat sie mehr Wasser als Nährstoffe genommen.'],
     kurve: ['Die EC-Kurve', 'Jeder Punkt ist eine Messung in diesem Anbau. Das helle Band ist dein Zielbereich. Läuft die Linie darüber, eher Wasser nachfüllen. Läuft sie darunter, eher Nährlösung.'],
@@ -2425,7 +2462,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
     return `<p class="leise">Schalte jede Säure ein, die du hast. Die App nimmt je Phase die passende: im Wachstum Salpetersäure, weil sie Stickstoff bringt, in der Blüte Phosphorsäure, weil sie Phosphor bringt.</p>
       ${['salpeter', 'phosphor', 'schwefel'].map(teil).join('')}
       ${da.length ? `<div class="hinweise"><p><b>So rechnet die App:</b> Anzucht und Wachstum mit ${name('wachstum')}, Blüte und Reife mit ${name('bluete')}.</p></div>` : ''}
-      ${da.includes('phosphor') && haerte() && haerte().art === 'hart' ? '<div class="hinweise"><p>Dein Wasser ist hart und braucht viel Säure. Mit Phosphorsäure landet dabei oft mehr Phosphor im Tank als gut ist. Schwefelsäure, zum Beispiel Batteriesäure, ist hier meist die bessere Wahl.</p></div>' : ''}`;
+      ${da.includes('phosphor') && haerteBereich(wasserMisch(Z.einst.wasserWahl)).kh >= KH_VIEL ? '<div class="hinweise"><p>Dein Wasser hat viel Karbonathärte und braucht viel Säure. Mit Phosphorsäure landet dabei oft mehr Phosphor im Tank als gut ist. Schwefelsäure, zum Beispiel Batteriesäure, ist hier meist die bessere Wahl.</p></div>' : ''}`;
   }
   const gewaehlt = (x, E) => x.aktiv !== false ? E.vorrat[x.id] !== false : E.auswahl[x.id] === true;
   // Eigene Salze: nur diese fragt die App ab, die eingebauten sind geprüft
@@ -2532,6 +2569,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
       ${setupMischHtml()}
       <details class="hilfe"><summary>Wo finde ich die Werte?</summary><div class="inhalt"><p class="leise" style="font-size:16px;margin:0">EC und pH misst du selbst. Die übrigen Werte stehen in der Trinkwasseranalyse deines Wasserversorgers, meist auf dessen Website. Die Karbonathärte heißt dort oft „Säurekapazität bis pH 4,3“ (mmol/L) oder „Karbonathärte“ (°dH). Osmose- und Regenwasser brauchst du nicht zu messen, deren typische Werte kennt die App.</p></div></details>`;
     if (s === 3) inhalt = `<h1>Deine Säuren</h1>
+      ${haerteHtml()}
       ${saeurenHtml(E)}
       <label class="feld"><span>Ziel-pH</span><input type="text" inputmode="decimal" data-feld="zielPH" value="${fmt(E.saeure.zielPH, 1)}"></label>
       <p class="leise" style="font-size:16px">Für DWC sind 5,8 ein guter Wert. Fertige pH-Minus-Mittel aus dem Handel sind meist Phosphorsäure, die Konzentration steht auf dem Etikett.</p>
@@ -2606,14 +2644,40 @@ details.hilfe .inhalt b { color: var(--akzent); }
       <div class="liste">${GRUPPEN.map(([id, t]) => `<button class="listen-zeile" data-act="einstGruppe" data-g="${id}"><span><b>${esc(t)}</b><small class="zahl">${esc(gruppeUnter(id, D))}</small></span><span class="pfeil" aria-hidden="true">›</span></button>`).join('')}</div>
       <p class="leise" style="font-size:15px">Änderungen gelten sofort. Hast du dich vertippt, erscheint unten kurz „Rückgängig“.</p>` + nav();
   }
-  // Wie hart ist das Standardwasser, und welche Salze passen dazu?
+  // Härte wie im Bericht des Wasserwerks (seit 3.13.21): Gesamthärte = Calcium + Magnesium in mmol/L, Bereiche nach dem
+  // Wasch- und Reinigungsmittelgesetz (weich unter 1,5 mmol/L = 8,4 °dH, mittel bis 2,5 mmol/L = 14 °dH, hart darüber).
+  // Die Karbonathärte (Säurekapazität) bestimmt dagegen den Säurebedarf; ab 7 °dH braucht es viel Säure.
+  const KH_VIEL = 7; // °dH
+  function haerteBereich(w) {
+    const mmol = (w.Ca || 0) / 40.078 + (w.Mg || 0) / 24.305;
+    return { mmol, dh: mmol * 5.608, kh: (w.alkalitaet || 0) * 2.8, bereich: mmol < 1.5 ? 'weich' : mmol <= 2.5 ? 'mittel' : 'hart' };
+  }
+  // Zeile für Einrichtung und „Wasser & Säure“: Härtebereich, Karbonathärte, Säure pro 10 L und was das fürs Mischen heißt
+  function haerteHtml() {
+    const w = wasserMisch(Z.einst.wasserWahl);
+    if (!(w.Ca > 0 || w.Mg > 0 || w.alkalitaet > 0)) return '';
+    const h = haerteBereich(w), gemischt = !!wahlSauber(Z.einst.wasserWahl).b;
+    let saeure = '';
+    try {
+      const D = daten(), sa = K.saeure(D.wasser, D.saeure, D.kalibrierung);
+      if (sa.mmol > 0) saeure = ` Dafür braucht es im Wachstum etwa ${fmt(sa.mmol * 10 / sa.mmolProMl, 1)} ml ${esc(sa.name)} pro 10 Liter.`;
+    } catch (e) {}
+    const folge = { weich: 'Calcium und Magnesium müssen fast ganz aus dem Dünger kommen, die App plant entsprechend mehr Calcinit und Bittersalz ein.',
+      mittel: 'Gut zum Mischen: Das Wasser bringt etwas Calcium und Magnesium mit, die App rechnet es ab.',
+      hart: 'Es bringt viel Calcium und Magnesium mit, die App plant entsprechend weniger Calcinit und Bittersalz ein. Wird es zu viel, hilft ein Teil Osmose- oder Regenwasser.' }[h.bereich];
+    const viel = h.kh >= KH_VIEL ? ` Die Karbonathärte ist hoch${K.saeurenDa(Z.einst.saeure).includes('phosphor') ? ': Mit Phosphorsäure landet so oft zu viel Phosphor im Tank, Salpeter- oder Schwefelsäure passen besser' : ''}.` : '';
+    return `<div class="hinweise"><p><b>Dein Wasser${gemischt ? ' (Mischung)' : ''} ist ${h.bereich}:</b> Gesamthärte ${fmt(h.dh, 1)} °dH (${fmt(h.mmol, 2)} mmol/L). Wie beim Wasserwerk gilt: unter 8,4 °dH weich, bis 14 °dH mittel, darüber hart. ${folge}</p>
+      <p>Karbonathärte ${fmt(h.kh, 1)} °dH: Sie bestimmt, wie viel Säure nötig ist.${saeure}${viel}</p></div>`;
+  }
+  // Welche Salze passen zum Standardwasser? Nach demselben Härtebereich wie oben
   function haerte() {
-    const w = wasserMisch(Z.einst.wasserWahl), alk = w.alkalitaet || 0, ca = w.Ca || 0;
-    if (alk >= 2.5 || ca >= 80) return { art: 'hart', text: `Dein Wasser ist hart (Karbonathärte ${fmt(alk * 2.8, 0)} °dH, Calcium ${fmt(ca, 0)} mg/L). Es bringt viel Calcium mit und braucht viel Säure${K.saeurenDa(Z.einst.saeure).includes('phosphor') ? ' (mit Phosphorsäure oft zu viel Phosphor, besser Schwefelsäure, siehe Wasser & Säure)' : ''}. Diese Salze passen dazu besonders gut:`,
-      salze: [['mgno3', 'Stickstoff ohne Calcium, dazu Magnesium. Ersetzt einen Teil vom Calciumnitrat.'], ['kno3', 'Stickstoff und Kalium ohne Calcium.'], ['k2so4', 'Kalium für die Blüte, ohne zusätzlichen Stickstoff.'], ['nh4so4', 'Ein wenig Ammonium hält den pH an den Wurzeln stabiler. Die App nimmt davon nur wenig.']].concat(K.saeurenDa(Z.einst.saeure).includes('phosphor') ? [] : [['mkp', 'Phosphor und Kalium. Wichtig, weil deine Säure keinen Phosphor mitbringt.']]) };
-    if (alk < 1 && ca < 20) return { art: 'weich', text: `Dein Wasser ist weich (Karbonathärte ${fmt(alk * 2.8, 0)} °dH, Calcium ${fmt(ca, 0)} mg/L). Calcium und Magnesium müssen fast ganz aus dem Dünger kommen, und die wenige Säure bringt kaum Phosphor. Diese Salze passen dazu besonders gut:`,
+    const w = wasserMisch(Z.einst.wasserWahl), h = haerteBereich(w), phos = K.saeurenDa(Z.einst.saeure).includes('phosphor');
+    if (!(w.Ca > 0 || w.Mg > 0 || w.alkalitaet > 0)) return null;
+    if (h.bereich === 'hart') return { art: 'hart', text: `Dein Wasser ist hart (Gesamthärte ${fmt(h.dh, 1)} °dH, Karbonathärte ${fmt(h.kh, 1)} °dH). Es bringt viel Calcium und Magnesium mit${h.kh >= KH_VIEL ? ' und braucht viel Säure' + (phos ? ' (mit Phosphorsäure oft zu viel Phosphor, besser Salpeter- oder Schwefelsäure, siehe Wasser & Säure)' : '') : ''}. Diese Salze passen dazu besonders gut:`,
+      salze: [['mgno3', 'Stickstoff ohne Calcium, dazu Magnesium. Ersetzt einen Teil vom Calciumnitrat.'], ['kno3', 'Stickstoff und Kalium ohne Calcium.'], ['k2so4', 'Kalium für die Blüte, ohne zusätzlichen Stickstoff.'], ['nh4so4', 'Ein wenig Ammonium hält den pH an den Wurzeln stabiler. Die App nimmt davon nur wenig.']].concat(phos ? [] : [['mkp', 'Phosphor und Kalium. Wichtig, weil deine Säure keinen Phosphor mitbringt.']]) };
+    if (h.bereich === 'weich') return { art: 'weich', text: `Dein Wasser ist weich (Gesamthärte ${fmt(h.dh, 1)} °dH, Karbonathärte ${fmt(h.kh, 1)} °dH). Calcium und Magnesium müssen fast ganz aus dem Dünger kommen, und die wenige Säure bringt kaum Phosphor. Diese Salze passen dazu besonders gut:`,
       salze: [['calcinit', 'Die wichtigste Calciumquelle.'], ['bittersalz', 'Magnesium und Schwefel.'], ['mkp', 'Phosphor und Kalium.'], ['map', 'Phosphor und etwas Ammonium, das den pH stabiler hält.']] };
-    return null;
+    return { art: 'mittel', text: `Dein Wasser ist mittelhart (Gesamthärte ${fmt(h.dh, 1)} °dH, Karbonathärte ${fmt(h.kh, 1)} °dH). Damit kommt der Grundsatz aus Volldünger, Calcinit, Kaliumnitrat und Bittersalz gut zurecht.`, salze: [] };
   }
   function vEinstGruppe() {
     const g = UI.gruppe || 'tanks', E = Z.einst, D = daten();
@@ -2680,6 +2744,7 @@ details.hilfe .inhalt b { color: var(--akzent); }
       <div class="feld-zeile3">${Object.entries(VORLAGEN).map(([id, v]) => `<button class="zeile-knopf doktor" data-act="quelleNeu" data-t="${id}" style="font-size:16px">${v.name.replace(' ', '<br>')}</button>`).join('')}</div>
 
       <h2>Säuren für den pH</h2>
+      ${haerteHtml()}
       ${saeurenHtml(E)}
       <label class="feld"><span>Ziel-pH</span><input type="text" inputmode="decimal" data-feld="zielPH" value="${fmt(E.saeure.zielPH, 1)}"></label>`;
     const hw = g === 'salze' ? haerte() : null, empf = hw ? hw.salze.map(x => x[0]) : [];
