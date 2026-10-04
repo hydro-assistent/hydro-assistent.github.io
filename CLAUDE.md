@@ -87,3 +87,4 @@ Bei jeder Veröffentlichung:
 
 - Spurenelement-Mischungen (Fetrilon Combi 1, Micromax Premium/WS, Microfol Combi, Excello Basis; Werte in der HydroBuddy-Datenbank `substances_win.dbf`) als Salze, die der Rechenkern gezielt für Fe/B/Zn einplant. Heute gibt es nur das Eisen-Minimum als Strafterm und Hinweise für B/Zn (`SPUREN_REF`); nötig wären Spurenziele im Solver und ein Spiegel in `tests/vergleich_optimum.py`.
 - Peters No Phosphate Special 14-0-14+11CaO+3MgO: Werte nicht belegt, wartet auf ein Foto der Deklaration.
+- Calcium im Wachstums-Profil (`phasen.wachstum.profil.Ca` = 140 bei N 160): Powell & Bauerle 2026 (Front. Plant Sci. 16:1753553) messen eine Aufnahme von nur ~86 bei N 160 (K ~207 statt 180). Erst ändern, wenn eine zweite Quelle das stützt; eine Profiländerung verschiebt alle Wachstums-Rezepte (Golden-Master `--neu`, Python-Vergleich).
