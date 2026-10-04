@@ -215,6 +215,39 @@ const BOESE = '<img src=x onerror="alert(1)">"\'&';
   const ohne = x => { const c = sortiert(x); delete c.geaendert; delete c.pruefen; return JSON.stringify(c); };
   pruefe(ohne(ok) === ohne(z) && z.einst.setup === true, 'Import: gültige Sicherung verändert');
 
+  // ---------- Wasserhärte und Ballast-Zähler (seit 3.13.21) ----------
+  await p.goto(url); await p.evaluate(() => localStorage.clear()); await p.reload(); await p.waitForTimeout(300);
+  for (let i = 0; i < 2; i++) {
+    if (i === 1) for (const [id, v] of [['sEC', '0,4'], ['sPH', '7,5'], ['sKH', '1,7'], ['sCa', '45'], ['sMg', '5'], ['sSO4', '40']]) await p.fill('#' + id, v);
+    await p.click('[data-act="setupWeiter"]'); await p.waitForTimeout(250);
+  }
+  // Ca 45 + Mg 5 mg/L = 1,33 mmol/L = 7,5 °dH: weich; Karbonathärte 1,7 mmol/L = 4,8 °dH
+  t = await text();
+  pruefe(/Dein Wasser ist weich/.test(t) && /Gesamthärte 7,5 °dH/.test(t) && /Karbonathärte 4,8 °dH/.test(t), 'Härte: Einstufung in der Einrichtung fehlt oder falsch');
+  await einrichten();
+  t = await neuAnsetzen();
+  await p.fill('#ec', (await p.evaluate(() => { const m = document.body.innerText.match(/EC ([\d,]+)\s+EC messen/); return m ? m[1] : '1,3'; })));
+  await p.fill('#ph', '5,8'); await p.click('[data-act="eintragen"]'); await p.waitForTimeout(300);
+  // Nachfüllen über die App simulieren: 60 L Wasser bei Natrium 20 mg/L im Leitungswasser
+  await p.evaluate(() => {
+    const z = JSON.parse(localStorage.getItem('hydro-zustand-v1'));
+    z.einst.wasser.Na = 20;
+    for (let k = 0; k < 3; k++) z.log.push({ id: 'n' + k, eimer: 0, datum: new Date(Date.now() + 1000 + k).toISOString(), art: 'TOP-UP Wasser', h: 28, liter: 20, ec: 1.3, ph: 5.9 });
+    localStorage.setItem('hydro-zustand-v1', JSON.stringify(z));
+  });
+  await p.reload(); await p.waitForTimeout(300);
+  pruefe(/Ballast sammelt sich/.test(await text()), 'Ballast: Hinweis auf der Tank-Karte fehlt (gelb)');
+  await p.click('[data-act="oeffne"][data-i="0"]'); await p.waitForTimeout(250);
+  t = await text();
+  pruefe(/Ballast:.*60,0 L nachgefüllt, das sind 2,\d Tankfüllungen/.test(t) && /Natrium ca\. \d+ mg\/L \(Wasser 20\)/.test(t), 'Ballast: Zähler auf der Tankseite fehlt oder falsch');
+  await p.evaluate(() => {
+    const z = JSON.parse(localStorage.getItem('hydro-zustand-v1'));
+    z.log.push({ id: 'n9', eimer: 0, datum: new Date(Date.now() + 5000).toISOString(), art: 'TOP-UP Nährlösung', h: 28, liter: 25, ec: 1.3, ph: 5.9 });
+    localStorage.setItem('hydro-zustand-v1', JSON.stringify(z));
+  });
+  await p.reload(); await p.waitForTimeout(300);
+  pruefe(/Viel Ballast im Tank/.test(await text()), 'Ballast: Rot ab drei Tankfüllungen fehlt');
+
   pruefe(jsFehler.length === 0, 'JS-Fehler: ' + jsFehler.join(' | '));
   await browser.close(); server.close();
   console.log(`${n} Prüfungen, ${fehler} Fehler.`);
