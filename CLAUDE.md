@@ -17,6 +17,7 @@ node tests/saeure.test.js      # Wahl der Säure je Phase (saeureWahl)
 node tests/sparsam.test.js     # Rezept „Sparsam“ (DATEN.sparsam) und topUp mit nachfuellen: 'verbrauch'
 node tests/eisen.test.js       # Eisen-Minimum nicht erreichbar: Vorgabe wird gelockert (FE_LOCKERN), Rezept kippt nicht
 node tests/salze.test.js       # eingebaute Salze: Etikett-Umrechnung, jeder Volldünger im A/B-Rezept mit Calcinit
+node tests/ec.test.js          # EC-Schätzung gegen ein Ionen-Modell (LMCv2 wie HydroBuddy/DWC-Rechner), Verhältnis 0,8–1,1
 node tests/fassung.test.js     # VERSION in sw.js = neueste „Fassung“ in LIESMICH.md, DATEIEN vorhanden
 node tests/kern.test.js        # Golden-Master: 13 feste Rezepte, topUp, zielEC, liter gegen tests/kern.erwartet.json
 node tests/kern.test.js --neu  # erwartete Werte neu schreiben – nur bei gewollter Rechenänderung, Diff prüfen
